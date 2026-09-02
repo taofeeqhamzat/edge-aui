@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Rust & WASM build artifacts
+target/
+wasm-vectorizer/target/
+wasm-vectorizer/pkg/
+pkg/

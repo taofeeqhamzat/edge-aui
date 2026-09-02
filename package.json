@@ -1,18 +1,19 @@
 {
   "name": "edge-aui-framework",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build:wasm": "wasm-pack build wasm-vectorizer --target web",
+    "build": "npm run build:wasm && tsc && vite build",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
-    "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.6.0"
   },
   "dependencies": {
