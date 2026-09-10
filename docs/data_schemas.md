@@ -4,7 +4,7 @@ To ensure seamless message passing between the TypeScript Main Thread, the Rust 
 
 ## 1. Raw Interaction Payload (Main Thread -> WASM)
 
-The system captures user activity as a structured interaction event containing the target component, action type, timestamp, and contextual vector[cite: 18].
+The system captures user activity as a structured interaction event containing the target component, action type, timestamp, and contextual vector.
 
 ```typescript
 interface InteractionEvent {
@@ -19,7 +19,7 @@ interface InteractionEvent {
 
 ## 2. The MicroTensor (WASM -> ONNX)
 
-Because storing continuous micro-interactions causes memory overflow, the WASM vectorizer converts the 500ms batched events into a fixed-length summary vector[cite: 18].
+Because storing continuous micro-interactions causes memory overflow, the WASM vectorizer converts the 500ms batched events into a fixed-length summary vector.
 
 ```json
 {
