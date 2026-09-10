@@ -28,3 +28,9 @@ target/
 wasm-vectorizer/target/
 wasm-vectorizer/pkg/
 pkg/
+
+# ML models
+*.onnx
+*.onnx.data
+models/
+
