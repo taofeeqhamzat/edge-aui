@@ -34,3 +34,9 @@ pkg/
 *.onnx.data
 models/
 
+# Plan task files & documentation (only persist directory structure via .gitkeep)
+docs/plan/**/*.md
+docs/plan/*.md
+!docs/plan/**/.gitkeep
+clipboard*.md
+instructions*.md
