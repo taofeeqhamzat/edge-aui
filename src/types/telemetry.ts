@@ -133,3 +133,14 @@ export interface UIContext {
   expandable: boolean;
 }
 
+export type {
+  BehaviourEvent,
+  BehaviourEventType,
+  MicroTensorWindow,
+  MacroInteraction,
+  OutcomeEvent,
+  OutcomeType,
+  InterventionEvent,
+  InterventionEventType
+} from '../telemetry/events';
+
