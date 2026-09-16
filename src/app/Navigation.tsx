@@ -18,6 +18,9 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
           <li key={page} style={{ marginBottom: '8px' }}>
             <button
               onClick={() => onNavigate(page)}
+              data-aui-component={`nav-${page}`}
+              data-aui-role="navigation"
+              data-aui-action="click"
               style={{
                 width: '100%',
                 textAlign: 'left',

@@ -75,3 +75,61 @@ export interface UIRecommendation {
   matchedPattern?: PrefixSpanPattern;
   timestamp: number;
 }
+
+/**
+ * Semantic DOM Annotation Roles conformant to clipboard.9.md Stage 3.1
+ */
+export type AuiComponentRole =
+  | 'navigation'
+  | 'primary-action'
+  | 'secondary-action'
+  | 'filter'
+  | 'form-field'
+  | 'tooltip'
+  | 'table-row'
+  | 'accordion'
+  | 'help'
+  | 'kpi-card';
+
+/**
+ * Common user action semantics for data-aui-action
+ */
+export type AuiAction =
+  | 'click'
+  | 'change'
+  | 'toggle'
+  | 'hover'
+  | 'select'
+  | 'input'
+  | 'focus';
+
+/**
+ * Experimental task relevance annotation for data-aui-task-role
+ */
+export type AuiTaskRole = 'required' | 'optional' | 'distractor';
+
+/**
+ * Stable Semantic DOM Annotation Contract
+ */
+export interface SemanticDOMAttributes {
+  'data-aui-component': string;
+  'data-aui-role': AuiComponentRole | string;
+  'data-aui-action'?: AuiAction | string;
+  'data-aui-task-role'?: AuiTaskRole | string;
+}
+
+/**
+ * Active UI Context snapshot supplied to the model-facing inference layer
+ */
+export interface UIContext {
+  route: string;
+  activeComponentId?: string;
+  componentRole?: AuiComponentRole | string;
+  taskId?: string;
+  taskStepId?: string;
+  availableActions: (AuiAction | string)[];
+  primaryActionAvailable: boolean;
+  helpAvailable: boolean;
+  expandable: boolean;
+}
+

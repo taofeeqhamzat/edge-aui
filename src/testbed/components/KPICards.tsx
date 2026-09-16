@@ -7,9 +7,18 @@ export function KPICards() {
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+    <div
+      data-aui-component="kpi-cards"
+      style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}
+    >
       {kpis.map((kpi, index) => (
-        <div key={index} style={{ border: '1px solid #ccc', padding: '16px', borderRadius: '8px', background: '#fff' }}>
+        <div
+          key={index}
+          data-aui-component={`kpi-card-${kpi.label.toLowerCase().replace(/\s+/g, '-')}`}
+          data-aui-role="kpi-card"
+          data-aui-action="hover"
+          style={{ border: '1px solid #ccc', padding: '16px', borderRadius: '8px', background: '#fff' }}
+        >
           <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>{kpi.label}</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>{kpi.value}</div>
           <div style={{ fontSize: '14px', color: kpi.change.startsWith('+') ? 'green' : 'red' }}>

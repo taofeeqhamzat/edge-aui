@@ -9,7 +9,12 @@ export function App() {
   const [currentPage, setCurrentPage] = useState<Page>('Overview');
 
   return (
-    <div className="app-container" style={{ display: 'flex', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+    <div
+      className="app-container"
+      data-aui-route={currentPage}
+      data-aui-component={`page-${currentPage.toLowerCase()}`}
+      style={{ display: 'flex', minHeight: '100vh', fontFamily: 'sans-serif' }}
+    >
       <Navigation currentPage={currentPage} onNavigate={setCurrentPage} />
       
       {currentPage === 'Analytics' ? (
