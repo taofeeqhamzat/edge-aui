@@ -38,5 +38,8 @@ models/
 docs/plan/**/*.md
 docs/plan/*.md
 !docs/plan/**/.gitkeep
+docs/conversation/
+docs/conversation/**
 clipboard*.md
 instructions*.md
+
