@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "sync-config": "node scripts/sync-config.mjs",
+    "pretest": "node scripts/sync-config.mjs",
     "test": "vitest run",
     "build:wasm": "wasm-pack build wasm-vectorizer --target web",
     "build": "npm run build:wasm && tsc && vite build",
