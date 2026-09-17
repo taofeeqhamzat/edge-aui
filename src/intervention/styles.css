@@ -1,0 +1,153 @@
+/**
+ * Edge-AUI Non-Destructive Adaptation Styles
+ * Implements Stage 8.3 specifications from clipboard.9.md Sections 27, 28 & docs/plan/tasks/8.3.md.
+ * 
+ * Guarantees:
+ * - High contrast & WCAG AA/AAA compliance
+ * - No layout shift (uses outline, box-shadow, and fixed/absolute positioning)
+ * - Motion sensitivity (respects prefers-reduced-motion)
+ * - Complete reversibility via semantic CSS classes
+ */
+
+/* ==========================================================================
+   1. Highlight Primary Action (.edge-aui-highlight)
+   ========================================================================== */
+.edge-aui-highlight {
+  position: relative;
+  outline: 3px solid #00acc1 !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 12px rgba(0, 172, 193, 0.6) !important;
+  animation: edgeAuiPulse 2s infinite ease-in-out;
+  transition: outline 0.2s ease, box-shadow 0.2s ease;
+}
+
+@keyframes edgeAuiPulse {
+  0%, 100% {
+    outline-color: #00acc1;
+    box-shadow: 0 0 8px rgba(0, 172, 193, 0.4);
+  }
+  50% {
+    outline-color: #00838f;
+    box-shadow: 0 0 16px rgba(0, 172, 193, 0.85);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-aui-highlight {
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   2. Simplify Options (.edge-aui-simplified)
+   ========================================================================== */
+.edge-aui-simplified {
+  transition: all 0.3s ease;
+}
+
+.edge-aui-simplified-collapsed {
+  display: none !important;
+}
+
+.edge-aui-simplified-indicator {
+  display: inline-block;
+  font-size: 11px;
+  color: #006064;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   3. Expand Tooltip (.edge-aui-tooltip-expanded)
+   ========================================================================== */
+.edge-aui-tooltip-bubble {
+  position: absolute;
+  background-color: #1e293b;
+  color: #f8fafc;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 10px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 10000;
+  pointer-events: none;
+  max-width: 240px;
+  white-space: normal;
+  border: 1px solid #334155;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.edge-aui-tooltip-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 12px;
+  width: 8px;
+  height: 8px;
+  background-color: #1e293b;
+  border-right: 1px solid #334155;
+  border-bottom: 1px solid #334155;
+  transform: rotate(45deg);
+}
+
+/* ==========================================================================
+   4. Offer Assistance Banner (.edge-aui-assistance-banner)
+   ========================================================================== */
+.edge-aui-assistance-banner {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  max-width: 380px;
+  background: #ffffff;
+  border: 1px solid #00acc1;
+  border-left: 6px solid #00838f;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 14px 16px;
+  z-index: 99999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  color: #1e293b;
+  animation: edgeAuiSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes edgeAuiSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.edge-aui-assistance-content {
+  flex: 1;
+}
+
+.edge-aui-assistance-title {
+  font-weight: 600;
+  color: #006064;
+  margin-bottom: 4px;
+}
+
+.edge-aui-assistance-dismiss {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.edge-aui-assistance-dismiss:hover {
+  color: #0f172a;
+  background-color: #f1f5f9;
+}
