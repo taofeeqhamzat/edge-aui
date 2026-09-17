@@ -4,6 +4,10 @@
  */
 
 export * from './types/index.js';
+export * from './config/index.js';
+export * from './telemetry/index.js';
+export * from './microtensor/index.js';
+export * from './macro/index.js';
 export * from './core/telemetry/index.js';
 export * from './workers/wasm-gate/WasmGateClient.js';
 export * from './workers/onnx-gate/OnnxGateClient.js';
