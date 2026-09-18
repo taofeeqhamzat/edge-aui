@@ -4,6 +4,7 @@ import { Navigation, Page } from './Navigation';
 import { KPICards } from '../testbed/components/KPICards';
 import { FilterDrawer } from '../testbed/components/FilterDrawer';
 import { ResultsTable } from '../testbed/components/ResultsTable';
+import { DebugPanel } from '../debug/DebugPanel';
 
 export function App() {
   const [currentPage, setCurrentPage] = useState<Page>('Overview');
@@ -38,6 +39,7 @@ export function App() {
           </div>
         </main>
       )}
+      <DebugPanel />
     </div>
   );
 }
