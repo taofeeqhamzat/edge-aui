@@ -1,40 +1,30 @@
 /**
  * Edge-AUI Non-Destructive Adaptation Styles
- * Implements Stage 8.3 specifications from clipboard.9.md Sections 27, 28 & docs/plan/tasks/8.3.md.
+ * Implements Stage 8.3 specifications from clipboard.9.md Sections 5, 27, 28 & 45.
  * 
- * Guarantees:
- * - High contrast & WCAG AA/AAA compliance
- * - No layout shift (uses outline, box-shadow, and fixed/absolute positioning)
- * - Motion sensitivity (respects prefers-reduced-motion)
- * - Complete reversibility via semantic CSS classes
+ * Guarantees & Constraints (Dos & Don'ts):
+ * - [DON'T] No unnecessary animations or visual effects (PRD §5).
+ * - [DON'T] No layout shift (CLS = 0; uses outline, box-shadow, and fixed/absolute positioning).
+ * - [DO] High contrast & WCAG AA/AAA compliance; color is not the only indication of highlighting (PRD §45).
+ * - [DO] Motion sensitivity: strictly respects prefers-reduced-motion across all elements.
+ * - [DO] 100% reversible via semantic CSS classes without altering DOM hierarchy.
  */
 
 /* ==========================================================================
    1. Highlight Primary Action (.edge-aui-highlight)
+   Visually subtle state (PRD §28.2). Avoids unnecessary animations (PRD §5).
    ========================================================================== */
 .edge-aui-highlight {
   position: relative;
-  outline: 3px solid #00acc1 !important;
+  outline: 3px solid #00838f !important;
   outline-offset: 3px !important;
-  box-shadow: 0 0 12px rgba(0, 172, 193, 0.6) !important;
-  animation: edgeAuiPulse 2s infinite ease-in-out;
-  transition: outline 0.2s ease, box-shadow 0.2s ease;
-}
-
-@keyframes edgeAuiPulse {
-  0%, 100% {
-    outline-color: #00acc1;
-    box-shadow: 0 0 8px rgba(0, 172, 193, 0.4);
-  }
-  50% {
-    outline-color: #00838f;
-    box-shadow: 0 0 16px rgba(0, 172, 193, 0.85);
-  }
+  box-shadow: 0 0 0 1px #ffffff, 0 0 8px rgba(0, 131, 143, 0.4) !important;
+  transition: outline 0.15s ease, box-shadow 0.15s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .edge-aui-highlight {
-    animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -42,7 +32,13 @@
    2. Simplify Options (.edge-aui-simplified)
    ========================================================================== */
 .edge-aui-simplified {
-  transition: all 0.3s ease;
+  transition: opacity 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-aui-simplified {
+    transition: none !important;
+  }
 }
 
 .edge-aui-simplified-collapsed {
@@ -59,6 +55,7 @@
 
 /* ==========================================================================
    3. Expand Tooltip (.edge-aui-tooltip-expanded)
+   Contextual help bubble: non-modal, non-layout-shifting (PRD §28.4, §45).
    ========================================================================== */
 .edge-aui-tooltip-bubble {
   position: absolute;
@@ -70,11 +67,16 @@
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   z-index: 10000;
-  pointer-events: none;
   max-width: 240px;
   white-space: normal;
   border: 1px solid #334155;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-aui-tooltip-bubble {
+    transition: none !important;
+  }
 }
 
 .edge-aui-tooltip-bubble::after {
@@ -92,6 +94,7 @@
 
 /* ==========================================================================
    4. Offer Assistance Banner (.edge-aui-assistance-banner)
+   Non-modal, non-blocking, dismissible guidance banner (PRD §28.5, §45).
    ========================================================================== */
 .edge-aui-assistance-banner {
   position: fixed;
@@ -112,17 +115,23 @@
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 13px;
   color: #1e293b;
-  animation: edgeAuiSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: edgeAuiSlideUp 0.2s ease-out;
 }
 
 @keyframes edgeAuiSlideUp {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-aui-assistance-banner {
+    animation: none !important;
   }
 }
 

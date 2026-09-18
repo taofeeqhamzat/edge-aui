@@ -213,4 +213,50 @@ describe('Task 8.3: UIActuator (Non-Destructive & Accessible Adaptation)', () =>
     const revertedEvents = emittedEvents.filter((e) => e.type === 'reverted');
     expect(revertedEvents).toHaveLength(2);
   });
+
+  it('supports Escape key dismissal and aria-describedby linkage for expand_tooltip', () => {
+    const tooltipTarget = container.querySelector('[data-aui-component="tooltip-region"]') as HTMLElement;
+    const cmd = createInterventionCommand({
+      type: 'expand_tooltip',
+      targetComponentId: 'tooltip-region',
+      source: 'slow'
+    });
+
+    actuator.apply(cmd);
+
+    const bubble = container.querySelector('.edge-aui-tooltip-bubble') as HTMLElement;
+    expect(bubble).not.toBeNull();
+    expect(bubble.id).toBeTruthy();
+    expect(tooltipTarget.getAttribute('aria-describedby')).toBe(bubble.id);
+
+    // Press Escape to dismiss tooltip
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(container.querySelector('.edge-aui-tooltip-bubble')).toBeNull();
+    expect(tooltipTarget.classList.contains('edge-aui-tooltip-expanded')).toBe(false);
+    expect(tooltipTarget.hasAttribute('aria-describedby')).toBe(false);
+
+    const dismissed = emittedEvents.find((e) => e.type === 'dismissed');
+    expect(dismissed).toBeDefined();
+    expect(dismissed?.intervention).toBe('expand_tooltip');
+  });
+
+  it('supports Escape key dismissal for offer_assistance banner', () => {
+    const cmd = createInterventionCommand({
+      type: 'offer_assistance',
+      source: 'rule',
+      reason: 'Tip: Use keyboard shortcuts.'
+    });
+
+    actuator.apply(cmd);
+    expect(document.querySelector('.edge-aui-assistance-banner')).not.toBeNull();
+
+    // Press Escape to dismiss banner
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(document.querySelector('.edge-aui-assistance-banner')).toBeNull();
+    const dismissed = emittedEvents.find((e) => e.type === 'dismissed');
+    expect(dismissed).toBeDefined();
+    expect(dismissed?.intervention).toBe('offer_assistance');
+  });
 });

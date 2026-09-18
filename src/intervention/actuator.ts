@@ -224,7 +224,7 @@ export class UIActuator {
 
     if (accordionButtons.length === 0) return null;
 
-    const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+    const activeEl = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
     const collapsedItems: Array<{
       btn: HTMLElement;
       wasExpanded: boolean;
@@ -242,7 +242,7 @@ export class UIActuator {
 
     for (const btn of accordionButtons) {
       const parentSection = btn.parentElement;
-      // Do not collapse section containing currently active/focused element
+      // Do not collapse section containing currently active/focused element (PRD §28.3)
       if (activeEl && parentSection && parentSection.contains(activeEl)) {
         continue;
       }
@@ -260,6 +260,11 @@ export class UIActuator {
       }
     }
 
+    // Ensure focus was not hijacked by programmatic clicks (PRD §28.3, §45)
+    if (activeEl && document.activeElement !== activeEl && typeof activeEl.focus === 'function') {
+      activeEl.focus();
+    }
+
     return () => {
       if (filterDrawer) {
         if (drawerHadClass && typeof drawerInitialClass === 'string') {
@@ -273,6 +278,10 @@ export class UIActuator {
         if (item.btn.getAttribute('aria-expanded') !== 'true') {
           item.btn.click();
         }
+      }
+      // Guarantee focus integrity is maintained upon restoration
+      if (activeEl && document.activeElement !== activeEl && typeof activeEl.focus === 'function') {
+        activeEl.focus();
       }
     };
   }
@@ -297,6 +306,8 @@ export class UIActuator {
 
     const hadClass = targetEl.hasAttribute('class');
     const initialClass = targetEl.getAttribute('class');
+    const hadAriaDescribedby = targetEl.hasAttribute('aria-describedby');
+    const initialAriaDescribedby = targetEl.getAttribute('aria-describedby');
 
     targetEl.classList.add('edge-aui-tooltip-expanded');
     targetEl.setAttribute('aria-expanded', 'true');
@@ -315,19 +326,46 @@ export class UIActuator {
       targetEl.setAttribute('data-original-title', originalTitle);
     }
 
-    // Create non-modal accessible tooltip bubble
+    // Stable unique ID for ARIA association (PRD §45)
+    const tooltipId = `edge-aui-tip-${Math.random().toString(36).substring(2, 9)}`;
+
+    // Create non-modal accessible tooltip bubble (PRD §28.4)
     const doc = targetEl.ownerDocument || document;
     const bubble = doc.createElement('div');
+    bubble.id = tooltipId;
     bubble.className = 'edge-aui-tooltip-bubble';
     bubble.setAttribute('role', 'tooltip');
     bubble.textContent = tooltipText;
 
-    // Attach bubble next to target
+    // Associate target element with tooltip for assistive technologies (PRD §45)
+    targetEl.setAttribute(
+      'aria-describedby',
+      initialAriaDescribedby ? `${initialAriaDescribedby} ${tooltipId}` : tooltipId
+    );
+
+    // Attach bubble next to target (non-destructive sibling insertion)
     if (targetEl.parentNode) {
       targetEl.parentNode.insertBefore(bubble, targetEl.nextSibling);
     }
 
+    // Keyboard dismissibility without stealing focus (PRD §28.4, §45)
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        this.clear(command);
+        this.emitEvent({
+          timestamp: Date.now(),
+          type: 'dismissed',
+          intervention: command.type,
+          componentId: command.targetComponentId,
+          source: command.source,
+          confidence: command.confidence
+        });
+      }
+    };
+    doc.addEventListener('keydown', onKeyDown);
+
     return () => {
+      doc.removeEventListener('keydown', onKeyDown);
       if (targetEl) {
         if (hadClass && initialClass !== null) {
           targetEl.setAttribute('class', initialClass);
@@ -335,6 +373,11 @@ export class UIActuator {
           targetEl.removeAttribute('class');
         }
         targetEl.removeAttribute('aria-expanded');
+        if (hadAriaDescribedby && initialAriaDescribedby !== null) {
+          targetEl.setAttribute('aria-describedby', initialAriaDescribedby);
+        } else {
+          targetEl.removeAttribute('aria-describedby');
+        }
         const savedTitle = targetEl.getAttribute('data-original-title');
         if (savedTitle) {
           targetEl.setAttribute('title', savedTitle);
@@ -380,6 +423,7 @@ export class UIActuator {
     const dismissBtn = doc.createElement('button');
     dismissBtn.className = 'edge-aui-assistance-dismiss';
     dismissBtn.setAttribute('aria-label', 'Dismiss guidance tip');
+    dismissBtn.setAttribute('type', 'button');
     dismissBtn.innerHTML = '&times;';
 
     banner.appendChild(content);
@@ -400,10 +444,19 @@ export class UIActuator {
       });
     };
 
+    // Keyboard dismissibility (Escape key) per PRD §28.5 & §45
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onDismiss();
+      }
+    };
+
     dismissBtn.addEventListener('click', onDismiss);
+    doc.addEventListener('keydown', onKeyDown);
 
     return () => {
       dismissBtn.removeEventListener('click', onDismiss);
+      doc.removeEventListener('keydown', onKeyDown);
       if (banner.parentNode) {
         banner.parentNode.removeChild(banner);
       }
