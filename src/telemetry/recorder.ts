@@ -16,23 +16,26 @@ import { taskManager } from '../testbed/tasks/taskManager';
 import { TaskState } from '../testbed/tasks/taskModel';
 import {
   EXPERIMENT_TRACE_SCHEMA_VERSION,
-  SerializableMicroTensorWindow,
-  SerializableExperimentTrace,
-  TraceReplayMetadata,
-  TraceValidationResult,
   validateExperimentTrace,
   reconstructReplayStream,
-  ReplayStreamItem
+  type SerializableMicroTensorWindow,
+  type SerializableExperimentTrace,
+  type TraceReplayMetadata,
+  type TraceValidationResult,
+  type ReplayStreamItem
 } from './traceSchema';
 
 export {
   EXPERIMENT_TRACE_SCHEMA_VERSION,
+  validateExperimentTrace,
+  reconstructReplayStream
+};
+
+export type {
   SerializableMicroTensorWindow,
   SerializableExperimentTrace,
   TraceReplayMetadata,
   TraceValidationResult,
-  validateExperimentTrace,
-  reconstructReplayStream,
   ReplayStreamItem
 };
 
