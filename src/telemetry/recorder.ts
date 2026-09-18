@@ -1,6 +1,6 @@
 /**
  * In-Memory Experiment Trace Recorder
- * Implements Stage 4.3 specifications from clipboard.9.md Section 33 & docs/plan/tasks/4.3.md.
+ * Implements Stage 4.3 & Stage 10.1 specifications from clipboard.9.md Sections 33-34 & docs/plan/tasks/10.1.md.
  * Manages chronological event logs and JSON export without remote telemetry transmission.
  */
 
@@ -14,28 +14,34 @@ import {
 import { SessionContext, sessionManager } from './session';
 import { taskManager } from '../testbed/tasks/taskManager';
 import { TaskState } from '../testbed/tasks/taskModel';
+import {
+  EXPERIMENT_TRACE_SCHEMA_VERSION,
+  SerializableMicroTensorWindow,
+  SerializableExperimentTrace,
+  TraceReplayMetadata,
+  TraceValidationResult,
+  validateExperimentTrace,
+  reconstructReplayStream,
+  ReplayStreamItem
+} from './traceSchema';
+
+export {
+  EXPERIMENT_TRACE_SCHEMA_VERSION,
+  SerializableMicroTensorWindow,
+  SerializableExperimentTrace,
+  TraceReplayMetadata,
+  TraceValidationResult,
+  validateExperimentTrace,
+  reconstructReplayStream,
+  ReplayStreamItem
+};
 
 export interface ExperimentTrace {
+  schemaVersion: string;
   session: SessionContext;
   task?: TaskState;
   behaviourEvents: BehaviourEvent[];
   microTensors: MicroTensorWindow[];
-  macroInteractions: MacroInteraction[];
-  outcomes: OutcomeEvent[];
-  interventions: InterventionEvent[];
-}
-
-export interface SerializableMicroTensorWindow {
-  windowStart: number;
-  windowEnd: number;
-  values: number[];
-}
-
-export interface SerializableExperimentTrace {
-  session: SessionContext;
-  task?: TaskState;
-  behaviourEvents: BehaviourEvent[];
-  microTensors: SerializableMicroTensorWindow[];
   macroInteractions: MacroInteraction[];
   outcomes: OutcomeEvent[];
   interventions: InterventionEvent[];
@@ -95,7 +101,7 @@ export class ExperimentRecorder {
   }
 
   /**
-   * Returns a snapshot of the full chronological experiment trace.
+   * Returns a snapshot of the full chronological experiment trace with in-memory Float32Array microtensors.
    */
   public export(): ExperimentTrace {
     const activeSession = sessionManager.getActiveSession() ?? {
@@ -104,6 +110,7 @@ export class ExperimentRecorder {
     };
 
     return {
+      schemaVersion: EXPERIMENT_TRACE_SCHEMA_VERSION,
       session: activeSession,
       task: taskManager.getState(),
       behaviourEvents: [...this.behaviourEvents],
@@ -115,20 +122,98 @@ export class ExperimentRecorder {
   }
 
   /**
-   * Produces a JSON string of the trace, converting Float32Array microtensor values to standard numbers.
+   * Produces a fully serializable, schema-compliant experiment trace object.
    */
-  public exportJSON(pretty = false): string {
-    const trace = this.export();
-    const serializable: SerializableExperimentTrace = {
-      ...trace,
-      microTensors: trace.microTensors.map((m) => ({
+  public exportSerializable(): SerializableExperimentTrace {
+    const activeSession = sessionManager.getActiveSession() ?? {
+      sessionId: 'anonymous-unassigned',
+      startedAt: 0
+    };
+    const taskState = taskManager.getState();
+    const now = Date.now();
+    const durationMs = activeSession.startedAt > 0 ? Math.max(0, now - activeSession.startedAt) : 0;
+
+    const totalEvents =
+      this.behaviourEvents.length +
+      this.microTensors.length +
+      this.macroInteractions.length +
+      this.outcomes.length +
+      this.interventions.length;
+
+    const metadata: TraceReplayMetadata = {
+      durationMs,
+      totalEvents,
+      behaviourCount: this.behaviourEvents.length,
+      microTensorCount: this.microTensors.length,
+      macroCount: this.macroInteractions.length,
+      outcomeCount: this.outcomes.length,
+      interventionCount: this.interventions.length,
+      finalTaskStatus: taskState.status
+    };
+
+    return {
+      schemaVersion: EXPERIMENT_TRACE_SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      session: activeSession,
+      task: taskState,
+      metadata,
+      behaviourEvents: [...this.behaviourEvents],
+      microTensors: this.microTensors.map((m) => ({
         windowStart: m.windowStart,
         windowEnd: m.windowEnd,
         values: Array.from(m.values)
-      }))
+      })),
+      macroInteractions: [...this.macroInteractions],
+      outcomes: [...this.outcomes],
+      interventions: [...this.interventions]
     };
+  }
 
+  /**
+   * Produces a JSON string of the trace adhering strictly to SerializableExperimentTrace.
+   */
+  public exportJSON(pretty = false): string {
+    const serializable = this.exportSerializable();
     return pretty ? JSON.stringify(serializable, null, 2) : JSON.stringify(serializable);
+  }
+
+  /**
+   * Triggers an in-browser direct file download of the recorded trace as JSON.
+   * Runs entirely client-side without any server or external telemetry dependency.
+   */
+  public downloadTraceAsJSON(filename?: string): void {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      console.warn('[ExperimentRecorder] downloadTraceAsJSON is only available in browser environments.');
+      return;
+    }
+
+    const json = this.exportJSON(true);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const activeSession = sessionManager.getActiveSession();
+    const sessionId = activeSession?.sessionId ?? 'unknown-session';
+    const resolvedFilename = filename ?? `experiment-trace-${sessionId}-${Date.now()}.json`;
+
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = resolvedFilename;
+    anchor.style.display = 'none';
+
+    document.body.appendChild(anchor);
+    anchor.click();
+
+    setTimeout(() => {
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    }, 100);
+  }
+
+  /**
+   * Reconstructs an ordered replay stream from the current recorder buffer.
+   */
+  public getReplayStream(): ReplayStreamItem[] {
+    return reconstructReplayStream(this.exportSerializable());
   }
 
   /**
@@ -151,13 +236,23 @@ export class ExperimentRecorder {
     macroInteractions: number;
     outcomes: number;
     interventions: number;
+    total: number;
   } {
-    return {
+    const counts = {
       behaviourEvents: this.behaviourEvents.length,
       microTensors: this.microTensors.length,
       macroInteractions: this.macroInteractions.length,
       outcomes: this.outcomes.length,
       interventions: this.interventions.length
+    };
+    return {
+      ...counts,
+      total:
+        counts.behaviourEvents +
+        counts.microTensors +
+        counts.macroInteractions +
+        counts.outcomes +
+        counts.interventions
     };
   }
 }

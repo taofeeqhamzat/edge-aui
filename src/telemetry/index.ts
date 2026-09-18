@@ -9,3 +9,4 @@ export * from './observer';
 export * from './session';
 export * from './recorder';
 export * from './contextProvider';
+export * from './traceSchema';

@@ -5,7 +5,8 @@ import {
 } from '../src/telemetry/session';
 import {
   ExperimentRecorder,
-  ExperimentTrace
+  ExperimentTrace,
+  validateExperimentTrace
 } from '../src/telemetry/recorder';
 import type {
   BehaviourEvent,
@@ -167,5 +168,82 @@ describe('telemetry/recorder', () => {
     const counts = recorder.getEventCounts();
     expect(counts.behaviourEvents).toBe(0);
     expect(counts.outcomes).toBe(0);
+    expect(counts.total).toBe(0);
+  });
+
+  it('validates serializable traces against ExperimentTrace schema', () => {
+    recorder.recordBehaviourEvent({ timestamp: 100, type: 'click', x: 0.2, y: 0.3 });
+    recorder.recordMicroTensor({
+      windowStart: 0,
+      windowEnd: 500,
+      values: new Float32Array(18).fill(0.1)
+    });
+
+    const serializable = recorder.exportSerializable();
+    const validation = validateExperimentTrace(serializable);
+
+    expect(validation.valid).toBe(true);
+    expect(validation.errors).toHaveLength(0);
+    expect(serializable.schemaVersion).toBe('1.0.0');
+    expect(serializable.metadata.totalEvents).toBe(2);
+  });
+
+  it('flags invalid traces during validation', () => {
+    const invalidTrace = {
+      schemaVersion: '0.9.0',
+      exportedAt: 'invalid-date',
+      session: { sessionId: '' },
+      microTensors: [{ windowStart: 0, windowEnd: 500, values: [1, 2, 3] }] // wrong length
+    };
+
+    const validation = validateExperimentTrace(invalidTrace);
+    expect(validation.valid).toBe(false);
+    expect(validation.errors.length).toBeGreaterThan(0);
+    expect(validation.errors.some((e) => e.includes('Invalid schemaVersion'))).toBe(true);
+    expect(validation.errors.some((e) => e.includes('18-element numeric array'))).toBe(true);
+  });
+
+  it('reconstructs an ordered, chronological replay stream from mixed events', () => {
+    recorder.recordIntervention({ timestamp: 300, type: 'applied', intervention: 'no_op', source: 'fast' });
+    recorder.recordBehaviourEvent({ timestamp: 100, type: 'mousemove', x: 0.1, y: 0.1 });
+    recorder.recordOutcome({ timestamp: 400, outcome: 'CLICK' });
+    recorder.recordMacroInteraction({ timestamp: 200, symbol: 'NAV_CLICK' });
+
+    const stream = recorder.getReplayStream();
+    expect(stream).toHaveLength(4);
+    expect(stream.map((s) => s.timestamp)).toEqual([100, 200, 300, 400]);
+    expect(stream.map((s) => s.category)).toEqual(['behaviour', 'macro', 'intervention', 'outcome']);
+  });
+
+  it('executes downloadTraceAsJSON cleanly in simulated DOM environment', () => {
+    let clickCalled = false;
+    const origCreateElement = document.createElement.bind(document);
+    const origAppendChild = document.body.appendChild.bind(document.body);
+    const origRemoveChild = document.body.removeChild.bind(document.body);
+
+    const mockAnchor = origCreateElement('a');
+    mockAnchor.click = () => {
+      clickCalled = true;
+    };
+
+    const createElementSpy = (tagName: string) => {
+      if (tagName === 'a') return mockAnchor;
+      return origCreateElement(tagName);
+    };
+
+    document.createElement = createElementSpy as any;
+    global.URL.createObjectURL = () => 'blob:test';
+    global.URL.revokeObjectURL = () => {};
+
+    try {
+      recorder.recordBehaviourEvent({ timestamp: 50, type: 'click' });
+      recorder.downloadTraceAsJSON('test-trace.json');
+      expect(clickCalled).toBe(true);
+      expect(mockAnchor.download).toBe('test-trace.json');
+    } finally {
+      document.createElement = origCreateElement;
+      document.body.appendChild = origAppendChild;
+      document.body.removeChild = origRemoveChild;
+    }
   });
 });
