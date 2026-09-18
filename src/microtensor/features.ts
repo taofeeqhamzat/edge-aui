@@ -98,8 +98,8 @@ export function computeWindowMicroTensor(
   if (modality.pointer) {
     const pointerEvents = events.filter((ev) =>
       ['mousemove', 'mouseover', 'mousedown', 'mouseup', 'click'].includes(ev.type) &&
-      ev.x !== undefined &&
-      ev.y !== undefined
+      ev.x != null &&
+      ev.y != null
     );
 
     if (pointerEvents.length >= 2) {
