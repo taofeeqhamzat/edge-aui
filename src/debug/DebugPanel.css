@@ -1,6 +1,6 @@
 /**
  * Development Debug Panel Styling
- * Implements Stage 10.2 specifications from clipboard.9.md Section 38.
+ * Implements Stage 10.2 specifications from docs/testbed/prd.md Section 38.
  * Adheres strictly to design constraints:
  * - Lightweight footprint
  * - No unnecessary animations or heavy visual effects (no backdrop blurs, no glowing shadows)

@@ -1,6 +1,6 @@
 /**
  * Deterministic Mock Fast Gate
- * Implements Stage 7.1 specifications from clipboard.9.md Section 18 & Section 37.
+ * Implements Stage 7.1 specifications from docs/testbed/prd.md Section 18 & Section 37.
  * Provides configurable exact/suffix pattern matching for rapid integration testing
  * before the WASM PrefixSpan miner is compiled.
  */

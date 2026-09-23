@@ -1,6 +1,6 @@
 /**
  * Fast Gate Interface & Decision Contracts
- * Implements Stage 7.1 specifications from clipboard.9.md Section 18 & docs/plan/tasks/7.1.md.
+ * Implements Stage 7.1 specifications from docs/testbed/prd.md Section 18 & docs/plan/tasks/7.1.md.
  * Evaluates semantic macro interaction sequences against mined prefix patterns (or deterministic rules).
  */
 

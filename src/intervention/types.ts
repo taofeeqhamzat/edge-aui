@@ -1,6 +1,6 @@
 /**
  * Declarative InterventionCommand Contract & Action Taxonomies
- * Implements specifications from clipboard.9.md Sections 22, 25 & docs/plan/tasks/8.1.md.
+ * Implements specifications from docs/testbed/prd.md Sections 22, 25 & docs/plan/tasks/8.1.md.
  * 
  * Provides DOM-independent, declarative commands for non-destructive UI actuation:
  * - no_op: Maintain current state (safe default).

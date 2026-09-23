@@ -30,9 +30,14 @@ wasm-vectorizer/pkg/
 pkg/
 
 # ML models
+# `*.onnx` is ignored because model artifacts are build outputs. The one exception is the
+# testbed's deployment graph, which must be committed for the application to run and for the
+# ONNX contract test to pass without a model-preparation checkout.
 *.onnx
 *.onnx.data
 models/
+!public/models/
+!public/models/*.onnx
 
 # Plan task files & documentation (only persist directory structure via .gitkeep)
 docs/plan/**/*.md
@@ -43,3 +48,8 @@ docs/conversation/**
 clipboard*.md
 instructions*.md
 
+
+# Local agent and experiment workspaces: run outputs, not source
+docs/agents/**
+docs/experiments/**
+!docs/experiments/**/.gitkeep

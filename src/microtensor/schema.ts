@@ -56,7 +56,7 @@ export interface MicroTensorSequence {
 
 /**
  * Capabilities of the underlying telemetry listeners and environment sensors.
- * Per ADR-001/clipboard.9 Section 13, mask represents recording capability, NOT whether an event occurred.
+ * Per ADR-001 / docs/testbed/prd.md Section 13, mask represents recording capability, NOT whether an event occurred.
  */
 export interface ModalitySupport {
   pointer: boolean;
