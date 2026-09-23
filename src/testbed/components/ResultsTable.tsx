@@ -1,6 +1,63 @@
-import { defaultTableData } from '../mock-data/tableData';
+import { useMemo } from 'react';
+import { defaultTableData, ReportData } from '../mock-data/tableData';
+import { FilterState } from './FilterDrawer';
 
-export function ResultsTable() {
+export interface ResultsTableProps {
+  /** Rows to display; defaults to the deterministic 50-row stimulus set. */
+  rows?: ReportData[];
+  /** Active filters applied to the displayed rows. */
+  filters?: FilterState;
+  /** Called when the user activates the Export Report control. */
+  onExport?: (rows: ReportData[]) => void;
+}
+
+/** Applies the drawer's filter state to a dataset. Pure. */
+export function applyFilters(rows: ReportData[], filters?: FilterState): ReportData[] {
+  if (!filters) return rows;
+
+  return rows.filter((row) => {
+    if (filters.region && filters.region !== 'All' && row.region !== filters.region) return false;
+    if (filters.categories.length > 0 && !filters.categories.includes(row.category)) return false;
+    if (filters.dateFrom && row.date < filters.dateFrom) return false;
+    return true;
+  });
+}
+
+/** Triggers a client-side JSON download of the given rows. No server involvement. */
+export function downloadRows(rows: ReportData[], filename?: string): void {
+  if (typeof document === 'undefined' || typeof URL === 'undefined') return;
+
+  const payload = JSON.stringify({ exportedAt: new Date().toISOString(), rowCount: rows.length, rows }, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename ?? `report-export-${Date.now()}.json`;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+
+  setTimeout(() => {
+    if (anchor.parentNode) anchor.parentNode.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
+export function ResultsTable({ rows, filters, onExport }: ResultsTableProps) {
+  const visibleRows = useMemo(
+    () => applyFilters(rows ?? defaultTableData, filters),
+    [rows, filters]
+  );
+
+  const handleExport = () => {
+    if (onExport) {
+      onExport(visibleRows);
+      return;
+    }
+    downloadRows(visibleRows);
+  };
+
   return (
     <div
       data-aui-component="results-table"
@@ -8,9 +65,13 @@ export function ResultsTable() {
       style={{ background: '#fff', border: '1px solid #ccc', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
     >
       <div style={{ padding: '16px', borderBottom: '1px solid #ccc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0 }}>Results ({defaultTableData.length})</h3>
+        <h3 style={{ margin: 0 }} data-aui-component="results-count" data-aui-role="status">
+          Results ({visibleRows.length})
+        </h3>
         <div>
           <button
+            type="button"
+            onClick={handleExport}
             data-aui-component="btn-export"
             data-aui-role="primary-action"
             data-aui-action="click"
@@ -56,7 +117,7 @@ export function ResultsTable() {
             </tr>
           </thead>
           <tbody>
-            {defaultTableData.map((row) => (
+            {visibleRows.map((row) => (
               <tr
                 key={row.id}
                 data-aui-component={`table-row-${row.id}`}
@@ -82,6 +143,13 @@ export function ResultsTable() {
                 </td>
               </tr>
             ))}
+            {visibleRows.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ padding: '16px', color: '#666' }} data-aui-component="results-empty">
+                  No rows match the active filters.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { Navigation } from '../src/app/Navigation';
 import { FilterDrawer } from '../src/testbed/components/FilterDrawer';
@@ -20,28 +20,45 @@ describe('Task 3.1: Semantic DOM Annotation Contract (data-aui-*)', () => {
   });
 
   it('annotates FilterDrawer accordion sections and filter controls', () => {
+    // All sections start collapsed (progressive disclosure is part of the task design), so
+    // the section containing a control is opened before that control is queried.
     const { container } = render(<FilterDrawer />);
+    const openSection = (componentId: string) => {
+      const accordion = container.querySelector(
+        `[data-aui-component="${componentId}"]`
+      ) as HTMLElement | null;
+      if (accordion && accordion.getAttribute('aria-expanded') !== 'true') {
+        act(() => accordion.click());
+      }
+    };
 
-    // Primary action button
+    // Submit control. The apply button is a real form submit control so the observer
+    // captures a `submit` event, which is what the FORM_SUBMIT outcome requires.
     const applyBtn = container.querySelector('[data-aui-component="btn-apply-filters"]');
     expect(applyBtn).not.toBeNull();
-    expect(applyBtn?.getAttribute('data-aui-role')).toBe('primary-action');
+    expect(applyBtn?.getAttribute('data-aui-role')).toBe('submit-action');
     expect(applyBtn?.getAttribute('data-aui-action')).toBe('click');
     expect(applyBtn?.getAttribute('data-aui-task-role')).toBe('required');
+    expect(applyBtn?.getAttribute('type')).toBe('submit');
+
+    // The drawer is a real form so submit semantics exist in the DOM.
+    expect(container.querySelector('form')).not.toBeNull();
 
     // Accordions
     const regionAccordion = container.querySelector('[data-aui-component="filter-Region"]');
     expect(regionAccordion).not.toBeNull();
     expect(regionAccordion?.getAttribute('data-aui-role')).toBe('accordion');
 
-    // Region select filter
+    // Region select filter (disclosed by opening its section)
+    openSection('filter-Region');
     const regionSelect = container.querySelector('[data-aui-component="filter-Region-select"]');
     expect(regionSelect).not.toBeNull();
     expect(regionSelect?.getAttribute('data-aui-role')).toBe('filter');
     expect(regionSelect?.getAttribute('data-aui-action')).toBe('change');
     expect(regionSelect?.getAttribute('data-aui-task-role')).toBe('required');
 
-    // Date range input
+    // Date range input (disclosed by opening its section)
+    openSection('filter-Date Range');
     const dateInput = container.querySelector('[data-aui-component="filter-date-input"]');
     expect(dateInput).not.toBeNull();
     expect(dateInput?.getAttribute('data-aui-role')).toBe('form-field');

@@ -10,7 +10,7 @@ import { UIActuator } from '../src/intervention/actuator';
 import { ExperimentRecorder, validateExperimentTrace } from '../src/telemetry/recorder';
 import { sessionManager } from '../src/telemetry/session';
 import { taskManager } from '../src/testbed/tasks/taskManager';
-import { UIContext } from '../types/telemetry';
+import { UIContext } from '../src/types/uiContext';
 import { MacroInteraction, BehaviourEvent } from '../src/telemetry/events';
 
 describe('Task 11.3: End-to-End Simulation & Dual-Gate Arbitration Integration', () => {
@@ -240,12 +240,21 @@ describe('Task 11.3: End-to-End Simulation & Dual-Gate Arbitration Integration',
     recorder.recordBehaviourEvent({ timestamp: 100, type: 'mousemove', x: 0.1, y: 0.1 });
     recorder.recordBehaviourEvent({ timestamp: 200, type: 'click', componentId: 'filter-Region' });
     recorder.recordMicroTensor({
+      windowId: 0,
       windowStart: 0,
       windowEnd: 500,
       values: new Float32Array(18).fill(0.15)
     });
     recorder.recordMacroInteraction({ timestamp: 205, symbol: 'OPEN_FILTER', componentId: 'filter-Region' });
-    recorder.recordOutcome({ timestamp: 400, outcome: 'HOVER_DWELL', componentId: 'filter-Region' });
+    recorder.recordOutcome({ timestamp: 400, outcome: 'HOVER_DWELL', windowId: 0, componentId: 'filter-Region' });
+    recorder.recordPrediction({
+      timestamp: 300,
+      windowId: 0,
+      matchedGate: 'slow',
+      outcome: 'HOVER_DWELL',
+      latencyMs: 1.2,
+      bothGatesEvaluated: false
+    });
     recorder.recordIntervention({
       timestamp: 450,
       type: 'applied',
@@ -255,7 +264,7 @@ describe('Task 11.3: End-to-End Simulation & Dual-Gate Arbitration Integration',
     });
 
     const counts = recorder.getEventCounts();
-    expect(counts.total).toBe(6);
+    expect(counts.total).toBe(7);
 
     // Export serializable trace
     const trace = recorder.exportSerializable();
@@ -267,7 +276,7 @@ describe('Task 11.3: End-to-End Simulation & Dual-Gate Arbitration Integration',
 
     // Validate replay stream order
     const replayStream = recorder.getReplayStream();
-    expect(replayStream).toHaveLength(5); // 2 behaviour + 1 macro + 1 outcome + 1 intervention
-    expect(replayStream.map((s) => s.timestamp)).toEqual([100, 200, 205, 400, 450]);
+    expect(replayStream).toHaveLength(6); // 2 behaviour + 1 macro + 1 prediction + 1 outcome + 1 intervention
+    expect(replayStream.map((s) => s.timestamp)).toEqual([100, 200, 205, 300, 400, 450]);
   });
 });

@@ -24,8 +24,11 @@ describe('Target UI & Task State Test Suite (Task 11.1)', () => {
       // Default page is Overview
       expect(screen.getByText('This is the Overview view.')).not.toBeNull();
 
-      // Navigate to Analytics
-      const analyticsNavBtn = screen.getByRole('button', { name: /Analytics/i });
+      // Navigate to Analytics. Scoped to the navigation component because the trial
+      // controls also expose buttons whose accessible names contain "Analytics".
+      const analyticsNavBtn = document.querySelector(
+        '[data-aui-component="nav-Analytics"]'
+      ) as HTMLElement;
       act(() => {
         fireEvent.click(analyticsNavBtn);
       });
@@ -36,7 +39,9 @@ describe('Target UI & Task State Test Suite (Task 11.1)', () => {
       expect(screen.getByText('Total Revenue')).not.toBeNull();
 
       // Navigate to Reports
-      const reportsNavBtn = screen.getByRole('button', { name: /Reports/i });
+      const reportsNavBtn = document.querySelector(
+        '[data-aui-component="nav-Reports"]'
+      ) as HTMLElement;
       act(() => {
         fireEvent.click(reportsNavBtn);
       });
@@ -50,10 +55,8 @@ describe('Target UI & Task State Test Suite (Task 11.1)', () => {
         render(<FilterDrawer />);
       });
 
-      // Date Range is open by default
-      expect(screen.getByRole('button', { name: /▼ Date Range/i })).not.toBeNull();
-
-      // Product Category is closed by default
+      // Every section starts collapsed, so no section control is in the DOM yet.
+      expect(screen.getByRole('button', { name: /▶ Date Range/i })).not.toBeNull();
       const productCatBtn = screen.getByRole('button', { name: /▶ Product Category/i });
       expect(screen.queryByText('Electronics')).toBeNull();
 
@@ -63,10 +66,14 @@ describe('Target UI & Task State Test Suite (Task 11.1)', () => {
       });
       expect(screen.getByText('Electronics')).not.toBeNull();
 
-      // Collapse Date Range accordion
-      const dateRangeBtn = screen.getByRole('button', { name: /▼ Date Range/i });
+      // Open then collapse Date Range accordion
+      const dateRangeBtn = screen.getByRole('button', { name: /▶ Date Range/i });
       act(() => {
         fireEvent.click(dateRangeBtn);
+      });
+      expect(screen.getByRole('button', { name: /▼ Date Range/i })).not.toBeNull();
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: /▼ Date Range/i }));
       });
       expect(screen.getByRole('button', { name: /▶ Date Range/i })).not.toBeNull();
     });
@@ -76,6 +83,10 @@ describe('Target UI & Task State Test Suite (Task 11.1)', () => {
         render(<FilterDrawer />);
       });
 
+      // The Region control is disclosed by opening its section first.
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: /▶ Region/i }));
+      });
       const regionSelect = screen.getByRole('combobox');
       act(() => {
         fireEvent.change(regionSelect, { target: { value: 'Europe' } });
@@ -83,7 +94,7 @@ describe('Target UI & Task State Test Suite (Task 11.1)', () => {
       expect((regionSelect as HTMLSelectElement).value).toBe('Europe');
 
       const applyBtn = screen.getByRole('button', { name: /Apply Filters/i });
-      expect(applyBtn.getAttribute('data-aui-role')).toBe('primary-action');
+      expect(applyBtn.getAttribute('data-aui-role')).toBe('submit-action');
       expect(applyBtn.getAttribute('data-aui-action')).toBe('click');
     });
   });
