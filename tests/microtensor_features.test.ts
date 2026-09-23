@@ -138,12 +138,19 @@ describe('MicroTensor Feature Extraction (Task 5.1 & Parity with config.yaml)', 
       { timestamp: 200, type: 'scroll', scrollY: 0.50 }
     ];
 
+    // Geometry is supplied explicitly: the extractor must not depend on the ambient
+    // jsdom document size, and the depth must follow the Python reference exactly,
+    // min(1, count * 80 / max(docH - vpH, 1)) = 2 * 80 / 1920.
+    // The previous implementation returned the last normalized scrollY (0.50) instead,
+    // so the same tensor dimension carried two different meanings depending on event
+    // shape (assessment §8 D2).
     const tensor = computeWindowMicroTensor(events, {
-      windowDurationMs: 500
+      windowDurationMs: 500,
+      viewport: { width: 1920, height: 1080 },
+      document: { width: 1920, height: 3000 }
     });
 
-    // Uses the latest scrollY = 0.50
-    expect(tensor[7]).toBeCloseTo(0.50, 2);
+    expect(tensor[7]).toBeCloseTo((2 * 80) / 1920, 4);
 
     // 2 scroll events * 100 / 500ms = 0.4 px/ms scroll speed; normalized by 5.0 -> 0.4 / 5.0 = 0.08
     expect(tensor[8]).toBeCloseTo(0.08, 3);

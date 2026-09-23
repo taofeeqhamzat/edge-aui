@@ -199,19 +199,21 @@ export function computeWindowMicroTensor(
 
   // 5. Viewport Scroll Extraction
   if (modality.scroll) {
-    const scrollEvents = events.filter((ev) => ev.type === 'scroll');
+    const scrollEvents = events.filter((ev) => ev.type === 'scroll' || ev.type === 'wheel');
     const scrollCount = scrollEvents.length;
 
     scrollVel = (scrollCount * 100.0) / Math.max(windowDurationMs, 1.0);
 
-    // If normalized scrollY is present on events, use the most recent scrollY
-    const lastScrollWithY = [...scrollEvents].reverse().find((ev) => ev.scrollY !== undefined);
-    if (lastScrollWithY && lastScrollWithY.scrollY !== undefined) {
-      scrollDepthPct = lastScrollWithY.scrollY;
-    } else {
-      const maxScrollable = Math.max(doc.height - vp.height, 1.0);
-      scrollDepthPct = Math.min(1.0, (scrollCount * 80.0) / maxScrollable);
-    }
+    // Scroll depth follows the Python reference exactly: depth is derived from the
+    // number of scroll events against the real scrollable extent.
+    //
+    // The previous implementation returned the *last observed normalized scroll
+    // offset* whenever an event carried one, which made the same 9th tensor dimension
+    // mean two different things depending on event shape (assessment §8 D2). Verified
+    // against tests/fixtures/syntheticEvents.json scenario `viewport_scroll`:
+    // 4 events, doc 3000, vp 1080 -> min(1, 4*80/1920) = 0.166667.
+    const maxScrollable = Math.max(doc.height - vp.height, 1.0);
+    scrollDepthPct = Math.min(1.0, (scrollCount * 80.0) / maxScrollable);
   }
 
   // 6. Assemble and Clamp 18-D MicroTensor: [X \odot M, M]

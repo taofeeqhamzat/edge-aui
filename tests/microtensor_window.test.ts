@@ -20,18 +20,22 @@ describe('RollingWindowBuffer (Task 5.1 & Window Extraction)', () => {
     buffer.push({ timestamp: 100, type: 'mousemove', x: 0.12, y: 0.11 });
     buffer.push({ timestamp: 200, type: 'mousemove', x: 0.15, y: 0.13 });
 
-    // Tick before stride elapsed (e.g. at t=200) -> returns null
+    // Tick before stride elapsed (e.g. at t=200) -> no windows emitted
     const earlyTick = buffer.tick(200);
-    expect(earlyTick).toBeNull();
+    expect(earlyTick).toEqual([]);
 
     // Push event at t=300 and tick at t=300 -> stride (250ms) has elapsed
     buffer.push({ timestamp: 300, type: 'mousemove', x: 0.2, y: 0.2 });
-    const window = buffer.tick(300);
+    const emitted = buffer.tick(300);
 
-    expect(window).not.toBeNull();
-    expect(window!.windowEnd).toBe(300);
-    expect(window!.windowStart).toBe(300 - 500); // -200
-    expect(window!.values.length).toBe(18);
+    expect(emitted.length).toBe(1);
+    const window = emitted[0];
+    // Windows are emitted on the fixed 250ms stride grid: slot [50, 300).
+    expect(window.windowEnd).toBe(300);
+    expect(window.windowStart).toBe(300 - 250);
+    expect(window.windowEnd - window.windowStart).toBe(250);
+    expect(window.values.length).toBe(18);
+    expect(window.windowId).toBe(0);
 
     // Verified recorded in experiment trace
     expect(experimentRecorder.getEventCounts().microTensors).toBe(1);
@@ -45,9 +49,9 @@ describe('RollingWindowBuffer (Task 5.1 & Window Extraction)', () => {
     });
 
     buffer.push({ timestamp: 10, type: 'mousemove', x: 0.1, y: 0.1 });
-    // Only 1 event
-    const window = buffer.tick(300);
-    expect(window).toBeNull();
+    // Only 1 event: below minEventsPerWindow, so no window is emitted.
+    const emitted = buffer.tick(300);
+    expect(emitted).toEqual([]);
   });
 
   it('supports batch event stream processing with 500ms window and 250ms stride', () => {
@@ -105,6 +109,7 @@ describe('RollingWindowBuffer (Task 5.1 & Window Extraction)', () => {
 
     expect(emitted.length).toBe(1);
     expect(emitted[0]).toBe(250);
+
 
     unsubscribe();
     buffer.push({ timestamp: 350, type: 'mousemove', x: 0.3, y: 0.3 });
