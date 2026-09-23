@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   RuntimeWorkerCore
-} from '../src/runtime/worker';
+} from '../src/runtime/worker/core';
 import {
   RuntimeWorkerClient,
   createRuntimeWorkerClient
@@ -11,7 +11,7 @@ import {
   RuntimeWorkerRequest
 } from '../src/runtime/messages';
 import { MicroTensorWindow, MacroInteraction } from '../src/telemetry/events';
-import { UIContext } from '../src/types/telemetry';
+import { UIContext } from '../src/types/uiContext';
 
 function createMockWindow(index: number): MicroTensorWindow {
   const values = new Float32Array(18);

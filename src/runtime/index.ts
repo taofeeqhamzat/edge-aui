@@ -1,3 +1,3 @@
 export * from './messages';
-export * from './worker';
+export { RuntimeWorkerCore } from './worker/core';
 export * from './workerClient';
