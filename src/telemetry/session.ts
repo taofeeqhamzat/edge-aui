@@ -1,15 +1,33 @@
 /**
  * Anonymous Session Lifecycle Manager
- * Implements Stage 4.3 specifications from clipboard.9.md Section 32 & docs/plan/tasks/4.3.md.
+ * Implements Stage 4.3 specifications from docs/testbed/prd.md Section 32 & docs/plan/tasks/4.3.md.
  * Manages privacy-preserving session IDs without collecting PII.
  */
 
 import { getMonotonicTimestamp } from './normalizer';
+import type { ExperimentalCondition } from './events';
 
 export interface SessionContext {
   sessionId: string;
+  /**
+   * Monotonic start time (performance.now()). Retained for within-session deltas.
+   */
   startedAt: number;
+  /**
+   * Epoch start time (Date.now()). Required because `startedAt` is monotonic and
+   * cannot be subtracted from `Date.now()` — mixing the two clocks produced a
+   * meaningless `metadata.durationMs` (assessment §16.4).
+   */
+  startedAtEpochMs?: number;
+  experimentId?: string;
+  conditionId?: ExperimentalCondition;
   taskId?: string;
+}
+
+export interface StartSessionOptions {
+  taskId?: string;
+  experimentId?: string;
+  conditionId?: ExperimentalCondition;
 }
 
 export type SessionChangeListener = (session: SessionContext | null) => void;
@@ -36,15 +54,39 @@ export class SessionManager {
 
   /**
    * Starts a new experimental session with a fresh anonymous ID.
+   * Accepts either a bare taskId (legacy call shape) or a full options object.
    */
-  public startSession(taskId?: string): SessionContext {
+  public startSession(taskOrOptions?: string | StartSessionOptions): SessionContext {
+    const options: StartSessionOptions =
+      typeof taskOrOptions === 'string' || taskOrOptions === undefined
+        ? { taskId: taskOrOptions as string | undefined }
+        : taskOrOptions;
+
     this.currentSession = {
       sessionId: generateAnonymousSessionId(),
       startedAt: getMonotonicTimestamp(),
-      taskId
+      startedAtEpochMs: Date.now(),
+      experimentId: options.experimentId,
+      conditionId: options.conditionId,
+      taskId: options.taskId
     };
     this.notify();
     return { ...this.currentSession };
+  }
+
+  /**
+   * Updates the experimental condition for the active session
+   * (e.g. switching between a baseline and an adaptive run).
+   */
+  public setCondition(conditionId: ExperimentalCondition): void {
+    if (this.currentSession) {
+      this.currentSession.conditionId = conditionId;
+      this.notify();
+    }
+  }
+
+  public getCondition(): ExperimentalCondition | undefined {
+    return this.currentSession?.conditionId;
   }
 
   /**
@@ -63,6 +105,15 @@ export class SessionManager {
       this.currentSession.taskId = taskId;
       this.notify();
     }
+  }
+
+  /**
+   * Associates a task id with the active session, clearing it when undefined.
+   */
+  public setTaskId(taskId?: string): void {
+    if (!this.currentSession) return;
+    this.currentSession.taskId = taskId;
+    this.notify();
   }
 
   /**

@@ -1,6 +1,8 @@
-import { UIContext, AuiComponentRole, AuiAction } from '../types/telemetry';
+import { UIContext, AuiComponentRole, AuiAction, TESTBED_UI_VERSION } from '../types/uiContext';
 import { taskManager } from '../testbed/tasks/taskManager';
 import { EXPERIMENTAL_TASKS } from '../testbed/tasks/taskModel';
+import { getGeometrySnapshot } from './normalizer';
+import { sessionManager } from './session';
 
 export interface UIContextOptions {
   targetElement?: Element | null;
@@ -167,6 +169,20 @@ export function getActiveUIContext(options?: UIContextOptions): UIContext {
     helpAvailable = helpOrTooltip !== null;
   }
 
+  // 8. Observed geometry and scroll state (assessment §12.2).
+  const geometry = getGeometrySnapshot();
+  const scrollState = {
+    scrollY: geometry.document.scrollableHeight > 0
+      ? Math.min(1, Math.max(0, geometry.scrollTopPx / geometry.document.scrollableHeight))
+      : 0,
+    scrollTopPx: geometry.scrollTopPx,
+    scrollableHeight: geometry.document.scrollableHeight,
+    viewportHeight: geometry.viewport.height
+  };
+
+  // 9. Experimental condition and UI revision.
+  const conditionId = sessionManager.getCondition();
+
   return {
     route,
     activeComponentId,
@@ -176,6 +192,11 @@ export function getActiveUIContext(options?: UIContextOptions): UIContext {
     availableActions: Array.from(availableActionsSet),
     primaryActionAvailable,
     helpAvailable,
-    expandable
+    expandable,
+    viewport: geometry.viewport,
+    document: { width: geometry.document.width, height: geometry.document.height },
+    scrollState,
+    conditionId,
+    uiVersion: TESTBED_UI_VERSION
   };
 }
