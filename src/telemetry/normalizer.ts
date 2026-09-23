@@ -1,6 +1,6 @@
 /**
  * Coordinate and Scroll Normalization Utilities
- * Implements canonical normalization contracts from clipboard.9.md Section 11 & Stage 4.2.
+ * Implements canonical normalization contracts from docs/testbed/prd.md Section 11 & Stage 4.2.
  */
 
 /**
@@ -89,6 +89,32 @@ export function getDocumentScrollBounds(): {
     scrollY,
     scrollableWidth,
     scrollableHeight
+  };
+}
+
+/**
+ * Returns the full observed geometry snapshot (viewport + document) as a single
+ * object, so callers never have to fall back to a hard-coded document size.
+ * This mirrors the model-preparation contract, where viewport and document
+ * dimensions are mandatory inputs to MicroTensor extraction.
+ */
+export function getGeometrySnapshot(): {
+  viewport: { width: number; height: number };
+  document: { width: number; height: number; scrollableWidth: number; scrollableHeight: number };
+  scrollTopPx: number;
+} {
+  const bounds = getDocumentScrollBounds();
+  const viewport = getViewportDimensions();
+
+  return {
+    viewport,
+    document: {
+      width: bounds.scrollableWidth + viewport.width,
+      height: bounds.scrollableHeight + viewport.height,
+      scrollableWidth: bounds.scrollableWidth,
+      scrollableHeight: bounds.scrollableHeight
+    },
+    scrollTopPx: bounds.scrollY
   };
 }
 

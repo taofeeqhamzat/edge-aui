@@ -1,6 +1,6 @@
 /**
  * Passive Behavioural Telemetry Observer
- * Implements Stage 4.1 specifications from clipboard.9.md & docs/plan/tasks/4.1.md.
+ * Implements Stage 4.1 specifications from docs/testbed/prd.md & docs/plan/tasks/4.1.md.
  * Captures pointer, scroll, form, and navigation interactions with zero layout thrashing.
  */
 
@@ -13,7 +13,8 @@ import {
   normalizeCoordinates,
   normalizeScroll,
   getViewportDimensions,
-  getDocumentScrollBounds
+  getDocumentScrollBounds,
+  getGeometrySnapshot
 } from './normalizer';
 import { getActiveUIContext } from './contextProvider';
 
@@ -148,14 +149,23 @@ export class TelemetryObserver {
     const onMouseUp = (e: Event) => this.recordPointerEvent('mouseup', e as MouseEvent);
     const onClick = (e: Event) => this.recordPointerEvent('click', e as MouseEvent);
 
-    // Viewport scroll handler
+    // Viewport scroll handler (scroll + wheel both count as scroll modality input)
     const onScroll = () => {
       const now = getMonotonicTimestamp();
       if (this.sampleIntervalMs > 0 && now - this.lastScrollTime < this.sampleIntervalMs) {
         return;
       }
       this.lastScrollTime = now;
-      this.recordScrollEvent();
+      this.recordScrollEvent('scroll');
+    };
+
+    const onWheel = () => {
+      const now = getMonotonicTimestamp();
+      if (this.sampleIntervalMs > 0 && now - this.lastScrollTime < this.sampleIntervalMs) {
+        return;
+      }
+      this.lastScrollTime = now;
+      this.recordScrollEvent('wheel');
     };
 
     // Form input handlers
@@ -163,10 +173,16 @@ export class TelemetryObserver {
     const onChange = (e: Event) => this.recordFormEvent('change', e);
     const onSubmit = (e: Event) => this.recordFormEvent('submit', e);
 
+    // Focus lifecycle handlers — required by the BACKTRACK outcome contract
+    const onFocusIn = (e: Event) => this.recordLifecycleEvent('focus', e);
+    const onFocusOut = (e: Event) => this.recordLifecycleEvent('blur', e);
+
     // Lifecycle & Navigation handlers
     const onPopState = () => this.recordNavigationEvent('popstate');
     const onHashChange = () => this.recordNavigationEvent('hashchange');
     const onPageHide = () => this.recordNavigationEvent('pagehide');
+    const onBeforeUnload = () => this.recordNavigationEvent('beforeunload');
+    const onUnload = () => this.recordNavigationEvent('unload');
     const onCustomNav = (e: Event) => {
       const customDetail = (e as CustomEvent)?.detail;
       this.recordNavigationEvent('navigation', customDetail?.route);
@@ -192,15 +208,20 @@ export class TelemetryObserver {
     add(target, 'mouseup', onMouseUp, passiveOpts);
     add(target, 'click', onClick, passiveOpts);
     add(target, 'scroll', onScroll, passiveOpts);
+    add(target, 'wheel', onWheel, passiveOpts);
     add(target, 'input', onInput, passiveOpts);
     add(target, 'change', onChange, passiveOpts);
     add(target, 'submit', onSubmit, passiveOpts);
+    add(target, 'focusin', onFocusIn, passiveOpts);
+    add(target, 'focusout', onFocusOut, passiveOpts);
 
     if (typeof window !== 'undefined') {
       add(window, 'resize', onResize, { passive: true });
       add(window, 'popstate', onPopState, { passive: true });
       add(window, 'hashchange', onHashChange, { passive: true });
       add(window, 'pagehide', onPageHide, { passive: true });
+      add(window, 'beforeunload', onBeforeUnload, { passive: true });
+      add(window, 'unload', onUnload, { passive: true });
       add(window, 'navigation', onCustomNav, { passive: true });
     }
   }
@@ -236,6 +257,18 @@ export class TelemetryObserver {
     };
   }
 
+  /**
+   * Captures the observed geometry so MicroTensor extraction never falls back to a
+   * constant document size (assessment §8 D1 / §25 P0-2).
+   */
+  private captureGeometry(): {
+    viewport: { width: number; height: number };
+    document: { width: number; height: number; scrollableWidth: number; scrollableHeight: number };
+  } {
+    const snapshot = getGeometrySnapshot();
+    return { viewport: snapshot.viewport, document: snapshot.document };
+  }
+
   private recordPointerEvent(type: BehaviourEventType, e: MouseEvent): void {
     const coords = normalizeCoordinates(
       e.clientX,
@@ -246,6 +279,7 @@ export class TelemetryObserver {
 
     const elemMeta = this.extractElementMetadata(e.target);
     const uiContext = getActiveUIContext({ targetElement: e.target as Element });
+    const geometry = this.captureGeometry();
 
     const event: BehaviourEvent = {
       timestamp: getMonotonicTimestamp(),
@@ -258,13 +292,15 @@ export class TelemetryObserver {
       route: uiContext.route,
       taskId: uiContext.taskId,
       taskStepId: uiContext.taskStepId,
-      targetTag: elemMeta.targetTag
+      targetTag: elemMeta.targetTag,
+      viewport: geometry.viewport,
+      document: geometry.document
     };
 
     this.emit(event);
   }
 
-  private recordScrollEvent(): void {
+  private recordScrollEvent(sourceType: 'scroll' | 'wheel' = 'scroll'): void {
     const bounds = getDocumentScrollBounds();
     const normScroll = normalizeScroll(
       bounds.scrollX,
@@ -274,15 +310,20 @@ export class TelemetryObserver {
     );
 
     const uiContext = getActiveUIContext();
+    const geometry = this.captureGeometry();
 
     const event: BehaviourEvent = {
       timestamp: getMonotonicTimestamp(),
-      type: 'scroll',
+      type: sourceType,
       scrollX: normScroll.scrollX,
       scrollY: normScroll.scrollY,
+      scrollTopPx: bounds.scrollY,
+      action: sourceType,
       route: uiContext.route,
       taskId: uiContext.taskId,
-      taskStepId: uiContext.taskStepId
+      taskStepId: uiContext.taskStepId,
+      viewport: geometry.viewport,
+      document: geometry.document
     };
 
     this.emit(event);
@@ -291,6 +332,7 @@ export class TelemetryObserver {
   private recordFormEvent(type: 'input' | 'change' | 'submit', e: Event): void {
     const elemMeta = this.extractElementMetadata(e.target);
     const uiContext = getActiveUIContext({ targetElement: e.target as Element });
+    const geometry = this.captureGeometry();
 
     const event: BehaviourEvent = {
       timestamp: getMonotonicTimestamp(),
@@ -298,6 +340,27 @@ export class TelemetryObserver {
       componentId: elemMeta.componentId ?? uiContext.activeComponentId,
       componentRole: elemMeta.componentRole ?? uiContext.componentRole,
       action: elemMeta.action ?? type,
+      route: uiContext.route,
+      taskId: uiContext.taskId,
+      taskStepId: uiContext.taskStepId,
+      targetTag: elemMeta.targetTag,
+      viewport: geometry.viewport,
+      document: geometry.document
+    };
+
+    this.emit(event);
+  }
+
+  private recordLifecycleEvent(type: 'focus' | 'blur', e: Event): void {
+    const elemMeta = this.extractElementMetadata(e.target);
+    const uiContext = getActiveUIContext({ targetElement: e.target as Element });
+
+    const event: BehaviourEvent = {
+      timestamp: getMonotonicTimestamp(),
+      type,
+      componentId: elemMeta.componentId ?? uiContext.activeComponentId,
+      componentRole: elemMeta.componentRole ?? uiContext.componentRole,
+      action: type,
       route: uiContext.route,
       taskId: uiContext.taskId,
       taskStepId: uiContext.taskStepId,
@@ -310,9 +373,20 @@ export class TelemetryObserver {
   private recordNavigationEvent(sourceType: string, customRoute?: string): void {
     const uiContext = getActiveUIContext();
 
+    // Preserve the concrete source type for popstate/hashchange/pagehide/beforeunload/unload
+    // so the outcome deriver can distinguish BACKTRACK from ABANDON (assessment §25 P1-3).
+    const resolvedType: BehaviourEventType =
+      sourceType === 'popstate' ||
+      sourceType === 'hashchange' ||
+      sourceType === 'pagehide' ||
+      sourceType === 'beforeunload' ||
+      sourceType === 'unload'
+        ? sourceType
+        : 'navigation';
+
     const event: BehaviourEvent = {
       timestamp: getMonotonicTimestamp(),
-      type: sourceType === 'pagehide' ? 'pagehide' : 'navigation',
+      type: resolvedType,
       route: customRoute ?? uiContext.route,
       taskId: uiContext.taskId,
       taskStepId: uiContext.taskStepId,
