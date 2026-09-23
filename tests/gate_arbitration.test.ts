@@ -7,7 +7,7 @@ import {
 import { MockFastGate } from '../src/gates/fast/mockFastGate';
 import { MockSlowGate } from '../src/gates/slow/mockSlowGate';
 import { MacroInteraction } from '../src/telemetry/events';
-import { UIContext } from '../src/types/telemetry';
+import { UIContext } from '../src/types/uiContext';
 
 function createMockContext(macroSymbols: string[] = []): InferenceContext {
   const macroSequence: MacroInteraction[] = macroSymbols.map((sym, idx) => ({

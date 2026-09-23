@@ -7,7 +7,7 @@ import {
   createInterventionCommand,
   createNoOpCommand
 } from '../src/intervention/types';
-import { UIContext } from '../src/types/telemetry';
+import { UIContext } from '../src/types/uiContext';
 
 function createMockUIContext(overrides: Partial<UIContext> = {}): UIContext {
   return {

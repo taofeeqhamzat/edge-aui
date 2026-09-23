@@ -1,6 +1,6 @@
 /**
  * Deterministic Mock Slow Gate
- * Implements Stage 7.2 specifications from clipboard.9.md Section 20 & Section 37.
+ * Implements Stage 7.2 specifications from docs/testbed/prd.md Section 20 & Section 37.
  * Provides deterministic probabilistic outcome inference and intervention proposal
  * for rapid testbed integration prior to ONNX Runtime Web / WebGPU execution.
  */

@@ -1,6 +1,6 @@
 /**
  * AdaptiveInferenceEngine Dual-Gate Arbitration
- * Implements Stage 7.3 specifications from clipboard.9.md Section 21 & docs/plan/tasks/7.3.md.
+ * Implements Stage 7.3 specifications from docs/testbed/prd.md Section 21 & docs/plan/tasks/7.3.md.
  * 
  * Orchestrates dual-engine gate arbitration adhering to ADR-002:
  * 1. Macro sequence is evaluated by Fast Gate (PrefixSpan pattern matcher) first.
@@ -9,7 +9,7 @@
  */
 
 import { MacroInteraction } from '../telemetry/events';
-import { UIContext } from '../types/telemetry';
+import { UIContext } from '../types/uiContext.js';
 import { InterventionCommand } from '../intervention/types';
 import { FastGate, GateDecision } from './fast/types';
 import { SlowGate, SlowGateResult } from './slow/types';

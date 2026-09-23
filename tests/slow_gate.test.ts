@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MockSlowGate } from '../src/gates/slow/mockSlowGate';
 import { SlowGateInput } from '../src/gates/slow/types';
-import { UIContext } from '../src/types/telemetry';
+import { UIContext } from '../src/types/uiContext';
 
 function createDummyInput(options?: {
   shape?: [number, number, number];
