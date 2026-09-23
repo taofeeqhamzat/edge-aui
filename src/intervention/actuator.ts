@@ -1,6 +1,6 @@
 /**
  * UIActuator: Non-Destructive & Accessible UI Adaptation Controller
- * Implements Stage 8.3 specifications from clipboard.9.md Sections 26-28 & docs/plan/tasks/8.3.md.
+ * Implements Stage 8.3 specifications from docs/testbed/prd.md Sections 26-28 & docs/plan/tasks/8.3.md.
  * 
  * Guarantees:
  * 1. Non-destructive adaptations via semantic CSS classes:
@@ -29,6 +29,24 @@ export type InterventionEventListener = (event: InterventionEvent) => void;
 interface ReversionRecord {
   command: InterventionCommand;
   cleanup: () => void;
+  /** Timer enforcing the command's TTL, when one was provided. */
+  ttlTimer?: ReturnType<typeof setTimeout>;
+}
+
+/**
+ * Escapes a value for safe use inside a CSS attribute selector.
+ *
+ * `targetComponentId` is interpolated into `[data-aui-component="<id>"]`. Component ids
+ * are developer-controlled today, but an id containing a quote or bracket would produce
+ * an invalid selector and throw (assessment §13.1). Escaping removes that class of bug.
+ */
+export function escapeCssAttributeValue(value: string): string {
+  return value.replace(/[\\"]/g, '\\$&');
+}
+
+/** Builds a safe attribute selector for a component id. */
+function componentSelector(componentId: string): string {
+  return `[data-aui-component="${escapeCssAttributeValue(componentId)}"]`;
 }
 
 export class UIActuator {
@@ -96,7 +114,15 @@ export class UIActuator {
     }
 
     if (cleanup) {
-      this.activeAdaptations.set(command.type, { command, cleanup });
+      // Enforce ttlMs: an adaptation with a declared lifetime reverts on its own.
+      let ttlTimer: ReturnType<typeof setTimeout> | undefined;
+      if (command.ttlMs !== undefined && command.ttlMs > 0) {
+        ttlTimer = setTimeout(() => {
+          this.clear(command);
+        }, command.ttlMs);
+      }
+
+      this.activeAdaptations.set(command.type, { command, cleanup, ttlTimer });
       this.emitEvent({
         timestamp: Date.now(),
         type: 'applied',
@@ -115,6 +141,9 @@ export class UIActuator {
     if (command) {
       const active = this.activeAdaptations.get(command.type);
       if (active) {
+        if (active.ttlTimer !== undefined) {
+          clearTimeout(active.ttlTimer);
+        }
         active.cleanup();
         this.activeAdaptations.delete(command.type);
         this.emitEvent({
@@ -136,6 +165,9 @@ export class UIActuator {
    */
   public reset(): void {
     for (const [type, record] of Array.from(this.activeAdaptations.entries())) {
+      if (record.ttlTimer !== undefined) {
+        clearTimeout(record.ttlTimer);
+      }
       record.cleanup();
       this.emitEvent({
         timestamp: Date.now(),
@@ -182,9 +214,7 @@ export class UIActuator {
 
     let targetEl: HTMLElement | null = null;
     if (command.targetComponentId) {
-      targetEl = this.root.querySelector(
-        `[data-aui-component="${command.targetComponentId}"]`
-      );
+      targetEl = this.root.querySelector(componentSelector(command.targetComponentId));
     }
     if (!targetEl) {
       targetEl = this.root.querySelector(
@@ -294,9 +324,7 @@ export class UIActuator {
 
     let targetEl: HTMLElement | null = null;
     if (command.targetComponentId) {
-      targetEl = this.root.querySelector(
-        `[data-aui-component="${command.targetComponentId}"]`
-      );
+      targetEl = this.root.querySelector(componentSelector(command.targetComponentId));
     }
     if (!targetEl) {
       targetEl = this.root.querySelector('[data-aui-role="tooltip"]');

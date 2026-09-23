@@ -1,6 +1,6 @@
 /**
  * Intervention Policy Layer
- * Implements Stage 8.2 specifications from clipboard.9.md Sections 23-25 & docs/plan/tasks/8.2.md.
+ * Implements Stage 8.2 specifications from docs/testbed/prd.md Sections 23-25 & docs/plan/tasks/8.2.md.
  * 
  * Sits between model inference (Fast/Slow Gates) and UI actuation (UIActuator):
  * 1. Confidence threshold gating (default 0.75 - initial engineering baseline requiring calibration).
@@ -10,7 +10,7 @@
  * 5. Safe fallback to no_op when any gate rejects.
  */
 
-import { UIContext } from '../types/telemetry';
+import { UIContext } from '../types/uiContext.js';
 import {
   InterventionCommand,
   InterventionType,
@@ -32,12 +32,26 @@ export interface PolicyConfig {
    * Whether to enforce eligibility against current UI context.
    */
   enforceContextEligibility: boolean;
+  /**
+   * Refractory period after an intervention has been accepted, during which no new
+   * intervention of any type is accepted. Prevents repeated actuation on every
+   * subsequent window (assessment §25 P1-4).
+   */
+  cooldownMs: number;
+  /**
+   * Refractory period applied specifically after the user dismisses an intervention.
+   * Dismissal is treated as negative feedback: re-issuing the same intervention
+   * immediately would be counter-productive.
+   */
+  dismissalCooldownMs: number;
 }
 
 export const DEFAULT_POLICY_CONFIG: PolicyConfig = {
   confidenceThreshold: 0.75,
   requiredConsecutiveWindows: 2,
-  enforceContextEligibility: true
+  enforceContextEligibility: true,
+  cooldownMs: 5000,
+  dismissalCooldownMs: 15000
 };
 
 export interface PolicyDecision {
@@ -53,6 +67,11 @@ export class InterventionPolicy {
   private candidateTarget?: string;
   private candidateCount = 0;
   private lastTaskId?: string;
+
+  /** Timestamp (ms) until which no intervention may be accepted. */
+  private cooldownUntilMs = 0;
+  /** Per-intervention-type cooldown expiry, populated on dismissal. */
+  private dismissedUntilMs = new Map<InterventionType, number>();
 
   constructor(config: Partial<PolicyConfig> = {}) {
     this.config = {
@@ -82,7 +101,35 @@ export class InterventionPolicy {
       };
     }
 
-    // 3. Confidence Threshold Gate
+    // 3. Cooldown Gate: suppress re-actuation during the refractory period
+    const now = Date.now();
+    if (this.cooldownUntilMs > now) {
+      return {
+        accepted: false,
+        command: createNoOpCommand(
+          command.source,
+          `Cooldown active for ${this.cooldownUntilMs - now}ms`
+        ),
+        reason: `Cooldown active (${this.cooldownUntilMs - now}ms remaining)`,
+        candidateCount: 0
+      };
+    }
+
+    // 4. Per-type dismissal feedback: a dismissed intervention is suppressed for longer
+    const dismissedUntil = this.dismissedUntilMs.get(command.type);
+    if (dismissedUntil !== undefined && dismissedUntil > now) {
+      return {
+        accepted: false,
+        command: createNoOpCommand(
+          command.source,
+          `Intervention '${command.type}' was recently dismissed`
+        ),
+        reason: `Suppressed after dismissal (${dismissedUntil - now}ms remaining)`,
+        candidateCount: 0
+      };
+    }
+
+    // 5. Confidence Threshold Gate
     if (command.confidence !== undefined && command.confidence < this.config.confidenceThreshold) {
       this.resetCandidate();
       return {
@@ -96,7 +143,7 @@ export class InterventionPolicy {
       };
     }
 
-    // 4. UI Context Eligibility Gate
+    // 6. UI Context Eligibility Gate
     if (this.config.enforceContextEligibility) {
       const eligibility = this.checkContextEligibility(command, context);
       if (!eligibility.eligible) {
@@ -110,7 +157,7 @@ export class InterventionPolicy {
       }
     }
 
-    // 5. Consecutive Window Persistence Gate
+    // 7. Consecutive Window Persistence Gate
     const isSameCandidate =
       this.candidateType === command.type &&
       this.candidateTarget === command.targetComponentId;
@@ -124,6 +171,9 @@ export class InterventionPolicy {
     }
 
     if (this.candidateCount >= this.config.requiredConsecutiveWindows) {
+      // Enter the cooldown window so the same adaptation is not re-applied on every
+      // subsequent window.
+      this.cooldownUntilMs = now + this.config.cooldownMs;
       return {
         accepted: true,
         command,
@@ -150,13 +200,30 @@ export class InterventionPolicy {
   public reset(): void {
     this.resetCandidate();
     this.lastTaskId = undefined;
+    this.cooldownUntilMs = 0;
+    this.dismissedUntilMs.clear();
   }
 
   /**
-   * Notifies the policy of an explicit user action (clicks, navigation), resetting candidate streak.
+   * Notifies the policy of an explicit user action (clicks, navigation), resetting the
+   * candidate streak.
    */
   public notifyUserAction(_action: string): void {
     this.resetCandidate();
+  }
+
+  /**
+   * Records that the user dismissed an intervention. Dismissal is negative feedback, so
+   * the specific intervention type is suppressed for `dismissalCooldownMs`.
+   */
+  public notifyDismissal(type: InterventionType): void {
+    this.resetCandidate();
+    this.dismissedUntilMs.set(type, Date.now() + this.config.dismissalCooldownMs);
+  }
+
+  /** Remaining cooldown in milliseconds, or 0 when no cooldown is active. */
+  public cooldownRemainingMs(): number {
+    return Math.max(0, this.cooldownUntilMs - Date.now());
   }
 
   public getConfig(): Readonly<PolicyConfig> {
