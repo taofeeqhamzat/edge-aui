@@ -1,6 +1,6 @@
 /**
  * MicroTensor Python ↔ TypeScript Parity Test Suite
- * Implements Stage 11.2 specifications from clipboard.9.md Section 35 & docs/plan/tasks/11.2.md.
+ * Implements Stage 11.2 specifications from docs/testbed/prd.md Section 35 & docs/plan/tasks/11.2.md.
  * 
  * Verifies:
  * 1. Zero covariate shift: Floating-point outputs match Python reference within 1e-4 tolerance.

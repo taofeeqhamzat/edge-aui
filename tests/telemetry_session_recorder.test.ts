@@ -174,6 +174,7 @@ describe('telemetry/recorder', () => {
   it('validates serializable traces against ExperimentTrace schema', () => {
     recorder.recordBehaviourEvent({ timestamp: 100, type: 'click', x: 0.2, y: 0.3 });
     recorder.recordMicroTensor({
+      windowId: 0,
       windowStart: 0,
       windowEnd: 500,
       values: new Float32Array(18).fill(0.1)
@@ -184,8 +185,10 @@ describe('telemetry/recorder', () => {
 
     expect(validation.valid).toBe(true);
     expect(validation.errors).toHaveLength(0);
-    expect(serializable.schemaVersion).toBe('1.0.0');
+    expect(serializable.schemaVersion).toBe('1.1.0');
     expect(serializable.metadata.totalEvents).toBe(2);
+    expect(serializable.metadata.conditionId).toBeDefined();
+    expect(serializable.microTensors[0].windowId).toBe(0);
   });
 
   it('flags invalid traces during validation', () => {
@@ -193,7 +196,7 @@ describe('telemetry/recorder', () => {
       schemaVersion: '0.9.0',
       exportedAt: 'invalid-date',
       session: { sessionId: '' },
-      microTensors: [{ windowStart: 0, windowEnd: 500, values: [1, 2, 3] }] // wrong length
+      microTensors: [{ windowId: 0, windowStart: 0, windowEnd: 500, values: [1, 2, 3] }] // wrong length
     };
 
     const validation = validateExperimentTrace(invalidTrace);

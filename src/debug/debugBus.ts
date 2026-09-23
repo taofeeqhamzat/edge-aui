@@ -12,6 +12,8 @@ export interface LiveDebugMetrics {
     pattern?: string;
     confidence?: number;
   };
+  /** Number of window-tagged macro sequences available to the PrefixSpan miner. */
+  fastGateCorpusSize?: number;
   slowGateStatus?: {
     called: boolean;
     outcome?: string;
@@ -26,6 +28,14 @@ export interface LiveDebugMetrics {
   inferenceLatencyMs?: number;
   featureLatencyMs?: number;
   workerStatus?: 'ready' | 'busy' | 'uninitialized' | 'error';
+  /** Which Slow Gate implementation is active. */
+  slowGateMode?: 'mock' | 'onnx';
+  /** Execution provider that actually served the model session. */
+  executionProvider?: string;
+  /** Whether a model graph was successfully loaded. */
+  modelLoaded?: boolean;
+  /** Counters published by the runtime composition. */
+  runtimeCounters?: Record<string, number>;
 }
 
 type DebugListener = (metrics: LiveDebugMetrics) => void;
