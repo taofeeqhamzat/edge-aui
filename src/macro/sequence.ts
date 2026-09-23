@@ -1,10 +1,10 @@
 /**
  * Macro Interaction Stream & Sequential History
- * Implements Stage 6.2 specifications from clipboard.9.md Section 16 & docs/plan/tasks/6.2.md.
+ * Implements Stage 6.2 specifications from docs/testbed/prd.md Section 16 & docs/plan/tasks/6.2.md.
  * Manages bounded, rolling chronological history of semantic user actions for the Fast Gate PrefixSpan engine.
  */
 
-import { BehaviourEvent, MacroInteraction } from '../telemetry/events';
+import { BehaviourEvent, MacroInteraction, ExperimentalCondition } from '../telemetry/events';
 import { experimentRecorder } from '../telemetry/recorder';
 import { deriveMacroSymbol } from './symbols';
 
@@ -15,32 +15,65 @@ export interface MacroInteractionStreamOptions {
   autoRecordToTrace?: boolean; // default: true
 }
 
+/**
+ * Correlation context stamped onto every macro interaction so a mined pattern can be
+ * attributed to an experiment, condition, session and window (assessment §10.3).
+ */
+export interface MacroContext {
+  sessionId?: string;
+  experimentId?: string;
+  conditionId?: ExperimentalCondition;
+}
+
 export class MacroInteractionStream {
   private buffer: MacroInteraction[] = [];
   private readonly maxCapacity: number;
   private readonly autoRecordToTrace: boolean;
   private listeners: Set<MacroInteractionListener> = new Set();
+  private context: MacroContext = {};
+  private windowIdProvider: (() => number | undefined) | null = null;
 
   constructor(options: MacroInteractionStreamOptions = {}) {
     this.maxCapacity = options.maxCapacity ?? 100;
     this.autoRecordToTrace = options.autoRecordToTrace ?? true;
   }
 
+  /** Sets the correlation context applied to subsequently recorded interactions. */
+  public setContext(context: MacroContext): void {
+    this.context = { ...context };
+  }
+
+  /**
+   * Registers a provider for the most recently opened MicroTensor window id, so each
+   * macro interaction is tied to the window during which it occurred.
+   */
+  public setWindowIdProvider(provider: () => number | undefined): void {
+    this.windowIdProvider = provider;
+  }
+
   /**
    * Records a validated MacroInteraction token into the bounded history.
    */
   public record(interaction: MacroInteraction): void {
-    this.buffer.push(interaction);
+    const enriched: MacroInteraction = {
+      ...interaction,
+      sessionId: interaction.sessionId ?? this.context.sessionId,
+      experimentId: interaction.experimentId ?? this.context.experimentId,
+      conditionId: interaction.conditionId ?? this.context.conditionId,
+      windowId: interaction.windowId ?? this.windowIdProvider?.()
+    };
+
+    this.buffer.push(enriched);
 
     if (this.buffer.length > this.maxCapacity) {
       this.buffer.shift();
     }
 
     if (this.autoRecordToTrace) {
-      experimentRecorder.recordMacroInteraction(interaction);
+      experimentRecorder.recordMacroInteraction(enriched);
     }
 
-    this.emit(interaction);
+    this.emit(enriched);
   }
 
   /**
@@ -57,7 +90,8 @@ export class MacroInteractionStream {
       timestamp: event.timestamp,
       symbol,
       componentId: event.componentId,
-      action: event.action
+      action: event.action,
+      route: event.route
     };
 
     this.record(interaction);

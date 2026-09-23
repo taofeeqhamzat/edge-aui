@@ -1,6 +1,6 @@
 /**
  * Semantic Macro Interaction Symbol Vocabulary & Event Derivation
- * Implements Stage 6.1 specifications from clipboard.9.md Sections 16 & 17.
+ * Implements Stage 6.1 specifications from docs/testbed/prd.md Sections 16 & 17.
  * Maps high-level intentional user actions to discrete symbolic tokens for the Fast Gate PrefixSpan engine.
  */
 
@@ -93,8 +93,10 @@ export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
     }
   }
 
-  if (componentId.includes('date')) {
-    return 'SELECT_DATE';
+  // Generic filter-control actions fire on change/input rather than on pointer events.
+  const isChangeLike = type === 'change' || type === 'input' || action === 'change' || action === 'select';
+  if (isChangeLike || componentId.includes('date')) {
+    if (componentId.includes('date')) return 'SELECT_DATE';
   }
   if (componentId.includes('region')) {
     return 'SELECT_REGION';
@@ -118,6 +120,14 @@ export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
   }
   if (componentId.startsWith('table-row') || componentRole === 'table-row') {
     return 'TABLE_ROW_SELECT';
+  }
+
+  // 4b. Tooltip expansion is an explicit user action on a tooltip affordance.
+  if (
+    (componentRole === 'tooltip' || componentId.includes('tooltip')) &&
+    (type === 'click' || action === 'expand' || action === 'EXPAND_TOOLTIP')
+  ) {
+    return 'EXPAND_TOOLTIP';
   }
 
   // 5. Contextual Inspection & Help
