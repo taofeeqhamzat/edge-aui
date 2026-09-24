@@ -13,19 +13,19 @@ assessment's §23 matrix; the assessment itself is kept as the historical "befor
 
 ## 1. Summary of change
 
-| | Before | After |
-|---|---|---|
-| Booted pipeline | Legacy `EdgeAUIFramework` (raw tracker + cognitive-state heuristics) | Composed adaptive runtime (observer → window → macro → dual gate → policy → actuator → trace) |
-| Runtime telemetry | 0 events, 0 windows, 0 outcomes | 498 behaviour events, 126 windows, 107 outcomes, 52 predictions in one measured trial |
-| Window grid | Event-anchored, inclusive bounds, silent fallback geometry | Monotonic fixed grid, half-open slots, observed geometry |
-| Outcome events | Schema only, no producer | Deferred deterministic derivation with lookahead guarantee |
-| Task events | Schema absent, no UI control | T1–T3 start/step/complete/error/abandon/reset, wired to the observer |
-| Experimental condition | Absent | `baseline` / `adaptive`; baseline keeps telemetry and never mutates the DOM |
-| Trace identity | No ids; `durationMs` mixed two clocks | `experimentId`, `conditionId`, `windowId`, prediction + task + intervention-episode records; single-clock duration |
-| Fast Gate | `MockFastGate` only; WASM miner unused by arbitration | Real PrefixSpan gate firing live (`fast: 20 / none: 52` in one trial) |
-| Slow Gate | Heuristic in a worker; reported `provider: webgpu` while loading no model | Real INT8 GRU graph loaded and executed; honest provider reporting |
-| ONNX graph | `(1, batch, seq, 9)` in → 6 logits out | `(1, batch, seq, 18)` in → 7 outcome logits out, weights embedded |
-| Tests | 149 tests, none composing the pipeline | 230 tests including composed-pipeline, windowing, outcome, gate, task, and ONNX contract suites |
+|                        | Before                                                                    | After                                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Booted pipeline        | Legacy `EdgeAUIFramework` (raw tracker + cognitive-state heuristics)      | Composed adaptive runtime (observer → window → macro → dual gate → policy → actuator → trace)                      |
+| Runtime telemetry      | 0 events, 0 windows, 0 outcomes                                           | 498 behaviour events, 126 windows, 107 outcomes, 52 predictions in one measured trial                              |
+| Window grid            | Event-anchored, inclusive bounds, silent fallback geometry                | Monotonic fixed grid, half-open slots, observed geometry                                                           |
+| Outcome events         | Schema only, no producer                                                  | Deferred deterministic derivation with lookahead guarantee                                                         |
+| Task events            | Schema absent, no UI control                                              | T1–T3 start/step/complete/error/abandon/reset, wired to the observer                                               |
+| Experimental condition | Absent                                                                    | `baseline` / `adaptive`; baseline keeps telemetry and never mutates the DOM                                        |
+| Trace identity         | No ids; `durationMs` mixed two clocks                                     | `experimentId`, `conditionId`, `windowId`, prediction + task + intervention-episode records; single-clock duration |
+| Fast Gate              | `MockFastGate` only; WASM miner unused by arbitration                     | Real PrefixSpan gate firing live (`fast: 20 / none: 52` in one trial)                                              |
+| Slow Gate              | Heuristic in a worker; reported `provider: webgpu` while loading no model | Real INT8 GRU graph loaded and executed; honest provider reporting                                                 |
+| ONNX graph             | `(1, batch, seq, 9)` in → 6 logits out                                    | `(1, batch, seq, 18)` in → 7 outcome logits out, weights embedded                                                  |
+| Tests                  | 149 tests, none composing the pipeline                                    | 230 tests including composed-pipeline, windowing, outcome, gate, task, and ONNX contract suites                    |
 
 **Verified commands**
 
@@ -102,8 +102,8 @@ node scripts/parity:check → fixture matches the Python reference
   `tests/fixtures/syntheticEvents.json` by running the canonical Python extractor, with
   `--check` for CI. The fixture was previously static with no producer anywhere.
 - **New:** `tests/parity_fixture_provenance.test.ts` — runs the check when the Python
-  environment is available and fails on drift. Verified: *"Fixture matches the Python
-  reference."*
+  environment is available and fails on drift. Verified: _"Fixture matches the Python
+  reference."_
 - **New npm scripts:** `parity:check`, `parity:refresh`.
 - **Not changed (and why):** `dwellTimeMs` remains the Python count-based proxy
   (`count × 40 ms`). Changing it would break parity; the construct-validity concern is a
@@ -283,20 +283,20 @@ reachability after step 0 showed that the entire legacy path had no production i
 
 **Removed (code):**
 
-| Path | Why |
-|---|---|
-| `src/core/pipeline.ts` | The legacy `EdgeAUIFramework` orchestrator; superseded by the runtime composition |
-| `src/core/telemetry/ClientBehaviorTracker.ts` | Legacy `setInterval`-based tracker with subjective cognitive labels |
-| `src/core/telemetry/SlidingWindowBuffer.ts` | Never used; the real buffer is `src/microtensor/window.ts` |
-| `src/core/telemetry/index.ts` | Barrel for the above |
-| `src/main.ts` | A 296-line HTML sandbox harness that was never the Vite entry point |
-| `src/counter.ts` | Unused Vite template leftover |
-| `src/types/telemetry.ts` | Legacy `InteractionPacket` / `MicroTensor` / `CognitiveState` schemas |
-| `src/types/worker-messages.ts` | Message types for the deleted legacy workers |
-| `src/workers/wasm-gate/WasmGateClient.ts` | Main-thread RPC client; replaced by `src/gates/fast/prefixSpanMiner.ts` |
-| `src/workers/wasm-gate/wasm.worker.ts` | Worker for the above |
-| `src/workers/onnx-gate/OnnxGateClient.ts` | Legacy client that reported `webgpu` while loading no model |
-| `src/workers/onnx-gate/onnx.worker.ts` | The heuristic that stood in for the Slow Gate |
+| Path                                          | Why                                                                               |
+| --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `src/core/pipeline.ts`                        | The legacy `EdgeAUIFramework` orchestrator; superseded by the runtime composition |
+| `src/core/telemetry/ClientBehaviorTracker.ts` | Legacy `setInterval`-based tracker with subjective cognitive labels               |
+| `src/core/telemetry/SlidingWindowBuffer.ts`   | Never used; the real buffer is `src/microtensor/window.ts`                        |
+| `src/core/telemetry/index.ts`                 | Barrel for the above                                                              |
+| `src/main.ts`                                 | A 296-line HTML sandbox harness that was never the Vite entry point               |
+| `src/counter.ts`                              | Unused Vite template leftover                                                     |
+| `src/types/telemetry.ts`                      | Legacy `InteractionPacket` / `MicroTensor` / `CognitiveState` schemas             |
+| `src/types/worker-messages.ts`                | Message types for the deleted legacy workers                                      |
+| `src/workers/wasm-gate/WasmGateClient.ts`     | Main-thread RPC client; replaced by `src/gates/fast/prefixSpanMiner.ts`           |
+| `src/workers/wasm-gate/wasm.worker.ts`        | Worker for the above                                                              |
+| `src/workers/onnx-gate/OnnxGateClient.ts`     | Legacy client that reported `webgpu` while loading no model                       |
+| `src/workers/onnx-gate/onnx.worker.ts`        | The heuristic that stood in for the Slow Gate                                     |
 
 **Added (code):** `src/gates/fast/prefixSpanMiner.ts` — the single WASM boundary in the
 framework; `src/runtime/worker/entry.ts` (worker entry) and `src/runtime/worker/core.ts`
@@ -304,16 +304,16 @@ framework; `src/runtime/worker/entry.ts` (worker entry) and `src/runtime/worker/
 
 **Removed (documentation and scratch):**
 
-| Path | Why |
-|---|---|
-| `docs/audit_baseline.md` | Described a repository layout that no longer existed |
-| `docs/project_architecture.md` | Described `SlidingWindowBuffer` batching, which was never used; referred to "latent intent" |
-| `docs/data_schemas.md` | Documented only the deleted legacy schemas; omitted every current contract |
-| `docs/conversation/turn-{1..4}.md` | Transient agent transcripts |
-| `clipboard.9.md` | Transient agent clipboard |
-| `gemini-code-1787963806179.ts` | Stray generated file at the repo root |
-| `rebase.sh` | One-off, already-executed git history rewrite script |
-| `AGENT.target_testbed_QA.md` | The audit brief itself, left in the working tree |
+| Path                               | Why                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| `docs/audit_baseline.md`           | Described a repository layout that no longer existed                                        |
+| `docs/project_architecture.md`     | Described `SlidingWindowBuffer` batching, which was never used; referred to "latent intent" |
+| `docs/data_schemas.md`             | Documented only the deleted legacy schemas; omitted every current contract                  |
+| `docs/conversation/turn-{1..4}.md` | Transient agent transcripts                                                                 |
+| `docs/testbed/prd.md`              | Transient agent clipboard                                                                   |
+| `gemini-code-1787963806179.ts`     | Stray generated file at the repo root                                                       |
+| `rebase.sh`                        | One-off, already-executed git history rewrite script                                        |
+| `AGENT.target_testbed_QA.md`       | The audit brief itself, left in the working tree                                            |
 
 **Added (documentation):** `docs/architecture.md` — the implemented system, its windowing
 contract, feature table, macro vocabulary, gate semantics, all schemas, and the command set.
@@ -331,7 +331,7 @@ Building and serving `dist/` exposed three defects that development mode conceal
 
 1. **The worker was never bundled.** `new URL('./worker.ts', import.meta.url)` was assigned to
    a variable before being passed to `new Worker(...)`, which Vite cannot statically analyse.
-   The production build emitted the worker as *raw TypeScript source*
+   The production build emitted the worker as _raw TypeScript source_
    (`dist/assets/worker-*.ts`) that could not execute, so the entire research pipeline would
    have been dead in production while working in dev. The worker now lives at
    `src/runtime/worker/entry.ts`, and the URL literal is inline in the constructor call, so it
@@ -370,22 +370,22 @@ schemaVersion: "1.1.0"
   `agent-browser` is unavailable rather than fabricating them.
 - **Measured (headless Chrome 153, macOS, WebGPU, single clean trial):**
 
-| Metric | Before (assessment) | After |
-|---|---|---|
-| Idle rAF FPS | 61 (pipeline inactive) | 61 |
-| Pipeline-load rAF FPS | NOT MEASURED | **61** |
-| JS heap in use | 11.25 MB (inactive) | **17.13 MB** |
-| DOM nodes | 583 | 512 |
-| Prediction latency (full gate chain) | NOT MEASURED | mean **11.13 ms**, p50 10.73 ms, p95 **16.22 ms**, max 21.0 ms (cold first 66.7 ms) |
-| Gate routing (one trial) | n/a (no gates ran) | **fast 5–20 / none 23–52** |
-| Interventions applied to the DOM | 0 | **1–3** (`highlight_primary_action` on `btn-export`) |
-| Task completion | impossible (no task events) | **T1 completes: 4/4 steps, `task_complete`** |
-| Main bundle contains ONNX Runtime | n/a | **no** (was yes; fallback made lazy) |
-| Production worker | emitted as raw `.ts` (broken) | bundled `entry-*.js`, verified in `vite preview` |
-| Windows / outcomes / predictions per trial | 0 / 0 / 0 | 126 / 107 / 52 |
-| Settled outcomes | n/a | 95 / 107 with a complete lookahead horizon |
-| Exported trace size | 622 B (empty) | 202 KB for ~90 windows |
-| ONNX model artifact | 47 435 B, incompatible shape | 170 206 B, `18→7`, budget-compliant |
+| Metric                                     | Before (assessment)           | After                                                                               |
+| ------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------- |
+| Idle rAF FPS                               | 61 (pipeline inactive)        | 61                                                                                  |
+| Pipeline-load rAF FPS                      | NOT MEASURED                  | **61**                                                                              |
+| JS heap in use                             | 11.25 MB (inactive)           | **17.13 MB**                                                                        |
+| DOM nodes                                  | 583                           | 512                                                                                 |
+| Prediction latency (full gate chain)       | NOT MEASURED                  | mean **11.13 ms**, p50 10.73 ms, p95 **16.22 ms**, max 21.0 ms (cold first 66.7 ms) |
+| Gate routing (one trial)                   | n/a (no gates ran)            | **fast 5–20 / none 23–52**                                                          |
+| Interventions applied to the DOM           | 0                             | **1–3** (`highlight_primary_action` on `btn-export`)                                |
+| Task completion                            | impossible (no task events)   | **T1 completes: 4/4 steps, `task_complete`**                                        |
+| Main bundle contains ONNX Runtime          | n/a                           | **no** (was yes; fallback made lazy)                                                |
+| Production worker                          | emitted as raw `.ts` (broken) | bundled `entry-*.js`, verified in `vite preview`                                    |
+| Windows / outcomes / predictions per trial | 0 / 0 / 0                     | 126 / 107 / 52                                                                      |
+| Settled outcomes                           | n/a                           | 95 / 107 with a complete lookahead horizon                                          |
+| Exported trace size                        | 622 B (empty)                 | 202 KB for ~90 windows                                                              |
+| ONNX model artifact                        | 47 435 B, incompatible shape  | 170 206 B, `18→7`, budget-compliant                                                 |
 
 - `NOT MEASURED` remains: total blocking time, long-task profiling, memory growth over a
   long task, and the combined `< 500 KB` WASM+model payload (the ORT WASM binary alone is
@@ -405,18 +405,18 @@ git status model-preparation               → clean (no tracked file modified)
 
 New suites added (81 tests):
 
-| Suite | Tests | Contract |
-|---|---|---|
-| `adaptive_runtime.test.ts` | 6 | The composed pipeline runs end to end |
-| `windowing_contract.test.ts` | 9 | Grid, half-open slots, inactivity, geometry, accounting |
-| `outcome_derivation.test.ts` | 7 | Python lookahead parity |
-| `task_wiring.test.tsx` | 11 | Task steps ↔ rendered DOM; lifecycle events; deterministic stimuli |
-| `policy_cooldown_ttl.test.ts` | 9 | Cooldown, dismissal feedback, TTL, selector safety |
-| `prefixspan_fast_gate.test.ts` | 11 | Real miner-backed gate semantics |
-| `macro_fast_gate_wiring.test.ts` | 4 | Corpus shape and engine wiring |
-| `context_vector.test.ts` | 10 | `UIContext` → `R^6` |
-| `onnx_contract.test.ts` | 13 | Graph shape, embedding, budget, softmax |
-| `parity_fixture_provenance.test.ts` | 2 | Fixture is re-derived from Python |
+| Suite                               | Tests | Contract                                                           |
+| ----------------------------------- | ----- | ------------------------------------------------------------------ |
+| `adaptive_runtime.test.ts`          | 6     | The composed pipeline runs end to end                              |
+| `windowing_contract.test.ts`        | 9     | Grid, half-open slots, inactivity, geometry, accounting            |
+| `outcome_derivation.test.ts`        | 7     | Python lookahead parity                                            |
+| `task_wiring.test.tsx`              | 11    | Task steps ↔ rendered DOM; lifecycle events; deterministic stimuli |
+| `policy_cooldown_ttl.test.ts`       | 9     | Cooldown, dismissal feedback, TTL, selector safety                 |
+| `prefixspan_fast_gate.test.ts`      | 11    | Real miner-backed gate semantics                                   |
+| `macro_fast_gate_wiring.test.ts`    | 4     | Corpus shape and engine wiring                                     |
+| `context_vector.test.ts`            | 10    | `UIContext` → `R^6`                                                |
+| `onnx_contract.test.ts`             | 13    | Graph shape, embedding, budget, softmax                            |
+| `parity_fixture_provenance.test.ts` | 2     | Fixture is re-derived from Python                                  |
 
 Four existing tests were updated where the change was intentional, and each update states
 why: the window API now returns an array and uses a 250 ms slot; the apply-filters control
@@ -433,8 +433,7 @@ is a submit control; the trace schema is 1.1.0 and requires window ids.
 2. ~~The Fast Gate's in-worker mining path does not yet match.~~ **RESOLVED.** The root
    cause was a twelve-line chain of scope bugs, and each was found only by running the
    pipeline:
-
-   1. `WasmGateClient` — a *main-thread* RPC client — guards on
+   1. `WasmGateClient` — a _main-thread_ RPC client — guards on
       `typeof Worker === 'undefined'`. `Worker` is also undefined **inside** a dedicated
       worker, so from the runtime worker it took the "workers unsupported" branch and never
       started a worker.
@@ -443,12 +442,13 @@ is a submit control; the trace schema is 1.1.0 and requires window ids.
    3. The earlier `defaultMiner()` guard tested `typeof Worker`, disabling mining exactly
       where the gate normally runs.
 
-   **Fix:** `src/gates/fast/prefixSpanMiner.ts` loads the Rust/WASM module *directly* and
+   **Fix:** `src/gates/fast/prefixSpanMiner.ts` loads the Rust/WASM module _directly_ and
    exposes a `PatternMiner`. There is no nested worker hop and no `window` dependency, so the
    miner works identically on the main thread and inside a worker.
 
    **Verified live:** `gateHits: { fast: 20, none: 52 }` over one scripted trial, with the
    real WASM miner mining a worker-side corpus of 12 sequences.
+
 3. ~~No intervention has been applied to the DOM by the live pipeline yet.~~ **RESOLVED for
    the Fast Gate path.** A live trial now shows the complete intervention lifecycle:
 
@@ -457,14 +457,16 @@ is a submit control; the trace schema is 1.1.0 and requires window ids.
    accepted:highlight_primary_action/fast
    applied:highlight_primary_action/fast
    ```
+
    with the target element carrying `data-aui-active-adaptation="highlight"` in the DOM, and
    `interventionsApplied: 1`.
 
    **Still open:** the ONNX Slow Gate's best-class probability remains ~0.44–0.48 for
-   `NO_OUTCOME`, below the policy's 0.75 threshold, so no *slow*-gated intervention has been
+   `NO_OUTCOME`, below the policy's 0.75 threshold, so no _slow_-gated intervention has been
    applied live. The policy is behaving correctly by refusing to act on an uncertain
    distribution; the open question is calibration of a freshly exported graph whose head was
    never fine-tuned on target-domain data, not a logic defect.
+
 4. **`dwellTimeMs` is a proxy.** Both implementations derive it from a qualifying-event
    count (`count × 40 ms`), not from measured hover duration. Parity is preserved;
    construct validity is unestablished.
@@ -491,27 +493,27 @@ is a submit control; the trace schema is 1.1.0 and requires window ids.
 
 ## 5. Re-evaluated readiness
 
-| Assessment §23 area | Was | Now | Evidence |
-|---|---|---|---|
-| Target UI | Partial | **Ready with conditions** | Trial controls added; still no pagination/sort surface |
-| Task workflows | Not ready | **Ready** | T1–T3 reachable and completable; lifecycle events emitted |
-| Telemetry | Implemented, unwired | **Ready** | 498 events per measured trial, geometry attached |
-| MicroTensor | Ready with conditions | **Ready** | D2 fixed; CI parity check added |
-| Windowing | Partially ready | **Ready with conditions** | Fixed grid, half-open, inactivity; sparse skip remains |
-| Macro events | Ready with conditions | **Ready** | Time-slotted corpus; unreachable symbols addressed |
-| PrefixSpan interface | Partially ready | **Ready with conditions** | Real gate wired; online-support tuning remains |
-| Outcome events | Not ready | **Ready** | `CLICK`/`FORM_SUBMIT`/`NO_OUTCOME` observed live |
-| UI context | Ready with conditions | **Ready** | viewport, scroll, condition, uiVersion added |
-| Intervention taxonomy | Ready | **Ready** | unchanged |
-| Policy layer | Ready with conditions | **Ready** | cooldown, dismissal feedback, TTL |
-| Actuator | Ready | **Ready** | TTL + selector escaping added |
-| Worker boundary | Partially ready | **Ready** | typed INIT modes, provider reporting |
-| Model integration | Not ready | **Ready with conditions** | 18→7 graph loaded on WebGPU; target head not exported |
-| Experiment trace | Partially ready | **Ready** | 1.1.0 with all correlation ids; single-clock duration |
-| Baseline condition | Not ready | **Ready** | condition switch; telemetry preserved, no DOM mutation |
-| Testing | Ready with conditions | **Ready** | 230 tests including composed-pipeline suite |
-| Performance | Not measured | **Partially measured** | 61 FPS, 17.13 MB, ~11 ms inference; TBT and payload budget open |
-| Privacy | Ready with conditions | **Ready** | unchanged: no egress, no storage, in-memory only |
+| Assessment §23 area   | Was                   | Now                       | Evidence                                                        |
+| --------------------- | --------------------- | ------------------------- | --------------------------------------------------------------- |
+| Target UI             | Partial               | **Ready with conditions** | Trial controls added; still no pagination/sort surface          |
+| Task workflows        | Not ready             | **Ready**                 | T1–T3 reachable and completable; lifecycle events emitted       |
+| Telemetry             | Implemented, unwired  | **Ready**                 | 498 events per measured trial, geometry attached                |
+| MicroTensor           | Ready with conditions | **Ready**                 | D2 fixed; CI parity check added                                 |
+| Windowing             | Partially ready       | **Ready with conditions** | Fixed grid, half-open, inactivity; sparse skip remains          |
+| Macro events          | Ready with conditions | **Ready**                 | Time-slotted corpus; unreachable symbols addressed              |
+| PrefixSpan interface  | Partially ready       | **Ready with conditions** | Real gate wired; online-support tuning remains                  |
+| Outcome events        | Not ready             | **Ready**                 | `CLICK`/`FORM_SUBMIT`/`NO_OUTCOME` observed live                |
+| UI context            | Ready with conditions | **Ready**                 | viewport, scroll, condition, uiVersion added                    |
+| Intervention taxonomy | Ready                 | **Ready**                 | unchanged                                                       |
+| Policy layer          | Ready with conditions | **Ready**                 | cooldown, dismissal feedback, TTL                               |
+| Actuator              | Ready                 | **Ready**                 | TTL + selector escaping added                                   |
+| Worker boundary       | Partially ready       | **Ready**                 | typed INIT modes, provider reporting                            |
+| Model integration     | Not ready             | **Ready with conditions** | 18→7 graph loaded on WebGPU; target head not exported           |
+| Experiment trace      | Partially ready       | **Ready**                 | 1.1.0 with all correlation ids; single-clock duration           |
+| Baseline condition    | Not ready             | **Ready**                 | condition switch; telemetry preserved, no DOM mutation          |
+| Testing               | Ready with conditions | **Ready**                 | 230 tests including composed-pipeline suite                     |
+| Performance           | Not measured          | **Partially measured**    | 61 FPS, 17.13 MB, ~11 ms inference; TBT and payload budget open |
+| Privacy               | Ready with conditions | **Ready**                 | unchanged: no egress, no storage, in-memory only                |
 
 ### Answer to the assessment's closing question
 
