@@ -91,7 +91,7 @@ Results from this dataset may **not** be reported as:
 ## 7. Consequences
 
 - The dataset manifest must carry a `data_source: scripted_testbed` field and a provenance record
-  naming the sessions, condition and label policy version (plan 1 task 16.2).
+  naming the sessions, condition and label policy version (plan 1 task 11.2).
 - Every experiment report must restate the claim boundary. `AdSERP` remains the foundation
   training source and is unaffected.
 - The intended replacement path must be preserved: the ingestion layer reads a canonical dataset
