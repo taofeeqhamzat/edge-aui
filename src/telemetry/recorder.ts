@@ -18,6 +18,7 @@ import { SessionContext, sessionManager } from './session';
 import { TESTBED_UI_VERSION } from '../types/uiContext.js';
 import { taskManager } from '../testbed/tasks/taskManager';
 import { TaskState } from '../testbed/tasks/taskModel';
+import { PREPROCESSING_CONFIG } from '../config/pipelineConfig';
 import {
   EXPERIMENT_TRACE_SCHEMA_VERSION,
   validateExperimentTrace,
@@ -222,7 +223,8 @@ export class ExperimentRecorder {
       finalTaskStatus: taskState.status,
       experimentId: activeSession.experimentId,
       conditionId: activeSession.conditionId,
-      uiVersion: TESTBED_UI_VERSION
+      uiVersion: TESTBED_UI_VERSION,
+      settlementDelayMs: PREPROCESSING_CONFIG.settlement_delay_ms ?? PREPROCESSING_CONFIG.stride_ms
     };
 
     return {

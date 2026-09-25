@@ -48,15 +48,13 @@ export interface RollingWindowBufferOptions {
    */
   emitInactiveWindows?: boolean;
   /**
-   * How far the observed clock must be past a slot's end before that slot is processed.
-   *
-   * Default 0 processes a slot as soon as the clock enters the following stride, which
-   * makes a window holding fewer than `minEventsPerWindow` events permanently
-   * un-emittable: the slot is processed once and never revisited.
-   *
-   * Setting this to one stride (the runtime does) delays processing by exactly one slot,
-   * so events arriving within the next stride can still fill the previous window. It is
-   * bounded, so no window can be revised indefinitely.
+   * Configurable settlement delay in milliseconds (ADR-005).
+   * Holds each grid slot open for this duration before final settlement so late
+   * events within the stride can still populate it.
+   */
+  settlementDelayMs?: number;
+  /**
+   * Alias for settlementDelayMs.
    */
   flushDelayMs?: number;
 }
@@ -76,10 +74,12 @@ export class RollingWindowBuffer {
   private flushDelayMs: number;
 
   private lastWindowEnd: number | null = null;
+  private maxObservedTime = 0;
   private windowIdCounter = 0;
   private gridEstablished = false;
   private lateEventCount = 0;
   private skippedSparseWindowCount = 0;
+  private settledSparseWindowCount = 0;
 
   constructor(options: RollingWindowBufferOptions = {}) {
     this.windowDurationMs = options.windowDurationMs ?? PREPROCESSING_CONFIG.window_size_ms;
@@ -90,7 +90,8 @@ export class RollingWindowBuffer {
     this.modalitySupport = options.modalitySupport ?? DEFAULT_MODALITY_SUPPORT;
     this.autoRecordToTrace = options.autoRecordToTrace ?? true;
     this.emitInactiveWindows = options.emitInactiveWindows ?? true;
-    this.flushDelayMs = Math.max(0, options.flushDelayMs ?? 0);
+    const configuredDelay = options.settlementDelayMs ?? options.flushDelayMs ?? 0;
+    this.flushDelayMs = Math.max(0, configuredDelay);
   }
 
   /**
@@ -99,6 +100,13 @@ export class RollingWindowBuffer {
    * timestamp-deterministic and does not depend on arrival jitter (assessment §9).
    */
   public push(event: BehaviourEvent): void {
+    if (this.lastWindowEnd !== null && this.maxObservedTime >= this.lastWindowEnd + this.strideMs) {
+      if (event.timestamp < this.lastWindowEnd + this.strideMs) {
+        (event as unknown as { _delayedArrival?: boolean })._delayedArrival = true;
+      }
+    }
+    this.maxObservedTime = Math.max(this.maxObservedTime, event.timestamp);
+
     const last = this.events[this.events.length - 1];
     if (!last || event.timestamp >= last.timestamp) {
       this.events.push(event);
@@ -136,6 +144,7 @@ export class RollingWindowBuffer {
   public anchor(originTimestamp: number): void {
     this.gridEstablished = true;
     this.lastWindowEnd = originTimestamp;
+    this.maxObservedTime = Math.max(this.maxObservedTime, originTimestamp);
     this.evictOlderThan(originTimestamp - this.maxRetentionMs);
   }
 
@@ -154,6 +163,8 @@ export class RollingWindowBuffer {
     if (now === null) {
       return [];
     }
+
+    this.maxObservedTime = Math.max(this.maxObservedTime, now);
 
     // Anchor lazily to the first observed time so every window sits on the same grid.
     if (this.lastWindowEnd === null) {
@@ -214,10 +225,19 @@ export class RollingWindowBuffer {
     const isInactive = slotEvents.length === 0;
     const meetsMinimum = slotEvents.length >= this.minEventsPerWindow;
 
+    const delayedCount = slotEvents.filter(
+      (ev) => Boolean((ev as unknown as { _delayedArrival?: boolean })._delayedArrival)
+    ).length;
+    const nominalCount = slotEvents.length - delayedCount;
+
     if (!meetsMinimum && !(isInactive && this.emitInactiveWindows)) {
       this.skippedSparseWindowCount++;
       this.lastWindowEnd = windowEnd;
       return { window: null, droppedLateEvents };
+    }
+
+    if (meetsMinimum && nominalCount < this.minEventsPerWindow && delayedCount > 0) {
+      this.settledSparseWindowCount++;
     }
 
     const window = this.buildWindow(
@@ -395,6 +415,7 @@ export class RollingWindowBuffer {
     this.windowIdCounter = 0;
     this.lateEventCount = 0;
     this.skippedSparseWindowCount = 0;
+    this.settledSparseWindowCount = 0;
   }
 
   public get size(): number {
@@ -417,5 +438,18 @@ export class RollingWindowBuffer {
   /** Number of sparse windows skipped for falling below `minEventsPerWindow`. */
   public get skippedSparseWindows(): number {
     return this.skippedSparseWindowCount;
+  }
+
+  /**
+   * Number of sparse windows that were below threshold at nominal slot end
+   * but successfully crossed minEventsPerWindow and settled during the settlement delay.
+   */
+  public get settledSparseWindows(): number {
+    return this.settledSparseWindowCount;
+  }
+
+  /** The configured settlement delay in milliseconds (ADR-005). */
+  public get settlementDelay(): number {
+    return this.flushDelayMs;
   }
 }

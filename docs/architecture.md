@@ -71,23 +71,25 @@ started from `src/main.tsx`. It owns exactly one of each stage.
 |---|---|---|
 | Window duration | 500 ms | `config.yaml` → `PREPROCESSING_CONFIG` |
 | Stride | 250 ms | same |
+| Settlement delay | 250 ms (1 stride) | `config.yaml` → `PREPROCESSING_CONFIG.settlement_delay_ms` (ADR-005) |
 | Minimum events per window | 3 | same |
 | Interval semantics | half-open `[start, end)` | `src/microtensor/window.ts` |
 | Grid | fixed monotonic grid; `anchor(origin)` | same |
-| Flush delay | one stride | `flushDelayMs` |
 | Inactivity | windows are emitted with `inactive: true` | same |
 
-Two deliberate properties:
+Key architectural properties:
 
 - **Half-open slots** so an event on a boundary is counted exactly once. This matches
   `model-preparation/src/preprocessing.py`, which uses `searchsorted(..., side="left")`.
 - **A fixed grid, not an event-anchored one**, so a given timestamp always falls in the same
-  window regardless of when the first interaction happened. This is what makes windows
+  window regardless of when the first interaction happened. This makes windows
   comparable between sessions.
-
-The buffer counts events that arrived too late to be windowed (`lateEvents`) and windows it
-had to skip for falling below the minimum (`skippedSparseWindows`), so silent data loss is
-observable rather than invisible.
+- **Delayed settlement (ADR-005 Option B):** each slot is held open for `settlement_delay_ms` (250 ms)
+  before final settlement. This bounds Slow Gate reaction latency to an added 250 ms while recovering
+  66.2% of sparse slots straddling window boundaries (`settledSparseWindows`).
+- **Observable accounting:** the buffer records `lateEvents` (events arriving after slot eviction),
+  `skippedSparseWindows` (slots remaining below threshold after delay), and `settledSparseWindows`
+  (slots rescued by delayed arrival). `settlementDelayMs` is exported in the trace metadata.
 
 ---
 

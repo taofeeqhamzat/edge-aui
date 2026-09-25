@@ -18,6 +18,7 @@ export interface NormalizationConfig {
 export interface PreprocessingConfig {
   window_size_ms: number;
   stride_ms: number;
+  settlement_delay_ms: number;
   reference_viewport: [number, number];
   core_features: string[];
   contextual_features: string[];

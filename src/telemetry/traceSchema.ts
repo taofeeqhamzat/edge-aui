@@ -52,6 +52,7 @@ export interface TraceReplayMetadata {
   experimentId?: string;
   conditionId?: ExperimentalCondition;
   uiVersion?: string;
+  settlementDelayMs?: number;
 }
 
 export interface SerializableExperimentTrace {

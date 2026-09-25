@@ -1,8 +1,8 @@
 # ADR-005: Window Settlement Semantics (Sparse Windows)
 
-- **Status:** Decision required — human approval needed before implementation
-- **Date:** 2026-09-24
-- **Related:** ADR-004, ADR-012
+- **Status:** Accepted (Option B — Delayed Settlement with fixed delay `settlement_delay_ms = 250`)
+- **Date:** 2026-09-25
+- **Related:** ADR-004, ADR-012, Assessment: `docs/assessments/sparse-window-loss.md`
 
 ## 1. Context
 
@@ -56,30 +56,21 @@ counts").
 
 - `skippedSparseWindows` is a live counter; the implementation record records the gap as open.
 
-**Not measured**
+**Measured (Task 1.1 — `docs/assessments/sparse-window-loss.md`)**
+- Measured over 6 recorded participant traces, 14,765 events, 2,281 slots.
+- Active-slot sparse loss rate: **10.95%** (exceeding pre-declared 5.0% materiality threshold).
+- Lookahead crossing: **66.20%** of sparse slots cross $\ge 3$ events when evaluated across a 500 ms window span.
+- The loss was demonstrated to be **material**, justifying delayed settlement.
 
-- The distribution of events-per-slot on real recorded traces, and therefore how many windows
-  are actually being lost. `NOT MEASURED`.
-- The rate of genuinely late events. The `lateEvents` counter exists but no recorded trace
-  distribution has been published.
+## 5. Decision
+**Option B — Delayed settlement** is adopted.
+A fixed settlement delay of one stride (`settlement_delay_ms = 250`) is introduced into the configuration. Each slot is held open for this delay and settled once using all events assigned to it.
+A `settledSparseWindows` counter is tracked alongside `skippedSparseWindows` so settlement outcomes are observable.
 
-**Unknown and decision-relevant:** whether the loss is negligible (a handful of windows per
-session) or material (a large fraction of low-activity windows). This has never been quantified.
-
-## 5. Decision required
-
-Which settlement semantic the runtime adopts, and what the settlement delay is, expressed as a
-configuration value with a defined relationship to the Python reference's lookahead.
-
-## 6. Recommended option
-
-**Option B — delayed settlement — conditional on a measurement that has not been taken.**
-Before implementing, quantify the loss (plan 1 task 1.1). If the measured loss is material,
-implement delayed settlement with a configurable `settlement_delay_ms` and prove equivalence to
-the Python reference on recorded streams (plan 1 task 1.2).
-
-If the measured loss is negligible, the honest outcome is to document that and keep Option A —
-the brief permits this: "Do not change the semantics merely to increase event counts."
+## 6. Rationale
+Delayed settlement satisfies all four preserved properties named in brief §4 A1:
+deterministic boundaries, inactivity windows, online operation, and correspondence with the Python preprocessing semantics.
+The 250 ms fixed delay allows the 66.20% boundary-straddling sparse slots to be settled accurately while bounding reaction latency to 250 ms.
 
 A delayed-settlement design satisfies all four preserved properties named in the brief:
 deterministic boundaries, inactivity windows, online operation, and Python correspondence —

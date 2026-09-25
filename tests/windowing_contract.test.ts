@@ -243,6 +243,8 @@ describe('RollingWindowBuffer delayed flush (sparse-window revision)', () => {
     expect(firstSlot).toBeDefined();
     expect(firstSlot?.eventCount).toBe(3);
     expect(firstSlot?.inactive).toBe(false);
+    expect(buffer.settledSparseWindows).toBe(1);
+    expect(buffer.settlementDelay).toBe(250);
   });
 
   it('still emits inactivity windows once the clock has advanced', () => {
