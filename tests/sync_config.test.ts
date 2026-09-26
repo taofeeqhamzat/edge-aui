@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
+import os from 'node:os';
+import fs from 'node:fs';
 import { findConfigYaml, parseYaml, syncConfig } from '../scripts/sync-config.mjs';
 
 describe('sync-config (Configurable Source Path & Canonical Parser)', () => {
@@ -37,11 +39,18 @@ preprocessing:
     expect(parsed.preprocessing.normalization.hesitation_scale).toBe(25.0);
   });
 
-  it('runs syncConfig and produces valid configuration object', () => {
-    const config = syncConfig();
-    expect(config.preprocessing).toBeDefined();
-    expect(config.preprocessing.num_features).toBe(9);
-    expect(config.preprocessing.input_dim).toBe(18);
-    expect(config.preprocessing.normalization.mean_velocity_scale).toBe(10);
+  it('runs syncConfig and produces valid configuration object hermetically', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-config-test-'));
+    const tmpOut = path.join(tmpDir, 'pipelineConfig.json');
+    try {
+      const config = syncConfig({ outputPath: tmpOut });
+      expect(config.preprocessing).toBeDefined();
+      expect(config.preprocessing.num_features).toBe(9);
+      expect(config.preprocessing.input_dim).toBe(18);
+      expect(config.preprocessing.normalization.mean_velocity_scale).toBe(10);
+      expect(fs.existsSync(tmpOut)).toBe(true);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });
