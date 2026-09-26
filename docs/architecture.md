@@ -122,6 +122,19 @@ Parity with the Python reference is verified two ways:
 - `npm run parity:check` — re-derives those expectations by running the Python extractor, so
   drift in either repository fails.
 
+### Vectorisation Implementation Boundary (ADR-001)
+
+- MicroTensor construction on the live runtime path is executed in **TypeScript** (`src/microtensor/features.ts`),
+  per [ADR-001](decisions/ADR-001-rust-wasm-microtensor-vectorisation.md) Option A (Accepted 2026-09-26).
+- Empirical benchmarking ([`docs/benchmarks/vectoriser-benchmark.md`](benchmarks/vectoriser-benchmark.md)) demonstrated
+  that TypeScript executes in **`8.26 µs`** mean (\(0.0083\text{ ms}\)), consuming \(0.003\%\) of the 250 ms window stride budget
+  with zero long tasks, and is \(4.04\times\) faster than Rust/WASM (\(33.41\ \mu\text{s}\)) by avoiding JS-to-WASM memory
+  serialization across `serde_wasm_bindgen`.
+- The Rust/WASM vectoriser (`wasm-vectorizer/src/kinematics.rs`) is retained as an offline parity test oracle
+  (`tests/vectorizer_parity.test.ts`), verifying exact numerical parity (\(\Delta \le 10^{-4}\)) on canonical streams.
+- Rust/WASM in production is dedicated to PrefixSpan frequent pattern mining (`src/gates/fast/prefixSpanMiner.ts`),
+  where projected sequential pattern growth benefits from native execution ([ADR-002](decisions/ADR-002-rust-wasm-prefixspan-boundary.md)).
+
 ---
 
 ## 5. Macro interaction vocabulary
