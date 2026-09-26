@@ -45,7 +45,7 @@ import { InterventionPolicy, PolicyConfig } from '../intervention/policy';
 import { UIActuator } from '../intervention/actuator';
 import { experimentRecorder } from '../telemetry/recorder';
 import { sessionManager } from '../telemetry/session';
-import { taskManager } from '../testbed/tasks/taskManager';
+import { UiAdapter, DefaultUiAdapter, DEFAULT_TASK_ACTION_BY_EVENT } from '../integration/index';
 import { getActiveUIContext } from '../telemetry/contextProvider';
 import { getMonotonicTimestamp } from '../telemetry/normalizer';
 import { debugBus } from '../debug/debugBus';
@@ -59,48 +59,19 @@ import { InferenceResult } from '../gates/arbitration';
 import { InterventionCommand, InterventionType } from '../intervention/types';
 import { UIContext } from '../types/uiContext.js';
 import { encodeUIContext } from '../types/contextVector';
-import { PREPROCESSING_CONFIG } from '../config/pipelineConfig';
+import { PREPROCESSING_CONFIG, PIPELINE_CONFIG } from '../config/pipelineConfig';
+import {
+  RuntimeConfig,
+  resolveRuntimeConfig,
+  DeepPartial
+} from '../config/runtimeConfig';
 
-/**
- * Action semantics recorded against the task model for each observed event type.
- * `mousedown` is deliberately excluded so one click is not counted twice.
- */
-const TASK_ACTION_BY_EVENT: Record<string, string> = {
-  click: 'click',
-  submit: 'submit',
-  change: 'change',
-  input: 'input'
-};
 
-/** Minimum interval between Slow Gate evaluations while the user is idle. */
-const IDLE_EVALUATION_INTERVAL_MS = 2000;
 
-/**
- * How long a window may remain pending when the stream goes silent.
- *
- * The outcome lookahead horizon is `[windowEnd + 500ms, windowEnd + 1500ms]`, so a
- * window's label cannot be settled until activity covering that span has been observed.
- * Deriving immediately would classify every window before its horizon and lose the
- * CLICK / FORM_SUBMIT / HOVER_DWELL signal entirely.
- *
- * While the user is active, a window is settled as soon as the next observed event moves
- * past its horizon. When the user stops interacting, this grace period bounds the wait so
- * genuinely idle windows are still labelled (as NO_OUTCOME).
- */
-const PENDING_OUTCOME_GRACE_MS = 2000;
-
-/**
- * Width of a PrefixSpan evaluation slot, in milliseconds.
- *
- * Consecutive macro actions are usually hundreds of milliseconds apart but are stamped
- * with different 250 ms window ids, so grouping by window id fragments an interaction
- * episode into single-symbol sequences and no multi-symbol pattern can ever reach
- * support. A wider slot keeps an episode (open filter, change region, apply) in one
- * sequence while still separating distinct episodes.
- */
-const MACRO_SEQUENCE_SLOT_MS = 2000;
 
 export interface AdaptiveRuntimeOptions {
+  /** Full runtime configuration covering all 9 parameter groups (ADR-012 / Task 4.2). */
+  config?: DeepPartial<RuntimeConfig>;
   experimentId?: string;
   conditionId?: ExperimentalCondition;
   /**
@@ -133,6 +104,8 @@ export interface AdaptiveRuntimeOptions {
   enableInstrumentation?: boolean;
   /** Custom instrumentation collector instance. Defaults to defaultCollector. */
   collector?: InstrumentationCollector;
+  /** UI Adapter injecting application-specific task models, context, and actions. */
+  adapter?: UiAdapter;
 }
 
 export interface AdaptiveRuntimeStatus {
@@ -163,6 +136,8 @@ export class AdaptiveRuntime {
   private collector: InstrumentationCollector;
   private policy: InterventionPolicy;
   private actuator: UIActuator;
+  private adapter: UiAdapter;
+  private readonly config: RuntimeConfig;
 
   private readonly options: AdaptiveRuntimeOptions;
   private readonly conditionId: ExperimentalCondition;
@@ -197,32 +172,75 @@ export class AdaptiveRuntime {
 
   constructor(options: AdaptiveRuntimeOptions = {}) {
     this.options = options;
-    this.conditionId = options.conditionId ?? 'adaptive';
+    this.config = resolveRuntimeConfig({
+      ...options.config,
+      telemetry: {
+        ...options.config?.telemetry
+      },
+      windowing: {
+        ...options.config?.windowing
+      },
+      fastGate: {
+        ...(options.minPatternSupport !== undefined ? { minSupport: options.minPatternSupport } : {}),
+        ...(options.fastGatePatterns ? { patternInterventionMap: options.fastGatePatterns as any } : {}),
+        ...options.config?.fastGate
+      },
+      policy: {
+        ...options.policyConfig,
+        ...options.config?.policy
+      },
+      slowGate: {
+        ...(options.modelUrl ? { modelPath: options.modelUrl } : {}),
+        ...(options.minOutcomeConfidence !== undefined ? { confidenceThreshold: options.minOutcomeConfidence } : {}),
+        ...(options.enableSlowGate !== undefined ? { enabled: options.enableSlowGate } : {}),
+        ...options.config?.slowGate
+      },
+      experiment: {
+        ...(options.experimentId ? { experimentId: options.experimentId } : {}),
+        ...(options.conditionId ? { conditionId: options.conditionId } : {}),
+        ...options.config?.experiment
+      }
+    });
+
+    this.conditionId = this.config.experiment.conditionId;
+    this.adapter = options.adapter ?? new DefaultUiAdapter();
+    experimentRecorder.setTaskStateProvider(() => this.adapter.getTaskState?.());
+    experimentRecorder.setEffectiveConfig(this.config);
 
     this.collector = options.collector ?? defaultCollector;
     if (options.enableInstrumentation !== undefined) {
       this.collector.setEnabled(options.enableInstrumentation);
     }
 
-    this.observer = new TelemetryObserver();
-    this.windowBuffer = new RollingWindowBuffer({
-      emitInactiveWindows: true,
-      // Delay slot processing by exactly one stride so events arriving within the next
-      // stride can still fill the previous window. Processing immediately made a window
-      // holding fewer than `min_events_per_window` events permanently un-emittable.
-      flushDelayMs: PREPROCESSING_CONFIG.stride_ms
+    this.observer = new TelemetryObserver({
+      sampleIntervalMs: this.config.telemetry.sampleIntervalMs
     });
-    // A full trial can produce more than the default 100 macro interactions; the
-    // evaluation window and the PrefixSpan corpus both read from this history.
-    this.macroStream = new MacroInteractionStream({ maxCapacity: 400 });
+    this.windowBuffer = new RollingWindowBuffer({
+      windowDurationMs: this.config.windowing.windowDurationMs,
+      strideMs: this.config.windowing.strideMs,
+      minEventsPerWindow: this.config.windowing.minEventCount,
+      settlementDelayMs: this.config.windowing.settlementDelayMs,
+      emitInactiveWindows: this.config.windowing.emitInactiveWindows
+    });
+    this.macroStream = new MacroInteractionStream({
+      maxCapacity: this.config.macro.maxHistoryLength
+    });
     this.outcomeDeriver = new OutcomeDeriver();
 
     this.workerClient = new RuntimeWorkerClient({
       useFallback: options.forceInProcessWorker ?? false
     });
 
-    this.policy = new InterventionPolicy(options.policyConfig);
-    this.actuator = new UIActuator();
+    this.policy = new InterventionPolicy({
+      confidenceThreshold: this.config.policy.confidenceThreshold,
+      requiredConsecutiveWindows: this.config.policy.requiredConsecutiveWindows,
+      enforceContextEligibility: this.config.policy.enforceContextEligibility,
+      cooldownMs: this.config.policy.cooldownMs,
+      dismissalCooldownMs: this.config.policy.dismissalCooldownMs
+    });
+    this.actuator = new UIActuator({
+      defaultAssistanceText: this.config.actuation.defaultAssistanceText
+    });
 
     if (options.autoStart) {
       void this.start();
@@ -236,6 +254,10 @@ export class AdaptiveRuntime {
   public async start(): Promise<void> {
     if (this.running) return;
     this.running = true;
+
+    if (this.adapter.onInit) {
+      this.adapter.onInit(this);
+    }
 
     // 1. Establish session identity before any event is recorded.
     const session =
@@ -307,15 +329,20 @@ export class AdaptiveRuntime {
       this.observer.subscribe((event) => {
         this.handleBehaviourEvent(event);
 
-        // Bridge observed interactions into the experimental task state machine. Without
-        // this no task step could ever be satisfied. It lives here rather than in the
-        // dev-only diagnostics module so task tracking also works in a production build.
-        const taskAction = TASK_ACTION_BY_EVENT[event.type];
-        if (taskAction && event.componentId) {
-          taskManager.recordInteraction(event.componentId, taskAction);
+        // Bridge observed interactions into the UI adapter. Without this no task step
+        // could ever be satisfied. It lives here rather than in dev-only diagnostics
+        // so task tracking also works in a production build.
+        const taskAction = this.adapter.getTaskActionForEvent
+          ? this.adapter.getTaskActionForEvent(event.type)
+          : DEFAULT_TASK_ACTION_BY_EVENT[event.type];
+        if (taskAction && event.componentId && this.adapter.recordInteraction) {
+          this.adapter.recordInteraction(event.componentId, taskAction);
         }
-        if (event.type === 'navigation' && taskManager.getState().status === 'In Progress') {
-          taskManager.abandonTask('navigation');
+        if (event.type === 'navigation' && this.adapter.abandonTask) {
+          const currentStatus = this.adapter.getTaskState?.().status;
+          if (currentStatus === 'In Progress') {
+            this.adapter.abandonTask('navigation');
+          }
         }
       })
     );
@@ -332,7 +359,7 @@ export class AdaptiveRuntime {
         void this.workerClient.pushMacro(interaction).catch((err) => {
           console.error('[AdaptiveRuntime] Macro dispatch failed:', err);
         });
-        debugBus.update({ latestMacroSequence: this.macroStream.getRecentSymbols(6) });
+        debugBus.update({ latestMacroSequence: this.macroStream.getRecentSymbols(this.config.macro.maxRecentSymbols) });
       })
     );
 
@@ -343,25 +370,37 @@ export class AdaptiveRuntime {
 
     // 6. Reset adaptation state whenever the task changes (§25 P1) and record the
     //    task lifecycle into the trace so trials are observable (§6.2).
-    this.unsubscribers.push(
-      taskManager.subscribe((state) => {
-        this.policy.reset();
-        if (state.currentTaskId) {
-          sessionManager.setTaskId(state.currentTaskId);
-        }
-      })
-    );
+    if (this.adapter.onTaskStateChange) {
+      this.unsubscribers.push(
+        this.adapter.onTaskStateChange((state) => {
+          this.policy.reset();
+          if (state.currentTaskId) {
+            sessionManager.setTaskId(state.currentTaskId);
+          }
+        })
+      );
+    }
 
-    this.unsubscribers.push(
-      taskManager.onLifecycle((event) => {
-        experimentRecorder.recordTaskEvent({
-          ...event,
-          sessionId: sessionManager.getActiveSession()?.sessionId,
-          experimentId: this.options.experimentId,
-          conditionId: this.conditionId
-        });
-      })
-    );
+    if (this.adapter.onTaskLifecycle) {
+      this.unsubscribers.push(
+        this.adapter.onTaskLifecycle((event) => {
+          const taskSnapshot = this.adapter.getTaskState?.();
+          experimentRecorder.recordTaskEvent({
+            timestamp: event.timestamp,
+            type: event.type as any,
+            taskId: event.taskId,
+            taskStepId: event.taskStepId,
+            status: (event.status as any) ?? taskSnapshot?.status ?? 'Idle',
+            errors: event.errors ?? taskSnapshot?.errors ?? 0,
+            durationMs: event.durationMs,
+            reason: event.reason as any,
+            sessionId: sessionManager.getActiveSession()?.sessionId,
+            experimentId: this.options.experimentId,
+            conditionId: this.conditionId
+          });
+        })
+      );
+    }
 
     // 7. Start observation and the monotonic window driver.
     this.observer.start();
@@ -404,6 +443,15 @@ export class AdaptiveRuntime {
     this.streamEnded = false;
     this.processedWindowCount = 0;
     debugBus.update({ workerStatus: 'uninitialized' });
+
+    if (this.adapter.onDestroy) {
+      this.adapter.onDestroy();
+    }
+  }
+
+  /** Resolves the current UIContext using the injected adapter or default DOM queries. */
+  private resolveUIContext(): UIContext {
+    return this.adapter.getActiveContext ? this.adapter.getActiveContext() : getActiveUIContext();
   }
 
   /**
@@ -507,9 +555,9 @@ export class AdaptiveRuntime {
 
   private maybeEvaluate(): void {
     if (this.evaluating) return;
-    // The Slow Gate consumes a sequence of T=8 windows; evaluating before the
+    // The Slow Gate consumes a sequence of T=sequenceLength windows; evaluating before the
     // sequence exists would feed it a zero-padded tensor.
-    if (this.processedWindowCount < 8) return;
+    if (this.processedWindowCount < this.config.slowGate.sequenceLength) return;
 
     // Evaluating on a genuinely inactive window produces a prediction for silence,
     // which inflates the trace and wastes edge compute. Evaluate when either the
@@ -518,7 +566,7 @@ export class AdaptiveRuntime {
     const window = this.latestWindow;
     const hadActivity = Boolean(window && (window.eventCount ?? 0) > 0);
     const sinceLastEvaluation = getMonotonicTimestamp() - this.lastEvaluationMs;
-    if (!hadActivity && sinceLastEvaluation < IDLE_EVALUATION_INTERVAL_MS) {
+    if (!hadActivity && sinceLastEvaluation < this.config.windowing.inactivityThresholdMs) {
       return;
     }
 
@@ -531,11 +579,11 @@ export class AdaptiveRuntime {
     const start = this.lastEvaluationMs;
 
     try {
-      const uiContext: UIContext = getActiveUIContext();
+      const uiContext: UIContext = this.resolveUIContext();
       // Pass the fresh macro sequence explicitly. Relying on the worker's own macro
       // history made the Fast Gate evaluate a corpus that lagged the just-closed
       // window, so patterns that had only just become frequent were never matched.
-      const macroSequence = this.macroStream.getRecent(40);
+      const macroSequence = this.macroStream.getRecent(this.config.macro.recentSequenceLookback);
       const result: InferenceResult = await this.workerClient.evaluate(uiContext, macroSequence);
 
       experimentRecorder.recordPrediction({
@@ -689,14 +737,14 @@ export class AdaptiveRuntime {
   private flushPendingOutcomes(): void {
     if (this.pendingOutcomeWindows.length === 0) return;
 
-    const lookaheadMax = 1500;
+    const lookaheadMax = PIPELINE_CONFIG.target_generation.lookahead_horizon_ms[1];
     const now = getMonotonicTimestamp();
     const stillPending: MicroTensorWindow[] = [];
 
     for (const window of this.pendingOutcomeWindows) {
       const horizonEnd = window.windowEnd + lookaheadMax;
       const horizonCovered = this.coveredThroughMs >= horizonEnd;
-      const idleGraceExpired = now - horizonEnd >= PENDING_OUTCOME_GRACE_MS;
+      const idleGraceExpired = now - horizonEnd >= this.config.windowing.pendingOutcomeGraceMs;
 
       if (!horizonCovered && !idleGraceExpired) {
         stillPending.push(window);
@@ -738,15 +786,16 @@ export class AdaptiveRuntime {
    * 250 ms windows. Consecutive macro actions almost always fall in different windows
    * at that granularity, which would produce a corpus of single-symbol sequences and
    * make every multi-symbol pattern impossible to mine. A slot spans
-   * MACRO_SEQUENCE_SLOT_MS so an interaction episode (open filter, change region, apply)
+   * config.macro.groupingIntervalMs so an interaction episode (open filter, change region, apply)
    * forms one sequence.
    */
   public getMacroSequences(): string[][] {
     const all = this.macroStream.getRecent(this.macroStream.length);
     const bySlot = new Map<number, string[]>();
+    const slotDuration = this.config.macro.groupingIntervalMs;
 
     for (const interaction of all) {
-      const slot = Math.floor(interaction.timestamp / MACRO_SEQUENCE_SLOT_MS);
+      const slot = Math.floor(interaction.timestamp / slotDuration);
       const bucket = bySlot.get(slot) ?? [];
       bucket.push(interaction.symbol);
       bySlot.set(slot, bucket);
@@ -760,6 +809,11 @@ export class AdaptiveRuntime {
   // ==========================================================================
   // Introspection
   // ==========================================================================
+
+  /** Returns the effective resolved runtime configuration (ADR-012 / Task 4.2). */
+  public getConfig(): RuntimeConfig {
+    return this.config;
+  }
 
   public getStatus(): AdaptiveRuntimeStatus {
     const session = sessionManager.getActiveSession();
@@ -818,7 +872,12 @@ export class AdaptiveRuntime {
    * what a real target head consumes (assessment §15).
    */
   public getContextVector(): Float32Array {
-    return encodeUIContext(getActiveUIContext());
+    return encodeUIContext(this.resolveUIContext());
+  }
+
+  /** Returns the active UI adapter. */
+  public getAdapter(): UiAdapter {
+    return this.adapter;
   }
 
   /** Test seam: exposes the composed stages for direct exercise. */
