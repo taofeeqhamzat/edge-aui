@@ -1,6 +1,6 @@
 # ADR-011: UI Adapter / Generalisation Boundary
 
-- **Status:** Proposed — decision required
+- **Status:** Accepted (Option B — Named Adapter Interface / Ports, decided 2026-09-26)
 - **Date:** 2026-09-24
 - **Related:** ADR-003, ADR-004, ADR-009, ADR-012
 

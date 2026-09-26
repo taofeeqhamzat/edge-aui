@@ -1,6 +1,6 @@
 # ADR-012: Configurability Strategy
 
-- **Status:** Proposed — decision required
+- **Status:** Accepted (Option B — Two layers: shared synced schema + runtime config, decided 2026-09-26)
 - **Date:** 2026-09-24
 - **Related:** ADR-004, ADR-005, ADR-006, ADR-011
 
