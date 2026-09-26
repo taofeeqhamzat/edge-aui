@@ -8,6 +8,7 @@
 import { OutcomeType } from '../../telemetry/events';
 import { InterventionCommand, InterventionType, isInterventionType } from '../../intervention/types';
 import { SlowGate, SlowGateInput, SlowGateResult } from './types';
+import { defaultCollector } from '../../runtime/instrumentation';
 
 export interface MockSlowGateOptions {
   outcome?: OutcomeType;
@@ -43,39 +44,41 @@ export class MockSlowGate implements SlowGate {
    * Evaluates the tensor sequence and active UI context.
    */
   public async infer(input: SlowGateInput): Promise<SlowGateResult> {
-    this.lastInput = input;
+    return defaultCollector.timeAsync('ONNX inference', 'model', async () => {
+      this.lastInput = input;
 
-    if (this.validateShape) {
-      this.assertValidShape(input);
-    }
-
-    if (this.delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, this.delayMs));
-    }
-
-    if (this.predicate) {
-      const conditionMet = await this.predicate(input);
-      if (!conditionMet) {
-        return {
-          outcome: 'NO_OUTCOME',
-          confidence: 0,
-          source: 'slow'
-        };
+      if (this.validateShape) {
+        this.assertValidShape(input);
       }
-    }
 
-    let candidateIntervention: InterventionCommand | undefined;
-    if (this.intervention) {
-      candidateIntervention = this.createIntervention(this.intervention, input);
-    }
+      if (this.delayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, this.delayMs));
+      }
 
-    return {
-      outcome: this.outcome,
-      confidence: this.confidence,
-      probabilities: this.probabilities,
-      intervention: candidateIntervention,
-      source: 'slow'
-    };
+      if (this.predicate) {
+        const conditionMet = await this.predicate(input);
+        if (!conditionMet) {
+          return {
+            outcome: 'NO_OUTCOME',
+            confidence: 0,
+            source: 'slow'
+          };
+        }
+      }
+
+      let candidateIntervention: InterventionCommand | undefined;
+      if (this.intervention) {
+        candidateIntervention = this.createIntervention(this.intervention, input);
+      }
+
+      return {
+        outcome: this.outcome,
+        confidence: this.confidence,
+        probabilities: this.probabilities,
+        intervention: candidateIntervention,
+        source: 'slow'
+      };
+    });
   }
 
   /**

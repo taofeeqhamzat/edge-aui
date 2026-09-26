@@ -22,6 +22,16 @@ export interface RuntimeDiagnosticsHandle {
   macroSequences: () => string[][];
   /** The most recent gate decision, for live inspection. */
   lastDecision: () => unknown;
+  /** Granular timing records per stage and side. */
+  timingRecords: () => ReturnType<AdaptiveRuntime['getTimingRecords']>;
+  /** Summary timing stats aggregated per stage and side. */
+  timings: () => ReturnType<AdaptiveRuntime['getTimingSummary']>;
+  /** Clear collected timing records and statistics. */
+  clearTimings: () => void;
+  /** Toggles runtime instrumentation on or off. */
+  setInstrumentationEnabled: (enabled: boolean) => void;
+  /** Queries whether instrumentation is enabled. */
+  isInstrumentationEnabled: () => boolean;
   stop: () => void;
 }
 
@@ -56,6 +66,11 @@ export function startRuntimeDiagnostics(
     trace: () => experimentRecorder.exportJSON(),
     macroSequences: () => runtime.getMacroSequences(),
     lastDecision: () => runtime.getLastGateDecision(),
+    timingRecords: () => runtime.getTimingRecords(),
+    timings: () => runtime.getTimingSummary(),
+    clearTimings: () => runtime.clearTimings(),
+    setInstrumentationEnabled: (enabled: boolean) => runtime.setInstrumentationEnabled(enabled),
+    isInstrumentationEnabled: () => runtime.isInstrumentationEnabled(),
     stop: () => {
       window.clearInterval(timer);
       if (activeHandle === handle) {
@@ -68,7 +83,8 @@ export function startRuntimeDiagnostics(
     const status = runtime.getStatus();
     debugBus.update({
       workerStatus: status.running ? 'ready' : 'uninitialized',
-      latestMacroSequence: undefined
+      latestMacroSequence: undefined,
+      stageTimings: runtime.getTimingSummary()
     });
   }, intervalMs);
 

@@ -25,6 +25,7 @@ import {
 import { computeWindowMicroTensor, ComputeMicroTensorOptions } from './features';
 import { PREPROCESSING_CONFIG } from '../config/pipelineConfig';
 import { getGeometrySnapshot } from '../telemetry/normalizer';
+import { defaultCollector } from '../runtime/instrumentation';
 
 export type WindowListener = (window: MicroTensorWindow) => void;
 
@@ -100,36 +101,38 @@ export class RollingWindowBuffer {
    * timestamp-deterministic and does not depend on arrival jitter (assessment §9).
    */
   public push(event: BehaviourEvent): void {
-    if (this.lastWindowEnd !== null && this.maxObservedTime >= this.lastWindowEnd + this.strideMs) {
-      if (event.timestamp < this.lastWindowEnd + this.strideMs) {
-        (event as unknown as { _delayedArrival?: boolean })._delayedArrival = true;
+    defaultCollector.timeSync('window assignment', 'main', () => {
+      if (this.lastWindowEnd !== null && this.maxObservedTime >= this.lastWindowEnd + this.strideMs) {
+        if (event.timestamp < this.lastWindowEnd + this.strideMs) {
+          (event as unknown as { _delayedArrival?: boolean })._delayedArrival = true;
+        }
       }
-    }
-    this.maxObservedTime = Math.max(this.maxObservedTime, event.timestamp);
+      this.maxObservedTime = Math.max(this.maxObservedTime, event.timestamp);
 
-    const last = this.events[this.events.length - 1];
-    if (!last || event.timestamp >= last.timestamp) {
-      this.events.push(event);
-    } else {
-      let insertAt = this.events.length - 1;
-      while (insertAt > 0 && this.events[insertAt - 1].timestamp > event.timestamp) {
-        insertAt--;
+      const last = this.events[this.events.length - 1];
+      if (!last || event.timestamp >= last.timestamp) {
+        this.events.push(event);
+      } else {
+        let insertAt = this.events.length - 1;
+        while (insertAt > 0 && this.events[insertAt - 1].timestamp > event.timestamp) {
+          insertAt--;
+        }
+        this.events.splice(insertAt, 0, event);
       }
-      this.events.splice(insertAt, 0, event);
-    }
 
-    // Enforce capacity bound to preserve memory (< 20MB budget)
-    if (this.events.length > this.maxEventCapacity) {
-      this.events.shift();
-    }
+      // Enforce capacity bound to preserve memory (< 20MB budget)
+      if (this.events.length > this.maxEventCapacity) {
+        this.events.shift();
+      }
 
-    // Anchor the grid at the first observed event only until the grid has been
-    // established by an explicit anchor() or by the first tick(). Without this guard a
-    // late-arriving event could silently re-anchor the whole window grid.
-    if (this.lastWindowEnd === null && !this.gridEstablished) {
-      this.gridEstablished = true;
-      this.anchor(event.timestamp);
-    }
+      // Anchor the grid at the first observed event only until the grid has been
+      // established by an explicit anchor() or by the first tick(). Without this guard a
+      // late-arriving event could silently re-anchor the whole window grid.
+      if (this.lastWindowEnd === null && !this.gridEstablished) {
+        this.gridEstablished = true;
+        this.anchor(event.timestamp);
+      }
+    });
   }
 
   /**
@@ -273,12 +276,18 @@ export class RollingWindowBuffer {
   ): MicroTensorWindow {
     const geometry = this.resolveGeometry(windowEvents);
 
-    const tensorValues = computeWindowMicroTensor(windowEvents, {
-      windowDurationMs: tensorSpanMs,
-      modalitySupport: this.modalitySupport,
-      viewport: geometry.viewport,
-      document: geometry.document
-    });
+    const tensorValues = defaultCollector.timeSync(
+      'MicroTensor extraction',
+      'main',
+      () =>
+        computeWindowMicroTensor(windowEvents, {
+          windowDurationMs: tensorSpanMs,
+          modalitySupport: this.modalitySupport,
+          viewport: geometry.viewport,
+          document: geometry.document
+        }),
+      { windowId: this.windowIdCounter }
+    );
 
     return {
       windowId: this.windowIdCounter++,

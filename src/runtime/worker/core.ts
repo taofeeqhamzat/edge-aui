@@ -29,6 +29,7 @@ import {
   FastGateMode,
   SlowGateMode
 } from '../messages';
+import { defaultCollector } from '../instrumentation';
 
 export class RuntimeWorkerCore {
   private sequenceBuilder: SequenceBuilder;
@@ -91,7 +92,8 @@ export class RuntimeWorkerCore {
         getSequences: () => this.getMacroSequences(),
         minSupport: this.minPatternSupport,
         minConfidence: this.minPatternConfidence,
-        resolveIntervention: (patternKey) => this.fastGatePatterns[patternKey] ?? null
+        resolveIntervention: (patternKey) => this.fastGatePatterns[patternKey] ?? null,
+        mine: async (sequences, minSupport) => (await this.minePatterns(sequences, minSupport)) ?? []
       });
     }
 
@@ -129,13 +131,15 @@ export class RuntimeWorkerCore {
     sequences: string[][],
     minSupport: number
   ): Promise<{ pattern: string[]; support: number; confidence: number }[] | null> {
-    try {
-      const { minePatternsDirect } = await import('../../gates/fast/prefixSpanMiner');
-      return await minePatternsDirect(sequences, minSupport);
-    } catch (err) {
-      console.error('[RuntimeWorkerCore] In-worker pattern mining failed:', err);
-      return null;
-    }
+    return defaultCollector.timeAsync('PrefixSpan mining', 'wasm', async () => {
+      try {
+        const { minePatternsDirect } = await import('../../gates/fast/prefixSpanMiner');
+        return await minePatternsDirect(sequences, minSupport);
+      } catch (err) {
+        console.error('[RuntimeWorkerCore] In-worker pattern mining failed:', err);
+        return null;
+      }
+    });
   }
 
   /** Rebuilds the Fast Gate after the declared pattern map changes. */
@@ -147,6 +151,8 @@ export class RuntimeWorkerCore {
    * Processes a structured worker request and returns the typed worker response.
    */
   public async handleRequest(request: RuntimeWorkerRequest): Promise<RuntimeWorkerResponse> {
+    const recordsBefore = defaultCollector.getRecords().length;
+    let response: RuntimeWorkerResponse;
     try {
       switch (request.type) {
         case 'INIT': {
@@ -178,7 +184,7 @@ export class RuntimeWorkerCore {
             enableSlowGate: request.payload?.enableSlowGate ?? true
           });
 
-          return {
+          response = {
             id: request.id,
             type: 'INIT_OK',
             success: true,
@@ -190,6 +196,7 @@ export class RuntimeWorkerCore {
               modelLoaded: this.modelLoaded
             }
           };
+          break;
         }
 
         case 'PUSH_WINDOW': {
@@ -203,9 +210,11 @@ export class RuntimeWorkerCore {
             inactive
           };
 
-          this.sequenceBuilder.push(window);
+          defaultCollector.timeSync('window assignment', 'worker', () => {
+            this.sequenceBuilder.push(window);
+          }, { windowId });
 
-          return {
+          response = {
             id: request.id,
             type: 'WINDOW_PROCESSED',
             success: true,
@@ -214,6 +223,7 @@ export class RuntimeWorkerCore {
               isFull: this.sequenceBuilder.isFull()
             }
           };
+          break;
         }
 
         case 'PUSH_MACRO': {
@@ -223,7 +233,7 @@ export class RuntimeWorkerCore {
             this.macroHistory.shift();
           }
 
-          return {
+          response = {
             id: request.id,
             type: 'MACRO_PROCESSED',
             success: true,
@@ -231,6 +241,7 @@ export class RuntimeWorkerCore {
               macroCount: this.macroHistory.length
             }
           };
+          break;
         }
 
         case 'EVALUATE': {
@@ -245,7 +256,7 @@ export class RuntimeWorkerCore {
             uiContext: request.payload.uiContext
           });
 
-          return {
+          response = {
             id: request.id,
             type: 'EVALUATION_RESULT',
             success: true,
@@ -263,13 +274,14 @@ export class RuntimeWorkerCore {
               }
             }
           };
+          break;
         }
 
         case 'MINE_PATTERNS': {
           const { sequences, minSupport } = request.payload;
           const mined = await this.minePatterns(sequences, minSupport);
 
-          return {
+          response = {
             id: request.id,
             type: 'MINE_RESULT',
             success: true,
@@ -278,6 +290,7 @@ export class RuntimeWorkerCore {
               minerAvailable: mined !== null
             }
           };
+          break;
         }
 
         case 'RESET': {
@@ -285,15 +298,16 @@ export class RuntimeWorkerCore {
           this.macroHistory = [];
           resetOnnxSlowGateSession();
 
-          return {
+          response = {
             id: request.id,
             type: 'RESET_OK',
             success: true
           };
+          break;
         }
 
         case 'PING': {
-          return {
+          response = {
             id: request.id,
             type: 'PONG',
             success: true,
@@ -301,10 +315,11 @@ export class RuntimeWorkerCore {
               timestamp: Date.now()
             }
           };
+          break;
         }
 
         default:
-          return {
+          response = {
             id: (request as any).id,
             type: 'ERROR',
             success: false,
@@ -312,13 +327,19 @@ export class RuntimeWorkerCore {
           };
       }
     } catch (err) {
-      return {
+      response = {
         id: request.id,
         type: 'ERROR',
         success: false,
         error: err instanceof Error ? err.message : String(err)
       };
     }
+
+    const newRecords = defaultCollector.getRecords().slice(recordsBefore);
+    if (newRecords.length > 0) {
+      response.timings = newRecords;
+    }
+    return response;
   }
 
   public getSequenceBuilder(): SequenceBuilder {

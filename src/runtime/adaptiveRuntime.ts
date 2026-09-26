@@ -35,9 +35,12 @@ import { RollingWindowBuffer } from '../microtensor/window';
 import { MacroInteractionStream } from '../macro/sequence';
 import { OutcomeDeriver } from '../outcome/derive';
 import { RuntimeWorkerClient } from '../runtime/workerClient';
-import { AdaptiveInferenceEngine } from '../gates/arbitration';
-import { PrefixSpanFastGate } from '../gates/fast/prefixSpanFastGate';
-import { MockSlowGate } from '../gates/slow/mockSlowGate';
+import {
+  InstrumentationCollector,
+  defaultCollector,
+  StageTimingRecord,
+  StageTimingStats
+} from './instrumentation';
 import { InterventionPolicy, PolicyConfig } from '../intervention/policy';
 import { UIActuator } from '../intervention/actuator';
 import { experimentRecorder } from '../telemetry/recorder';
@@ -126,6 +129,10 @@ export interface AdaptiveRuntimeOptions {
   forceInProcessWorker?: boolean;
   /** Auto-start on construction. Default false; call start(). */
   autoStart?: boolean;
+  /** Toggle runtime stage timing instrumentation. Defaults to true. */
+  enableInstrumentation?: boolean;
+  /** Custom instrumentation collector instance. Defaults to defaultCollector. */
+  collector?: InstrumentationCollector;
 }
 
 export interface AdaptiveRuntimeStatus {
@@ -143,6 +150,8 @@ export interface AdaptiveRuntimeStatus {
   /** The execution provider that actually served the model session. */
   executionProvider: string;
   modelLoaded: boolean;
+  instrumentationEnabled: boolean;
+  timingSummary?: Record<string, StageTimingStats>;
 }
 
 export class AdaptiveRuntime {
@@ -151,7 +160,7 @@ export class AdaptiveRuntime {
   private macroStream: MacroInteractionStream;
   private outcomeDeriver: OutcomeDeriver;
   private workerClient: RuntimeWorkerClient;
-  private inferenceEngine: AdaptiveInferenceEngine;
+  private collector: InstrumentationCollector;
   private policy: InterventionPolicy;
   private actuator: UIActuator;
 
@@ -190,6 +199,11 @@ export class AdaptiveRuntime {
     this.options = options;
     this.conditionId = options.conditionId ?? 'adaptive';
 
+    this.collector = options.collector ?? defaultCollector;
+    if (options.enableInstrumentation !== undefined) {
+      this.collector.setEnabled(options.enableInstrumentation);
+    }
+
     this.observer = new TelemetryObserver();
     this.windowBuffer = new RollingWindowBuffer({
       emitInactiveWindows: true,
@@ -205,19 +219,6 @@ export class AdaptiveRuntime {
 
     this.workerClient = new RuntimeWorkerClient({
       useFallback: options.forceInProcessWorker ?? false
-    });
-
-    this.inferenceEngine = new AdaptiveInferenceEngine({
-      fastGate: new PrefixSpanFastGate({
-        getSequences: () => this.getMacroSequences(),
-        minSupport: options.minPatternSupport ?? 2,
-        resolveIntervention: options.fastGatePatterns
-          ? (patternKey) => options.fastGatePatterns?.[patternKey] ?? null
-          : () => null
-      }),
-      slowGate: options.enableSlowGate === false ? undefined : new MockSlowGate(),
-      enableFastGate: true,
-      enableSlowGate: options.enableSlowGate !== false
     });
 
     this.policy = new InterventionPolicy(options.policyConfig);
@@ -775,7 +776,9 @@ export class AdaptiveRuntime {
       lastWindowId: this.latestWindowId,
       slowGateMode: this.slowGateMode ?? this.resolveSlowGateMode(),
       executionProvider: this.executionProvider,
-      modelLoaded: this.modelLoaded
+      modelLoaded: this.modelLoaded,
+      instrumentationEnabled: this.collector.isEnabled(),
+      timingSummary: this.collector.getSummary()
     };
   }
 
@@ -785,6 +788,29 @@ export class AdaptiveRuntime {
 
   public getCondition(): ExperimentalCondition {
     return this.conditionId;
+  }
+
+  public getTimingRecords(): StageTimingRecord[] {
+    return this.collector.getRecords();
+  }
+
+  public getTimingSummary(): Record<string, StageTimingStats> {
+    return this.collector.getSummary();
+  }
+
+  /** Clears stored timing records and statistics in the collector. */
+  public clearTimings(): void {
+    this.collector.clear();
+  }
+
+  /** Dynamically toggles stage instrumentation collection. */
+  public setInstrumentationEnabled(enabled: boolean): void {
+    this.collector.setEnabled(enabled);
+  }
+
+  /** Returns whether stage instrumentation collection is currently active. */
+  public isInstrumentationEnabled(): boolean {
+    return this.collector.isEnabled();
   }
 
   /**
@@ -801,18 +827,20 @@ export class AdaptiveRuntime {
     windowBuffer: RollingWindowBuffer;
     macroStream: MacroInteractionStream;
     outcomeDeriver: OutcomeDeriver;
-    inferenceEngine: AdaptiveInferenceEngine;
+    workerClient: RuntimeWorkerClient;
     policy: InterventionPolicy;
     actuator: UIActuator;
+    collector: InstrumentationCollector;
   } {
     return {
       observer: this.observer,
       windowBuffer: this.windowBuffer,
       macroStream: this.macroStream,
       outcomeDeriver: this.outcomeDeriver,
-      inferenceEngine: this.inferenceEngine,
+      workerClient: this.workerClient,
       policy: this.policy,
-      actuator: this.actuator
+      actuator: this.actuator,
+      collector: this.collector
     };
   }
 }

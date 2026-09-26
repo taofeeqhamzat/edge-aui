@@ -3,6 +3,8 @@
  * Implements Stage 10.2 decoupled telemetry broadcasting without external dependencies.
  */
 
+import { StageTimingStats } from '../runtime/instrumentation';
+
 export interface LiveDebugMetrics {
   sessionTimestamp?: number;
   latestMicroTensor?: number[];
@@ -36,6 +38,8 @@ export interface LiveDebugMetrics {
   modelLoaded?: boolean;
   /** Counters published by the runtime composition. */
   runtimeCounters?: Record<string, number>;
+  /** Stage timing aggregates by stage and thread side. */
+  stageTimings?: Record<string, StageTimingStats>;
 }
 
 type DebugListener = (metrics: LiveDebugMetrics) => void;

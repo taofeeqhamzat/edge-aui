@@ -298,6 +298,23 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
                 {liveMetrics.workerStatus ?? "uninitialized"}
               </span>
             </div>
+            {liveMetrics.stageTimings && Object.keys(liveMetrics.stageTimings).length > 0 && (
+              <div style={{ marginTop: '8px', borderTop: '1px solid #334155', paddingTop: '6px' }}>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>
+                  Stage Timings (Mean / p95):
+                </div>
+                {Object.values(liveMetrics.stageTimings).map((stat) => (
+                  <div key={`${stat.stage}:${stat.side}`} className="edge-aui-debug-row" style={{ fontSize: '11px' }}>
+                    <span className="edge-aui-debug-label" style={{ minWidth: '160px' }}>
+                      {stat.stage} [{stat.side}]:
+                    </span>
+                    <span className="edge-aui-debug-val">
+                      {stat.meanMs.toFixed(3)} ms / {stat.p95Ms.toFixed(3)} ms ({stat.count})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Priority 4: Macro Interaction Sequence */}

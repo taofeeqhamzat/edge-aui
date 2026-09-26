@@ -44,6 +44,7 @@ export * from './runtime/adaptiveRuntime.js';
 export * from './runtime/boot.js';
 export * from './runtime/messages.js';
 export * from './runtime/workerClient.js';
+export * from './runtime/instrumentation.js';
 
 // Configuration and UI context
 export * from './config/pipelineConfig.js';

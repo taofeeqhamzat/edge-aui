@@ -16,6 +16,7 @@ import {
   InterventionType,
   createNoOpCommand
 } from './types';
+import { defaultCollector } from '../runtime/instrumentation';
 
 export interface PolicyConfig {
   /**
@@ -84,114 +85,116 @@ export class InterventionPolicy {
    * Evaluates candidate InterventionCommand against confidence, context, and persistence gates.
    */
   public accept(command: InterventionCommand, context: UIContext): PolicyDecision {
-    // 1. Task change detection: Automatically reset candidate state if task switched
-    if (this.lastTaskId !== undefined && context.taskId !== this.lastTaskId) {
-      this.reset();
-    }
-    this.lastTaskId = context.taskId;
+    return defaultCollector.timeSync('policy evaluation', 'main', () => {
+      // 1. Task change detection: Automatically reset candidate state if task switched
+      if (this.lastTaskId !== undefined && context.taskId !== this.lastTaskId) {
+        this.reset();
+      }
+      this.lastTaskId = context.taskId;
 
-    // 2. Safe default no_op: Always accepted, resets active candidate
-    if (command.type === 'no_op') {
-      this.resetCandidate();
-      return {
-        accepted: true,
-        command,
-        reason: 'Safe default no_op maintained',
-        candidateCount: 0
-      };
-    }
-
-    // 3. Cooldown Gate: suppress re-actuation during the refractory period
-    const now = Date.now();
-    if (this.cooldownUntilMs > now) {
-      return {
-        accepted: false,
-        command: createNoOpCommand(
-          command.source,
-          `Cooldown active for ${this.cooldownUntilMs - now}ms`
-        ),
-        reason: `Cooldown active (${this.cooldownUntilMs - now}ms remaining)`,
-        candidateCount: 0
-      };
-    }
-
-    // 4. Per-type dismissal feedback: a dismissed intervention is suppressed for longer
-    const dismissedUntil = this.dismissedUntilMs.get(command.type);
-    if (dismissedUntil !== undefined && dismissedUntil > now) {
-      return {
-        accepted: false,
-        command: createNoOpCommand(
-          command.source,
-          `Intervention '${command.type}' was recently dismissed`
-        ),
-        reason: `Suppressed after dismissal (${dismissedUntil - now}ms remaining)`,
-        candidateCount: 0
-      };
-    }
-
-    // 5. Confidence Threshold Gate
-    if (command.confidence !== undefined && command.confidence < this.config.confidenceThreshold) {
-      this.resetCandidate();
-      return {
-        accepted: false,
-        command: createNoOpCommand(
-          command.source,
-          `Confidence (${command.confidence.toFixed(2)}) below threshold (${this.config.confidenceThreshold})`
-        ),
-        reason: `Confidence ${command.confidence.toFixed(2)} below threshold ${this.config.confidenceThreshold}`,
-        candidateCount: 0
-      };
-    }
-
-    // 6. UI Context Eligibility Gate
-    if (this.config.enforceContextEligibility) {
-      const eligibility = this.checkContextEligibility(command, context);
-      if (!eligibility.eligible) {
+      // 2. Safe default no_op: Always accepted, resets active candidate
+      if (command.type === 'no_op') {
         this.resetCandidate();
         return {
-          accepted: false,
-          command: createNoOpCommand(command.source, eligibility.reason),
-          reason: eligibility.reason,
+          accepted: true,
+          command,
+          reason: 'Safe default no_op maintained',
           candidateCount: 0
         };
       }
-    }
 
-    // 7. Consecutive Window Persistence Gate
-    const isSameCandidate =
-      this.candidateType === command.type &&
-      this.candidateTarget === command.targetComponentId;
+      // 3. Cooldown Gate: suppress re-actuation during the refractory period
+      const now = Date.now();
+      if (this.cooldownUntilMs > now) {
+        return {
+          accepted: false,
+          command: createNoOpCommand(
+            command.source,
+            `Cooldown active for ${this.cooldownUntilMs - now}ms`
+          ),
+          reason: `Cooldown active (${this.cooldownUntilMs - now}ms remaining)`,
+          candidateCount: 0
+        };
+      }
 
-    if (isSameCandidate) {
-      this.candidateCount++;
-    } else {
-      this.candidateType = command.type;
-      this.candidateTarget = command.targetComponentId;
-      this.candidateCount = 1;
-    }
+      // 4. Per-type dismissal feedback: a dismissed intervention is suppressed for longer
+      const dismissedUntil = this.dismissedUntilMs.get(command.type);
+      if (dismissedUntil !== undefined && dismissedUntil > now) {
+        return {
+          accepted: false,
+          command: createNoOpCommand(
+            command.source,
+            `Intervention '${command.type}' was recently dismissed`
+          ),
+          reason: `Suppressed after dismissal (${dismissedUntil - now}ms remaining)`,
+          candidateCount: 0
+        };
+      }
 
-    if (this.candidateCount >= this.config.requiredConsecutiveWindows) {
-      // Enter the cooldown window so the same adaptation is not re-applied on every
-      // subsequent window.
-      this.cooldownUntilMs = now + this.config.cooldownMs;
+      // 5. Confidence Threshold Gate
+      if (command.confidence !== undefined && command.confidence < this.config.confidenceThreshold) {
+        this.resetCandidate();
+        return {
+          accepted: false,
+          command: createNoOpCommand(
+            command.source,
+            `Confidence (${command.confidence.toFixed(2)}) below threshold (${this.config.confidenceThreshold})`
+          ),
+          reason: `Confidence ${command.confidence.toFixed(2)} below threshold ${this.config.confidenceThreshold}`,
+          candidateCount: 0
+        };
+      }
+
+      // 6. UI Context Eligibility Gate
+      if (this.config.enforceContextEligibility) {
+        const eligibility = this.checkContextEligibility(command, context);
+        if (!eligibility.eligible) {
+          this.resetCandidate();
+          return {
+            accepted: false,
+            command: createNoOpCommand(command.source, eligibility.reason),
+            reason: eligibility.reason,
+            candidateCount: 0
+          };
+        }
+      }
+
+      // 7. Consecutive Window Persistence Gate
+      const isSameCandidate =
+        this.candidateType === command.type &&
+        this.candidateTarget === command.targetComponentId;
+
+      if (isSameCandidate) {
+        this.candidateCount++;
+      } else {
+        this.candidateType = command.type;
+        this.candidateTarget = command.targetComponentId;
+        this.candidateCount = 1;
+      }
+
+      if (this.candidateCount >= this.config.requiredConsecutiveWindows) {
+        // Enter the cooldown window so the same adaptation is not re-applied on every
+        // subsequent window.
+        this.cooldownUntilMs = now + this.config.cooldownMs;
+        return {
+          accepted: true,
+          command,
+          reason: `Candidate met persistence requirement (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
+          candidateCount: this.candidateCount
+        };
+      }
+
+      // Not yet persisted through enough consecutive windows
       return {
-        accepted: true,
-        command,
-        reason: `Candidate met persistence requirement (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
+        accepted: false,
+        command: createNoOpCommand(
+          command.source,
+          `Awaiting consecutive window persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`
+        ),
+        reason: `Transient recommendation pending persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
         candidateCount: this.candidateCount
       };
-    }
-
-    // Not yet persisted through enough consecutive windows
-    return {
-      accepted: false,
-      command: createNoOpCommand(
-        command.source,
-        `Awaiting consecutive window persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`
-      ),
-      reason: `Transient recommendation pending persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
-      candidateCount: this.candidateCount
-    };
+    });
   }
 
   /**

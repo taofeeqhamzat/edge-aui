@@ -7,6 +7,7 @@
 import { BehaviourEvent, MacroInteraction, ExperimentalCondition } from '../telemetry/events';
 import { experimentRecorder } from '../telemetry/recorder';
 import { deriveMacroSymbol } from './symbols';
+import { defaultCollector } from '../runtime/instrumentation';
 
 export type MacroInteractionListener = (interaction: MacroInteraction) => void;
 
@@ -55,25 +56,27 @@ export class MacroInteractionStream {
    * Records a validated MacroInteraction token into the bounded history.
    */
   public record(interaction: MacroInteraction): void {
-    const enriched: MacroInteraction = {
-      ...interaction,
-      sessionId: interaction.sessionId ?? this.context.sessionId,
-      experimentId: interaction.experimentId ?? this.context.experimentId,
-      conditionId: interaction.conditionId ?? this.context.conditionId,
-      windowId: interaction.windowId ?? this.windowIdProvider?.()
-    };
+    defaultCollector.timeSync('macro sequence construction', 'main', () => {
+      const enriched: MacroInteraction = {
+        ...interaction,
+        sessionId: interaction.sessionId ?? this.context.sessionId,
+        experimentId: interaction.experimentId ?? this.context.experimentId,
+        conditionId: interaction.conditionId ?? this.context.conditionId,
+        windowId: interaction.windowId ?? this.windowIdProvider?.()
+      };
 
-    this.buffer.push(enriched);
+      this.buffer.push(enriched);
 
-    if (this.buffer.length > this.maxCapacity) {
-      this.buffer.shift();
-    }
+      if (this.buffer.length > this.maxCapacity) {
+        this.buffer.shift();
+      }
 
-    if (this.autoRecordToTrace) {
-      experimentRecorder.recordMacroInteraction(enriched);
-    }
+      if (this.autoRecordToTrace) {
+        experimentRecorder.recordMacroInteraction(enriched);
+      }
 
-    this.emit(enriched);
+      this.emit(enriched);
+    });
   }
 
   /**

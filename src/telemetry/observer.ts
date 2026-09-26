@@ -17,6 +17,7 @@ import {
   getGeometrySnapshot
 } from './normalizer';
 import { getActiveUIContext } from './contextProvider';
+import { defaultCollector } from '../runtime/instrumentation';
 
 export type TelemetryEventListener = (event: BehaviourEvent) => void;
 
@@ -195,9 +196,18 @@ export class TelemetryObserver {
       fn: EventListenerOrEventListenerObject,
       opts: AddEventListenerOptions | boolean
     ) => {
-      el.addEventListener(type, fn, opts);
+      const wrappedFn = (e: Event) => {
+        defaultCollector.timeSync('event capture', 'main', () => {
+          if (typeof fn === 'function') {
+            fn(e);
+          } else {
+            fn.handleEvent(e);
+          }
+        });
+      };
+      el.addEventListener(type, wrappedFn, opts);
       this.unbindHandlers.push(() => {
-        el.removeEventListener(type, fn, opts);
+        el.removeEventListener(type, wrappedFn, opts);
       });
     };
 
@@ -270,130 +280,140 @@ export class TelemetryObserver {
   }
 
   private recordPointerEvent(type: BehaviourEventType, e: MouseEvent): void {
-    const coords = normalizeCoordinates(
-      e.clientX,
-      e.clientY,
-      this.cachedViewport.width,
-      this.cachedViewport.height
-    );
+    defaultCollector.timeSync('event normalisation', 'main', () => {
+      const coords = normalizeCoordinates(
+        e.clientX,
+        e.clientY,
+        this.cachedViewport.width,
+        this.cachedViewport.height
+      );
 
-    const elemMeta = this.extractElementMetadata(e.target);
-    const uiContext = getActiveUIContext({ targetElement: e.target as Element });
-    const geometry = this.captureGeometry();
+      const elemMeta = this.extractElementMetadata(e.target);
+      const uiContext = getActiveUIContext({ targetElement: e.target as Element });
+      const geometry = this.captureGeometry();
 
-    const event: BehaviourEvent = {
-      timestamp: getMonotonicTimestamp(),
-      type,
-      x: coords.x,
-      y: coords.y,
-      componentId: elemMeta.componentId ?? uiContext.activeComponentId,
-      componentRole: elemMeta.componentRole ?? uiContext.componentRole,
-      action: elemMeta.action ?? (type === 'click' ? 'click' : type === 'mouseover' ? 'hover' : undefined),
-      route: uiContext.route,
-      taskId: uiContext.taskId,
-      taskStepId: uiContext.taskStepId,
-      targetTag: elemMeta.targetTag,
-      viewport: geometry.viewport,
-      document: geometry.document
-    };
+      const event: BehaviourEvent = {
+        timestamp: getMonotonicTimestamp(),
+        type,
+        x: coords.x,
+        y: coords.y,
+        componentId: elemMeta.componentId ?? uiContext.activeComponentId,
+        componentRole: elemMeta.componentRole ?? uiContext.componentRole,
+        action: elemMeta.action ?? (type === 'click' ? 'click' : type === 'mouseover' ? 'hover' : undefined),
+        route: uiContext.route,
+        taskId: uiContext.taskId,
+        taskStepId: uiContext.taskStepId,
+        targetTag: elemMeta.targetTag,
+        viewport: geometry.viewport,
+        document: geometry.document
+      };
 
-    this.emit(event);
+      this.emit(event);
+    });
   }
 
   private recordScrollEvent(sourceType: 'scroll' | 'wheel' = 'scroll'): void {
-    const bounds = getDocumentScrollBounds();
-    const normScroll = normalizeScroll(
-      bounds.scrollX,
-      bounds.scrollY,
-      bounds.scrollableWidth,
-      bounds.scrollableHeight
-    );
+    defaultCollector.timeSync('event normalisation', 'main', () => {
+      const bounds = getDocumentScrollBounds();
+      const normScroll = normalizeScroll(
+        bounds.scrollX,
+        bounds.scrollY,
+        bounds.scrollableWidth,
+        bounds.scrollableHeight
+      );
 
-    const uiContext = getActiveUIContext();
-    const geometry = this.captureGeometry();
+      const uiContext = getActiveUIContext();
+      const geometry = this.captureGeometry();
 
-    const event: BehaviourEvent = {
-      timestamp: getMonotonicTimestamp(),
-      type: sourceType,
-      scrollX: normScroll.scrollX,
-      scrollY: normScroll.scrollY,
-      scrollTopPx: bounds.scrollY,
-      action: sourceType,
-      route: uiContext.route,
-      taskId: uiContext.taskId,
-      taskStepId: uiContext.taskStepId,
-      viewport: geometry.viewport,
-      document: geometry.document
-    };
+      const event: BehaviourEvent = {
+        timestamp: getMonotonicTimestamp(),
+        type: sourceType,
+        scrollX: normScroll.scrollX,
+        scrollY: normScroll.scrollY,
+        scrollTopPx: bounds.scrollY,
+        action: sourceType,
+        route: uiContext.route,
+        taskId: uiContext.taskId,
+        taskStepId: uiContext.taskStepId,
+        viewport: geometry.viewport,
+        document: geometry.document
+      };
 
-    this.emit(event);
+      this.emit(event);
+    });
   }
 
   private recordFormEvent(type: 'input' | 'change' | 'submit', e: Event): void {
-    const elemMeta = this.extractElementMetadata(e.target);
-    const uiContext = getActiveUIContext({ targetElement: e.target as Element });
-    const geometry = this.captureGeometry();
+    defaultCollector.timeSync('event normalisation', 'main', () => {
+      const elemMeta = this.extractElementMetadata(e.target);
+      const uiContext = getActiveUIContext({ targetElement: e.target as Element });
+      const geometry = this.captureGeometry();
 
-    const event: BehaviourEvent = {
-      timestamp: getMonotonicTimestamp(),
-      type,
-      componentId: elemMeta.componentId ?? uiContext.activeComponentId,
-      componentRole: elemMeta.componentRole ?? uiContext.componentRole,
-      action: elemMeta.action ?? type,
-      route: uiContext.route,
-      taskId: uiContext.taskId,
-      taskStepId: uiContext.taskStepId,
-      targetTag: elemMeta.targetTag,
-      viewport: geometry.viewport,
-      document: geometry.document
-    };
+      const event: BehaviourEvent = {
+        timestamp: getMonotonicTimestamp(),
+        type,
+        componentId: elemMeta.componentId ?? uiContext.activeComponentId,
+        componentRole: elemMeta.componentRole ?? uiContext.componentRole,
+        action: elemMeta.action ?? type,
+        route: uiContext.route,
+        taskId: uiContext.taskId,
+        taskStepId: uiContext.taskStepId,
+        targetTag: elemMeta.targetTag,
+        viewport: geometry.viewport,
+        document: geometry.document
+      };
 
-    this.emit(event);
+      this.emit(event);
+    });
   }
 
   private recordLifecycleEvent(type: 'focus' | 'blur', e: Event): void {
-    const elemMeta = this.extractElementMetadata(e.target);
-    const uiContext = getActiveUIContext({ targetElement: e.target as Element });
+    defaultCollector.timeSync('event normalisation', 'main', () => {
+      const elemMeta = this.extractElementMetadata(e.target);
+      const uiContext = getActiveUIContext({ targetElement: e.target as Element });
 
-    const event: BehaviourEvent = {
-      timestamp: getMonotonicTimestamp(),
-      type,
-      componentId: elemMeta.componentId ?? uiContext.activeComponentId,
-      componentRole: elemMeta.componentRole ?? uiContext.componentRole,
-      action: type,
-      route: uiContext.route,
-      taskId: uiContext.taskId,
-      taskStepId: uiContext.taskStepId,
-      targetTag: elemMeta.targetTag
-    };
+      const event: BehaviourEvent = {
+        timestamp: getMonotonicTimestamp(),
+        type,
+        componentId: elemMeta.componentId ?? uiContext.activeComponentId,
+        componentRole: elemMeta.componentRole ?? uiContext.componentRole,
+        action: type,
+        route: uiContext.route,
+        taskId: uiContext.taskId,
+        taskStepId: uiContext.taskStepId,
+        targetTag: elemMeta.targetTag
+      };
 
-    this.emit(event);
+      this.emit(event);
+    });
   }
 
   private recordNavigationEvent(sourceType: string, customRoute?: string): void {
-    const uiContext = getActiveUIContext();
+    defaultCollector.timeSync('event normalisation', 'main', () => {
+      const uiContext = getActiveUIContext();
 
-    // Preserve the concrete source type for popstate/hashchange/pagehide/beforeunload/unload
-    // so the outcome deriver can distinguish BACKTRACK from ABANDON (assessment §25 P1-3).
-    const resolvedType: BehaviourEventType =
-      sourceType === 'popstate' ||
-      sourceType === 'hashchange' ||
-      sourceType === 'pagehide' ||
-      sourceType === 'beforeunload' ||
-      sourceType === 'unload'
-        ? sourceType
-        : 'navigation';
+      // Preserve the concrete source type for popstate/hashchange/pagehide/beforeunload/unload
+      // so the outcome deriver can distinguish BACKTRACK from ABANDON (assessment §25 P1-3).
+      const resolvedType: BehaviourEventType =
+        sourceType === 'popstate' ||
+        sourceType === 'hashchange' ||
+        sourceType === 'pagehide' ||
+        sourceType === 'beforeunload' ||
+        sourceType === 'unload'
+          ? sourceType
+          : 'navigation';
 
-    const event: BehaviourEvent = {
-      timestamp: getMonotonicTimestamp(),
-      type: resolvedType,
-      route: customRoute ?? uiContext.route,
-      taskId: uiContext.taskId,
-      taskStepId: uiContext.taskStepId,
-      action: sourceType
-    };
+      const event: BehaviourEvent = {
+        timestamp: getMonotonicTimestamp(),
+        type: resolvedType,
+        route: customRoute ?? uiContext.route,
+        taskId: uiContext.taskId,
+        taskStepId: uiContext.taskStepId,
+        action: sourceType
+      };
 
-    this.emit(event);
+      this.emit(event);
+    });
   }
 }
 

@@ -19,6 +19,7 @@ import { TESTBED_UI_VERSION } from '../types/uiContext.js';
 import { taskManager } from '../testbed/tasks/taskManager';
 import { TaskState } from '../testbed/tasks/taskModel';
 import { PREPROCESSING_CONFIG } from '../config/pipelineConfig';
+import { defaultCollector } from '../runtime/instrumentation';
 import {
   EXPERIMENT_TRACE_SCHEMA_VERSION,
   validateExperimentTrace,
@@ -102,52 +103,66 @@ export class ExperimentRecorder {
   }
 
   public recordBehaviourEvent(event: BehaviourEvent): void {
-    if (this.behaviourEvents.length >= this.maxBufferSize) {
-      this.behaviourEvents.shift();
-    }
-    this.behaviourEvents.push(event);
+    defaultCollector.timeSync('trace recording', 'main', () => {
+      if (this.behaviourEvents.length >= this.maxBufferSize) {
+        this.behaviourEvents.shift();
+      }
+      this.behaviourEvents.push(event);
+    });
   }
 
   public recordMicroTensor(window: MicroTensorWindow): void {
-    if (this.microTensors.length >= this.maxBufferSize) {
-      this.microTensors.shift();
-    }
-    this.microTensors.push(window);
+    defaultCollector.timeSync('trace recording', 'main', () => {
+      if (this.microTensors.length >= this.maxBufferSize) {
+        this.microTensors.shift();
+      }
+      this.microTensors.push(window);
+    }, { windowId: window.windowId });
   }
 
   public recordMacroInteraction(event: MacroInteraction): void {
-    if (this.macroInteractions.length >= this.maxBufferSize) {
-      this.macroInteractions.shift();
-    }
-    this.macroInteractions.push(event);
+    defaultCollector.timeSync('trace recording', 'main', () => {
+      if (this.macroInteractions.length >= this.maxBufferSize) {
+        this.macroInteractions.shift();
+      }
+      this.macroInteractions.push(event);
+    }, { windowId: event.windowId });
   }
 
   public recordOutcome(event: OutcomeEvent): void {
-    if (this.outcomes.length >= this.maxBufferSize) {
-      this.outcomes.shift();
-    }
-    this.outcomes.push(event);
+    defaultCollector.timeSync('trace recording', 'main', () => {
+      if (this.outcomes.length >= this.maxBufferSize) {
+        this.outcomes.shift();
+      }
+      this.outcomes.push(event);
+    }, { windowId: event.windowId });
   }
 
   public recordPrediction(event: PredictionEvent): void {
-    if (this.predictions.length >= this.maxBufferSize) {
-      this.predictions.shift();
-    }
-    this.predictions.push(event);
+    defaultCollector.timeSync('trace recording', 'main', () => {
+      if (this.predictions.length >= this.maxBufferSize) {
+        this.predictions.shift();
+      }
+      this.predictions.push(event);
+    }, { windowId: event.windowId });
   }
 
   public recordIntervention(event: InterventionEvent): void {
-    if (this.interventions.length >= this.maxBufferSize) {
-      this.interventions.shift();
-    }
-    this.interventions.push(event);
+    defaultCollector.timeSync('trace recording', 'main', () => {
+      if (this.interventions.length >= this.maxBufferSize) {
+        this.interventions.shift();
+      }
+      this.interventions.push(event);
+    });
   }
 
   public recordTaskEvent(event: TaskEvent): void {
-    if (this.taskEvents.length >= this.maxBufferSize) {
-      this.taskEvents.shift();
-    }
-    this.taskEvents.push(event);
+    defaultCollector.timeSync('trace recording', 'main', () => {
+      if (this.taskEvents.length >= this.maxBufferSize) {
+        this.taskEvents.shift();
+      }
+      this.taskEvents.push(event);
+    });
   }
 
   /**

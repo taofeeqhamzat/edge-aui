@@ -20,6 +20,7 @@ import { SlowGate, SlowGateInput, SlowGateResult } from './types';
 import { InterventionCommand, InterventionType } from '../../intervention/types';
 import { OutcomeType } from '../../telemetry/events';
 import { CONTEXT_VECTOR_DIM, encodeUIContext } from '../../types/contextVector';
+import { defaultCollector } from '../../runtime/instrumentation';
 
 /** Outcome class order, aligned with model-preparation/config.yaml `foundation_classes`. */
 export const OUTCOME_CLASS_ORDER: OutcomeType[] = [
@@ -184,7 +185,11 @@ export class OnnxSlowGate implements SlowGate {
     }
 
     const start = performance.now();
-    const outputs = await session.run({ [inputName]: tensor });
+    const outputs = await defaultCollector.timeAsync(
+      'ONNX inference',
+      'model',
+      () => session.run({ [inputName]: tensor })
+    );
     const latencyMs = performance.now() - start;
 
     const outputName = session.outputNames[0] ?? 'output';

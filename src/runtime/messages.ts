@@ -11,6 +11,7 @@ import { UIContext } from '../types/uiContext.js';
 import { InferenceResult } from '../gates/arbitration';
 import { SequenceConfig } from '../microtensor/schema';
 import { PatternIntervention } from '../gates/fast/mockFastGate';
+import { StageTimingRecord } from './instrumentation';
 
 export const RUNTIME_WORKER_VERSION = '1.0';
 
@@ -143,6 +144,7 @@ export interface RuntimeInitOkResponse {
   id: string;
   type: 'INIT_OK';
   success: true;
+  timings?: StageTimingRecord[];
   data: {
     version: string;
     fastGateMode?: FastGateMode;
@@ -157,6 +159,7 @@ export interface RuntimeWindowProcessedResponse {
   id: string;
   type: 'WINDOW_PROCESSED';
   success: true;
+  timings?: StageTimingRecord[];
   data: {
     windowCount: number;
     isFull: boolean;
@@ -167,6 +170,7 @@ export interface RuntimeMacroProcessedResponse {
   id: string;
   type: 'MACRO_PROCESSED';
   success: true;
+  timings?: StageTimingRecord[];
   data: {
     macroCount: number;
   };
@@ -185,6 +189,7 @@ export interface RuntimeEvaluationResponse {
   id: string;
   type: 'EVALUATION_RESULT';
   success: true;
+  timings?: StageTimingRecord[];
   data: InferenceResult & { diagnostics?: WorkerEvaluationDiagnostics };
 }
 
@@ -192,12 +197,14 @@ export interface RuntimeResetOkResponse {
   id: string;
   type: 'RESET_OK';
   success: true;
+  timings?: StageTimingRecord[];
 }
 
 export interface RuntimeMineResultResponse {
   id: string;
   type: 'MINE_RESULT';
   success: true;
+  timings?: StageTimingRecord[];
   data: {
     /** Null when no miner is available in the worker scope. */
     patterns: { pattern: string[]; support: number; confidence: number }[] | null;
@@ -209,6 +216,7 @@ export interface RuntimePongResponse {
   id: string;
   type: 'PONG';
   success: true;
+  timings?: StageTimingRecord[];
   data: {
     timestamp: number;
   };
@@ -218,6 +226,7 @@ export interface RuntimeErrorResponse {
   id: string;
   type: 'ERROR';
   success: false;
+  timings?: StageTimingRecord[];
   error: string;
 }
 

@@ -50,9 +50,20 @@ export function getExperimentId(): string {
  * condition; rebuilds when the condition changes.
  */
 export async function bootTestbed(
-  conditionId: ExperimentalCondition = currentCondition
+  optionsOrCondition: ExperimentalCondition | BootOptions = currentCondition
 ): Promise<AdaptiveRuntime> {
-  if (currentRuntime && conditionId === currentCondition && currentRuntime.isRunning()) {
+  const options: BootOptions =
+    typeof optionsOrCondition === 'string'
+      ? { conditionId: optionsOrCondition }
+      : optionsOrCondition;
+  const conditionId = options.conditionId ?? currentCondition;
+
+  if (
+    currentRuntime &&
+    conditionId === currentCondition &&
+    currentRuntime.isRunning() &&
+    options.enableInstrumentation === undefined
+  ) {
     return currentRuntime;
   }
 
@@ -70,6 +81,18 @@ export async function bootTestbed(
     : sessionManager.startSession({ experimentId, conditionId });
   experimentRecorder.clear();
 
+  let enableInstrumentation = options.enableInstrumentation;
+  if (enableInstrumentation === undefined && typeof window !== 'undefined') {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('instrumentation') === 'off' || params.get('disable_instrumentation') === 'true') {
+        enableInstrumentation = false;
+      }
+    } catch {
+      // Ignore if URLSearchParams is unavailable
+    }
+  }
+
   const runtime = new AdaptiveRuntime({
     experimentId,
     conditionId,
@@ -79,7 +102,9 @@ export async function bootTestbed(
     minPatternSupport: 1,
     fastGatePatterns: TESTBED_FAST_GATE_PATTERNS,
     policyConfig: { confidenceThreshold: 0.75, requiredConsecutiveWindows: 2 },
-    enableSlowGate: true
+    enableSlowGate: true,
+    enableInstrumentation,
+    ...options
   });
 
   await runtime.start();

@@ -17,6 +17,7 @@ import {
   getTransferablesForRequest
 } from './messages';
 import type { RuntimeWorkerCore } from './worker/core';
+import { defaultCollector } from './instrumentation';
 
 /** Default round-trip timeout for worker requests. */
 const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
@@ -44,7 +45,12 @@ export class RuntimeWorkerClient {
   private requestIdCounter = 0;
   private pendingRequests = new Map<
     string,
-    { resolve: (val: any) => void; reject: (err: Error) => void; timer: ReturnType<typeof setTimeout> }
+    {
+      resolve: (val: any) => void;
+      reject: (err: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+      startTime: number;
+    }
   >();
   private isInitialized = false;
 
@@ -216,6 +222,7 @@ export class RuntimeWorkerClient {
     transferables: Transferable[] = [],
     timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
   ): Promise<T> {
+    const startTime = performance.now();
     return new Promise<T>((resolve, reject) => {
       // In-process dispatch when a worker is unavailable. The first call may await the
       // lazy import of the fallback core.
@@ -223,6 +230,17 @@ export class RuntimeWorkerClient {
         this.ensureFallbackCore()
           .then((core) => core.handleRequest(request))
           .then((response) => {
+            const durationMs = performance.now() - startTime;
+            defaultCollector.record({
+              stage: 'worker message/transfer',
+              side: 'transfer',
+              durationMs,
+              timestamp: startTime,
+              metadata: { requestType: request.type }
+            });
+            if (response.timings) {
+              defaultCollector.mergeRemoteRecords(response.timings);
+            }
             if (response.success) {
               resolve((response as any).data);
             } else {
@@ -245,7 +263,7 @@ export class RuntimeWorkerClient {
         }
       }, timeoutMs);
 
-      this.pendingRequests.set(request.id, { resolve, reject, timer });
+      this.pendingRequests.set(request.id, { resolve, reject, timer, startTime });
 
       if (transferables.length > 0) {
         this.worker.postMessage(request, transferables);
@@ -261,6 +279,19 @@ export class RuntimeWorkerClient {
 
     this.pendingRequests.delete(response.id);
     clearTimeout(pending.timer);
+
+    const durationMs = performance.now() - pending.startTime;
+    defaultCollector.record({
+      stage: 'worker message/transfer',
+      side: 'transfer',
+      durationMs,
+      timestamp: pending.startTime,
+      metadata: { responseType: response.type }
+    });
+
+    if (response.timings) {
+      defaultCollector.mergeRemoteRecords(response.timings);
+    }
 
     if (response.success) {
       pending.resolve((response as any).data);

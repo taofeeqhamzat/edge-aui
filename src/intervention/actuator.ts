@@ -18,6 +18,7 @@ import {
   InterventionType,
   InterventionEvent
 } from './types';
+import { defaultCollector } from '../runtime/instrumentation';
 
 export interface UIActuatorOptions {
   root?: Document | HTMLElement;
@@ -73,91 +74,95 @@ export class UIActuator {
    * Applies non-destructive declarative adaptation.
    */
   public apply(command: InterventionCommand): void {
-    // If no_op, clear any active temporary adaptations and emit event
-    if (command.type === 'no_op') {
-      this.emitEvent({
-        timestamp: Date.now(),
-        type: 'applied',
-        intervention: 'no_op',
-        componentId: command.targetComponentId,
-        source: command.source,
-        confidence: command.confidence
-      });
-      return;
-    }
-
-    if (!this.root) {
-      console.warn('[UIActuator] DOM root not available; adaptation skipped.');
-      return;
-    }
-
-    // If an adaptation of this type is already active, clear it first
-    if (this.activeAdaptations.has(command.type)) {
-      this.clear(command);
-    }
-
-    let cleanup: (() => void) | null = null;
-
-    switch (command.type) {
-      case 'highlight_primary_action':
-        cleanup = this.applyHighlightPrimaryAction(command);
-        break;
-      case 'simplify_options':
-        cleanup = this.applySimplifyOptions(command);
-        break;
-      case 'expand_tooltip':
-        cleanup = this.applyExpandTooltip(command);
-        break;
-      case 'offer_assistance':
-        cleanup = this.applyOfferAssistance(command);
-        break;
-    }
-
-    if (cleanup) {
-      // Enforce ttlMs: an adaptation with a declared lifetime reverts on its own.
-      let ttlTimer: ReturnType<typeof setTimeout> | undefined;
-      if (command.ttlMs !== undefined && command.ttlMs > 0) {
-        ttlTimer = setTimeout(() => {
-          this.clear(command);
-        }, command.ttlMs);
-      }
-
-      this.activeAdaptations.set(command.type, { command, cleanup, ttlTimer });
-      this.emitEvent({
-        timestamp: Date.now(),
-        type: 'applied',
-        intervention: command.type,
-        componentId: command.targetComponentId,
-        source: command.source,
-        confidence: command.confidence
-      });
-    }
-  }
-
-  /**
-   * Clears specific active adaptation or all if none specified.
-   */
-  public clear(command?: InterventionCommand): void {
-    if (command) {
-      const active = this.activeAdaptations.get(command.type);
-      if (active) {
-        if (active.ttlTimer !== undefined) {
-          clearTimeout(active.ttlTimer);
-        }
-        active.cleanup();
-        this.activeAdaptations.delete(command.type);
+    defaultCollector.timeSync('actuation', 'main', () => {
+      // If no_op, clear any active temporary adaptations and emit event
+      if (command.type === 'no_op') {
         this.emitEvent({
           timestamp: Date.now(),
-          type: 'reverted',
+          type: 'applied',
+          intervention: 'no_op',
+          componentId: command.targetComponentId,
+          source: command.source,
+          confidence: command.confidence
+        });
+        return;
+      }
+
+      if (!this.root) {
+        console.warn('[UIActuator] DOM root not available; adaptation skipped.');
+        return;
+      }
+
+      // If an adaptation of this type is already active, clear it first
+      if (this.activeAdaptations.has(command.type)) {
+        this.clear(command);
+      }
+
+      let cleanup: (() => void) | null = null;
+
+      switch (command.type) {
+        case 'highlight_primary_action':
+          cleanup = this.applyHighlightPrimaryAction(command);
+          break;
+        case 'simplify_options':
+          cleanup = this.applySimplifyOptions(command);
+          break;
+        case 'expand_tooltip':
+          cleanup = this.applyExpandTooltip(command);
+          break;
+        case 'offer_assistance':
+          cleanup = this.applyOfferAssistance(command);
+          break;
+      }
+
+      if (cleanup) {
+        // Enforce ttlMs: an adaptation with a declared lifetime reverts on its own.
+        let ttlTimer: ReturnType<typeof setTimeout> | undefined;
+        if (command.ttlMs !== undefined && command.ttlMs > 0) {
+          ttlTimer = setTimeout(() => {
+            this.clear(command);
+          }, command.ttlMs);
+        }
+
+        this.activeAdaptations.set(command.type, { command, cleanup, ttlTimer });
+        this.emitEvent({
+          timestamp: Date.now(),
+          type: 'applied',
           intervention: command.type,
           componentId: command.targetComponentId,
           source: command.source,
           confidence: command.confidence
         });
       }
-    } else {
-      this.reset();
-    }
+    });
+  }
+
+  /**
+   * Clears specific active adaptation or all if none specified.
+   */
+  public clear(command?: InterventionCommand): void {
+    defaultCollector.timeSync('actuation', 'main', () => {
+      if (command) {
+        const active = this.activeAdaptations.get(command.type);
+        if (active) {
+          if (active.ttlTimer !== undefined) {
+            clearTimeout(active.ttlTimer);
+          }
+          active.cleanup();
+          this.activeAdaptations.delete(command.type);
+          this.emitEvent({
+            timestamp: Date.now(),
+            type: 'reverted',
+            intervention: command.type,
+            componentId: command.targetComponentId,
+            source: command.source,
+            confidence: command.confidence
+          });
+        }
+      } else {
+        this.reset();
+      }
+    });
   }
 
   /**

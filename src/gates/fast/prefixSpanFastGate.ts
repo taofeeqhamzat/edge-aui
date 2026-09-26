@@ -20,6 +20,7 @@ import {
   isInterventionType
 } from '../../intervention/types';
 import { FastGate, GateDecision } from './types';
+import { defaultCollector } from '../../runtime/instrumentation';
 
 /** Shape of a mined frequent pattern, mirroring the Rust `PrefixSpanPattern`. */
 export interface MinedPattern {
@@ -119,7 +120,11 @@ export class PrefixSpanFastGate implements FastGate {
 
     let patterns: MinedPattern[];
     try {
-      patterns = await miner(corpus, this.options.minSupport);
+      patterns = await defaultCollector.timeAsync(
+        'PrefixSpan mining',
+        'wasm',
+        () => miner(corpus, this.options.minSupport)
+      );
     } catch (err) {
       console.error('[PrefixSpanFastGate] Pattern mining failed:', err);
       return { matched: false, source: 'fast' };
