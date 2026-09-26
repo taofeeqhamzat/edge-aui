@@ -29,6 +29,8 @@ export interface BootOptions extends AdaptiveRuntimeOptions {
  * The final key is also the task T1 completion path, so the task's own success sequence
  * is a pattern the Fast Gate can recognise deterministically.
  */
+import { UiAdapter, DefaultUiAdapter } from '../integration/index';
+
 export const TESTBED_FAST_GATE_PATTERNS: Record<string, InterventionType> = {
   'OPEN_FILTERS > APPLY_FILTER': 'highlight_primary_action',
   'NAV_ANALYTICS > OPEN_FILTERS': 'simplify_options',
@@ -36,6 +38,12 @@ export const TESTBED_FAST_GATE_PATTERNS: Record<string, InterventionType> = {
   'SELECT_DATE > OPEN_FILTERS > SELECT_REGION > APPLY_FILTER': 'highlight_primary_action',
   'HOVER_KPI > HOVER_KPI': 'expand_tooltip'
 };
+
+let defaultUiAdapterProvider: (() => UiAdapter) | null = null;
+
+export function registerDefaultUiAdapter(provider: (() => UiAdapter) | null): void {
+  defaultUiAdapterProvider = provider;
+}
 
 let currentRuntime: AdaptiveRuntime | null = null;
 let currentCondition: ExperimentalCondition = 'adaptive';
@@ -104,6 +112,7 @@ export async function bootTestbed(
     policyConfig: { confidenceThreshold: 0.75, requiredConsecutiveWindows: 2 },
     enableSlowGate: true,
     enableInstrumentation,
+    adapter: options.adapter ?? (defaultUiAdapterProvider ? defaultUiAdapterProvider() : new DefaultUiAdapter()),
     ...options
   });
 

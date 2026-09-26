@@ -1,6 +1,4 @@
 import { UIContext, AuiComponentRole, AuiAction, TESTBED_UI_VERSION } from '../types/uiContext';
-import { taskManager } from '../testbed/tasks/taskManager';
-import { EXPERIMENTAL_TASKS } from '../testbed/tasks/taskModel';
 import { getGeometrySnapshot } from './normalizer';
 import { sessionManager } from './session';
 
@@ -8,6 +6,16 @@ export interface UIContextOptions {
   targetElement?: Element | null;
   route?: string;
   root?: Document | HTMLElement;
+  taskId?: string;
+  taskStepId?: string;
+}
+
+export type TaskContextResolver = () => { taskId?: string; taskStepId?: string };
+
+let globalTaskContextResolver: TaskContextResolver | null = null;
+
+export function setTaskContextResolver(resolver: TaskContextResolver | null): void {
+  globalTaskContextResolver = resolver;
 }
 
 let lastTrackedElement: Element | null = null;
@@ -124,15 +132,12 @@ export function getActiveUIContext(options?: UIContextOptions): UIContext {
   }
 
   // 4. Resolve task state
-  let taskId: string | undefined;
-  let taskStepId: string | undefined;
-  const taskState = taskManager.getState();
-  if (taskState && taskState.currentTaskId) {
-    taskId = taskState.currentTaskId;
-    const task = EXPERIMENTAL_TASKS[taskState.currentTaskId];
-    if (task && task.steps && task.steps[taskState.currentStepIndex]) {
-      taskStepId = task.steps[taskState.currentStepIndex].stepId;
-    }
+  let taskId: string | undefined = options?.taskId;
+  let taskStepId: string | undefined = options?.taskStepId;
+  if (!taskId && globalTaskContextResolver) {
+    const resolved = globalTaskContextResolver();
+    taskId = resolved.taskId;
+    taskStepId = resolved.taskStepId;
   }
 
   // 5. Compute available actions

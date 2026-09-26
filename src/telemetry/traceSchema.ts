@@ -25,7 +25,8 @@ import {
   ExperimentalCondition
 } from './events';
 import { SessionContext } from './session';
-import { TaskState } from '../testbed/tasks/taskModel';
+import { UiTaskStateSnapshot } from '../integration/types';
+import type { RuntimeConfig } from '../config/runtimeConfig';
 
 export const EXPERIMENT_TRACE_SCHEMA_VERSION = '1.1.0';
 
@@ -53,14 +54,16 @@ export interface TraceReplayMetadata {
   conditionId?: ExperimentalCondition;
   uiVersion?: string;
   settlementDelayMs?: number;
+  effectiveConfig?: RuntimeConfig;
 }
 
 export interface SerializableExperimentTrace {
   schemaVersion: string;
   exportedAt: string; // ISO 8601 string
   session: SessionContext;
-  task?: TaskState;
+  task?: UiTaskStateSnapshot;
   metadata: TraceReplayMetadata;
+  effectiveConfig?: RuntimeConfig;
   behaviourEvents: BehaviourEvent[];
   microTensors: SerializableMicroTensorWindow[];
   macroInteractions: MacroInteraction[];

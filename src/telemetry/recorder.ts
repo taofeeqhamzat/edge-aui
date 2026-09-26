@@ -16,9 +16,9 @@ import {
 } from './events';
 import { SessionContext, sessionManager } from './session';
 import { TESTBED_UI_VERSION } from '../types/uiContext.js';
-import { taskManager } from '../testbed/tasks/taskManager';
-import { TaskState } from '../testbed/tasks/taskModel';
+import { UiTaskStateSnapshot, DEFAULT_TASK_STATE } from '../integration/index';
 import { PREPROCESSING_CONFIG } from '../config/pipelineConfig';
+import type { RuntimeConfig } from '../config/runtimeConfig';
 import { defaultCollector } from '../runtime/instrumentation';
 import {
   EXPERIMENT_TRACE_SCHEMA_VERSION,
@@ -48,7 +48,8 @@ export type {
 export interface ExperimentTrace {
   schemaVersion: string;
   session: SessionContext;
-  task?: TaskState;
+  task?: UiTaskStateSnapshot;
+  effectiveConfig?: RuntimeConfig;
   behaviourEvents: BehaviourEvent[];
   microTensors: MicroTensorWindow[];
   macroInteractions: MacroInteraction[];
@@ -79,10 +80,22 @@ export class ExperimentRecorder {
    * can never be attributed to a different session than the one that produced it.
    */
   private sessionSnapshot: SessionContext | null = null;
+  private taskStateProvider: (() => UiTaskStateSnapshot | undefined) | null = null;
+  private effectiveConfig: RuntimeConfig | null = null;
 
   constructor(options: ExperimentRecorderOptions = {}) {
     // Default 10,000 events preserves memory strictly under the 20MB budget
     this.maxBufferSize = options.maxBufferSize ?? 10000;
+  }
+
+  /** Sets the task state provider callback to query the active task state without coupling to testbed. */
+  public setTaskStateProvider(provider: (() => UiTaskStateSnapshot | undefined) | null): void {
+    this.taskStateProvider = provider;
+  }
+
+  /** Sets the effective runtime configuration snapshot for reproducible trace export. */
+  public setEffectiveConfig(config: RuntimeConfig | null): void {
+    this.effectiveConfig = config;
   }
 
   /** Binds the trace to a session, called when a session starts. */
@@ -190,10 +203,12 @@ export class ExperimentRecorder {
    * Returns a snapshot of the full chronological experiment trace with in-memory Float32Array microtensors.
    */
   public export(): ExperimentTrace {
+    const task = this.taskStateProvider ? this.taskStateProvider() : undefined;
     return {
       schemaVersion: EXPERIMENT_TRACE_SCHEMA_VERSION,
       session: this.resolveSession(),
-      task: taskManager.getState(),
+      task,
+      effectiveConfig: this.effectiveConfig ?? undefined,
       behaviourEvents: [...this.behaviourEvents],
       microTensors: [...this.microTensors],
       macroInteractions: [...this.macroInteractions],
@@ -209,7 +224,7 @@ export class ExperimentRecorder {
    */
   public exportSerializable(): SerializableExperimentTrace {
     const activeSession = this.resolveSession();
-    const taskState = taskManager.getState();
+    const taskState = this.taskStateProvider ? (this.taskStateProvider() ?? DEFAULT_TASK_STATE) : DEFAULT_TASK_STATE;
     // durationMs is derived from epoch clocks only. Subtracting the monotonic
     // `startedAt` from `Date.now()` produced a meaningless value (assessment §16.4).
     const now = Date.now();
@@ -239,7 +254,8 @@ export class ExperimentRecorder {
       experimentId: activeSession.experimentId,
       conditionId: activeSession.conditionId,
       uiVersion: TESTBED_UI_VERSION,
-      settlementDelayMs: PREPROCESSING_CONFIG.settlement_delay_ms ?? PREPROCESSING_CONFIG.stride_ms
+      settlementDelayMs: PREPROCESSING_CONFIG.settlement_delay_ms ?? PREPROCESSING_CONFIG.stride_ms,
+      effectiveConfig: this.effectiveConfig ?? undefined
     };
 
     return {
@@ -248,6 +264,7 @@ export class ExperimentRecorder {
       session: activeSession,
       task: taskState,
       metadata,
+      effectiveConfig: this.effectiveConfig ?? undefined,
       behaviourEvents: [...this.behaviourEvents],
       microTensors: this.microTensors.map((m) => ({
         windowId: m.windowId,

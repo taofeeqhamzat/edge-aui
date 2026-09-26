@@ -2,8 +2,11 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import './style.css';
-import { bootTestbed } from './runtime/boot';
+import { bootTestbed, registerDefaultUiAdapter } from './runtime/boot';
+import { testbedAdapter } from './testbed/adapter';
 import { startRuntimeDiagnostics } from './runtime/diagnostics';
+
+registerDefaultUiAdapter(() => testbedAdapter);
 
 const root = createRoot(document.getElementById('app')!);
 root.render(

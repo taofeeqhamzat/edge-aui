@@ -8,6 +8,10 @@ import { TrialControls } from '../testbed/components/TrialControls';
 import { defaultTableData } from '../testbed/mock-data/tableData';
 import { DebugPanel } from '../debug/DebugPanel';
 import { initUIContextTracker } from '../telemetry/contextProvider';
+import { testbedAdapter } from '../testbed/adapter';
+
+// Ensure testbed adapter is initialized when testbed App is loaded
+testbedAdapter.onInit?.();
 
 export function App() {
   const [currentPage, setCurrentPage] = useState<Page>('Overview');
