@@ -102,13 +102,14 @@ export interface SerializableExperimentTrace {
 ### Schema 5: UI Context Contract (`v1.0.0`)
 - **Owning File:** [`src/types/uiContext.ts`](../src/types/uiContext.ts) & [`src/types/contextVector.ts`](../src/types/contextVector.ts)
 - **Constant:** `TESTBED_UI_VERSION = '1.0.0'`
-- **Numeric Projection:** 6-element float array `ContextVector` (R6 encoding):
-  - `[0]`: `pageIndex` normalized to `[0, 1]`
-  - `[1]`: `regionIndex` normalized to `[0, 1]`
-  - `[2]`: `viewportWidthRatio` normalized to 1920 reference width
-  - `[3]`: `viewportHeightRatio` normalized to 1080 reference height
-  - `[4]`: `formValidityFlag` (`1.0` if valid, `0.0` if invalid)
-  - `[5]`: `modalOpenFlag` (`1.0` if modal active, `0.0` if closed)
+- **Numeric Projection:** 6-element float array `ContextVector` (R6 encoding via `encodeUIContext`):
+  - `[0]`: `route` (normalized index into `ROUTE_VOCABULARY` `['Overview', 'Analytics', 'Reports', 'Customers', 'Settings']`, `/ 5.0`)
+  - `[1]`: `primaryActionAvailable` (`1.0` if true, `0.0` if false)
+  - `[2]`: `helpAvailable` (`1.0` if true, `0.0` if false)
+  - `[3]`: `expandable` (`1.0` if true, `0.0` if false)
+  - `[4]`: `taskProgress` (derived from `taskId` and `taskStepId`: `(stepNumber - 1) / totalTaskSteps`, bounded in `[0.0, 1.0]`)
+  - `[5]`: `actionAvailability` (count of unique actions normalized by `ACTION_VOCABULARY` `['click', 'change', 'toggle', 'hover', 'select', 'input', 'focus']`, `/ 7.0`)
+- All components are strictly bounded in `[0.0, 1.0]` with zero-imputation prohibited. Missing context produces sample exclusion.
 
 ---
 
