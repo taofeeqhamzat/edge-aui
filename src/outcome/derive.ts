@@ -209,7 +209,7 @@ export function deriveOutcomeForWindow(
   metadata.candidateCount = candidates.length;
 
   if (candidates.length === 0) {
-    if (input.sessionTerminated) {
+    if (input.sessionTerminated && inHorizon.length === 0) {
       metadata.source = 'stream_exhaustion';
       metadata.observableTermination = false;
       return { outcome: 'ABANDON', metadata };

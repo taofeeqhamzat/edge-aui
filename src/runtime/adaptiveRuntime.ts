@@ -746,7 +746,7 @@ export class AdaptiveRuntime {
       const horizonCovered = this.coveredThroughMs >= horizonEnd;
       const idleGraceExpired = now - horizonEnd >= this.config.windowing.pendingOutcomeGraceMs;
 
-      if (!horizonCovered && !idleGraceExpired) {
+      if (!this.streamEnded && !horizonCovered && !idleGraceExpired) {
         stillPending.push(window);
         continue;
       }
@@ -767,7 +767,7 @@ export class AdaptiveRuntime {
         experimentId: this.options.experimentId,
         conditionId: this.conditionId
       },
-      { sessionTerminated: this.streamEnded }
+      { sessionTerminated: this.streamEnded && !lookaheadComplete }
     );
 
     experimentRecorder.recordOutcome({ ...outcome, lookaheadComplete });

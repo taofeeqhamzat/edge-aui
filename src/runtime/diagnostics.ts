@@ -13,6 +13,7 @@
 import { AdaptiveRuntime } from './adaptiveRuntime';
 import { debugBus } from '../debug/debugBus';
 import { experimentRecorder } from '../telemetry/recorder';
+import { sessionManager } from '../telemetry/session';
 
 export interface RuntimeDiagnosticsHandle {
   status: () => ReturnType<AdaptiveRuntime['getStatus']>;
@@ -32,6 +33,10 @@ export interface RuntimeDiagnosticsHandle {
   setInstrumentationEnabled: (enabled: boolean) => void;
   /** Queries whether instrumentation is enabled. */
   isInstrumentationEnabled: () => boolean;
+  /** Flushes and settles all pending outcome windows and episodes. */
+  flush: () => void;
+  /** Starts a clean new trial with fresh session ID and empty recording buffer. */
+  startNewTrial: (conditionId?: 'baseline' | 'adaptive') => Promise<void>;
   stop: () => void;
 }
 
@@ -71,6 +76,22 @@ export function startRuntimeDiagnostics(
     clearTimings: () => runtime.clearTimings(),
     setInstrumentationEnabled: (enabled: boolean) => runtime.setInstrumentationEnabled(enabled),
     isInstrumentationEnabled: () => runtime.isInstrumentationEnabled(),
+    flush: () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('pagehide'));
+      }
+    },
+    startNewTrial: async (conditionId?: 'baseline' | 'adaptive') => {
+      const status = runtime.getStatus();
+      const cond = conditionId ?? status.conditionId ?? 'adaptive';
+      const newSession = sessionManager.startSession({
+        experimentId: status.experimentId,
+        conditionId: cond
+      });
+      experimentRecorder.bindSession(newSession);
+      experimentRecorder.clear();
+      await runtime.resetTrial();
+    },
     stop: () => {
       window.clearInterval(timer);
       if (activeHandle === handle) {
