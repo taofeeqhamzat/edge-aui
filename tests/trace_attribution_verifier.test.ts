@@ -129,8 +129,55 @@ function createValidBaseTrace(): SerializableExperimentTrace {
 }
 
 describe('Trace Attribution and Completeness Verifier', () => {
-  it('validates a complete and correctly attributed trace', () => {
+  it('validates a complete and correctly attributed trace (schema 1.1.0)', () => {
     const trace = createValidBaseTrace();
+    const result = verifyTraceCompleteness(trace);
+    expect(result.valid).toBe(true);
+    expect(result.checks.every((c) => c.passed)).toBe(true);
+  });
+
+  it('validates a complete and correctly attributed trace (schema 1.2.0 with mappingSource)', () => {
+    const trace = createValidBaseTrace();
+    trace.schemaVersion = '1.2.0';
+    trace.session.conditionId = 'adaptive';
+    trace.metadata.conditionId = 'adaptive';
+    trace.predictions = [
+      {
+        timestamp: 600,
+        sessionId: 'sess-001',
+        experimentId: 'exp-001',
+        conditionId: 'adaptive',
+        windowId: 1,
+        matchedGate: 'slow',
+        interventionType: 'offer_assistance',
+        mappingSource: 'learned_head',
+        modelVersion: 'TargetInterventionHead-v1.0.0-int8',
+        contextEncodingVersion: 'R6-v1.0.0',
+        bothGatesEvaluated: false
+      }
+    ];
+    trace.interventions = [
+      {
+        timestamp: 650,
+        type: 'applied',
+        intervention: 'offer_assistance',
+        source: 'slow',
+        mappingSource: 'learned_head',
+        interventionEpisodeId: 'ep-001',
+        sessionId: 'sess-001',
+        conditionId: 'adaptive'
+      },
+      {
+        timestamp: 900,
+        type: 'reverted',
+        intervention: 'offer_assistance',
+        source: 'slow',
+        mappingSource: 'learned_head',
+        interventionEpisodeId: 'ep-001',
+        sessionId: 'sess-001',
+        conditionId: 'adaptive'
+      }
+    ];
     const result = verifyTraceCompleteness(trace);
     expect(result.valid).toBe(true);
     expect(result.checks.every((c) => c.passed)).toBe(true);

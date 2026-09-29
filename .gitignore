@@ -53,3 +53,7 @@ instructions*.md
 docs/agents/**
 docs/experiments/**
 !docs/experiments/**/.gitkeep
+!docs/experiments/*.md
+!docs/experiments/baseline-trace.json
+!docs/experiments/adaptive-trace.json
+

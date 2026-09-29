@@ -15,6 +15,7 @@
 
 import {
   EXPERIMENT_TRACE_SCHEMA_VERSION,
+  SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS,
   validateExperimentTrace,
   type SerializableExperimentTrace
 } from './traceSchema.js';
@@ -82,12 +83,16 @@ export function verifyTraceCompleteness(data: unknown): TraceVerificationReport 
 
   const trace = data as SerializableExperimentTrace;
 
+  const isSupportedSchema =
+    trace.schemaVersion === EXPERIMENT_TRACE_SCHEMA_VERSION ||
+    (SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS as readonly string[]).includes(trace.schemaVersion ?? '');
+
   addCheck(
     'schema_version',
-    trace.schemaVersion === EXPERIMENT_TRACE_SCHEMA_VERSION,
-    trace.schemaVersion === EXPERIMENT_TRACE_SCHEMA_VERSION
+    isSupportedSchema,
+    isSupportedSchema
       ? undefined
-      : `Expected schemaVersion '${EXPERIMENT_TRACE_SCHEMA_VERSION}', received '${trace.schemaVersion}'`
+      : `Expected schemaVersion '${EXPERIMENT_TRACE_SCHEMA_VERSION}' (or supported legacy '1.1.0'), received '${trace.schemaVersion}'`
   );
 
   // 2. Correlation IDs

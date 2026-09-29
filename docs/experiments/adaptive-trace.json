@@ -1,0 +1,261 @@
+{
+  "schemaVersion": "1.2.0",
+  "exportedAt": "2026-09-29T12:05:00.000Z",
+  "session": {
+    "sessionId": "sess-ctrl-adaptive-t2-002",
+    "startedAt": 1000,
+    "startedAtEpochMs": 1790683500000,
+    "experimentId": "exp-controlled-pair-01",
+    "conditionId": "adaptive",
+    "taskId": "T2"
+  },
+  "task": {
+    "currentTaskId": "T2",
+    "status": "Completed",
+    "currentStepIndex": 2,
+    "completedSteps": ["T2-1", "T2-2"],
+    "errors": 0
+  },
+  "metadata": {
+    "durationMs": 4200,
+    "totalEvents": 16,
+    "behaviourCount": 6,
+    "microTensorCount": 3,
+    "macroCount": 2,
+    "outcomeCount": 3,
+    "predictionCount": 3,
+    "interventionCount": 2,
+    "taskEventCount": 4,
+    "finalTaskStatus": "Completed",
+    "experimentId": "exp-controlled-pair-01",
+    "conditionId": "adaptive",
+    "uiVersion": "1.0.0"
+  },
+  "behaviourEvents": [
+    {
+      "timestamp": 1100,
+      "type": "pointermove",
+      "x": 0.40,
+      "y": 0.36,
+      "route": "Analytics",
+      "componentId": "filter-drawer"
+    },
+    {
+      "timestamp": 1220,
+      "type": "click",
+      "x": 0.44,
+      "y": 0.39,
+      "action": "click",
+      "route": "Analytics",
+      "componentId": "filter-region"
+    },
+    {
+      "timestamp": 1550,
+      "type": "pointermove",
+      "x": 0.50,
+      "y": 0.46,
+      "route": "Analytics",
+      "componentId": "filter-region"
+    },
+    {
+      "timestamp": 1850,
+      "type": "click",
+      "x": 0.54,
+      "y": 0.50,
+      "action": "click",
+      "route": "Analytics",
+      "componentId": "btn-apply-filters"
+    },
+    {
+      "timestamp": 2200,
+      "type": "pointermove",
+      "x": 0.58,
+      "y": 0.58,
+      "route": "Analytics",
+      "componentId": "results-table"
+    },
+    {
+      "timestamp": 2600,
+      "type": "click",
+      "x": 0.60,
+      "y": 0.60,
+      "action": "click",
+      "route": "Analytics",
+      "componentId": "btn-export"
+    }
+  ],
+  "microTensors": [
+    {
+      "windowId": 1,
+      "windowStart": 1000,
+      "windowEnd": 1500,
+      "values": [0.11, 0.04, 0.22, 0.02, 1.0, 40.0, 110.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "eventCount": 2,
+      "inactive": false
+    },
+    {
+      "windowId": 2,
+      "windowStart": 1250,
+      "windowEnd": 1750,
+      "values": [0.09, 0.03, 0.19, 0.01, 1.0, 20.0, 75.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "eventCount": 2,
+      "inactive": false
+    },
+    {
+      "windowId": 3,
+      "windowStart": 1500,
+      "windowEnd": 2000,
+      "values": [0.14, 0.05, 0.28, 0.03, 0.0, 0.0, 130.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "eventCount": 2,
+      "inactive": false
+    }
+  ],
+  "macroInteractions": [
+    {
+      "timestamp": 1220,
+      "symbol": "FILTER_SELECT",
+      "componentId": "filter-region",
+      "windowId": 1
+    },
+    {
+      "timestamp": 1850,
+      "symbol": "FILTER_APPLY",
+      "componentId": "btn-apply-filters",
+      "windowId": 3
+    }
+  ],
+  "outcomes": [
+    {
+      "timestamp": 1500,
+      "outcome": "CLICK",
+      "windowId": 1
+    },
+    {
+      "timestamp": 1750,
+      "outcome": "HOVER_DWELL",
+      "windowId": 2
+    },
+    {
+      "timestamp": 2000,
+      "outcome": "CLICK",
+      "windowId": 3
+    }
+  ],
+  "predictions": [
+    {
+      "timestamp": 1500,
+      "sessionId": "sess-ctrl-adaptive-t2-002",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "adaptive",
+      "windowId": 1,
+      "matchedGate": "none",
+      "latencyMs": 1.4,
+      "fastGateLatencyMs": 1.4,
+      "bothGatesEvaluated": false
+    },
+    {
+      "timestamp": 1750,
+      "sessionId": "sess-ctrl-adaptive-t2-002",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "adaptive",
+      "windowId": 2,
+      "matchedGate": "slow",
+      "outcome": "HOVER_DWELL",
+      "interventionType": "highlight_primary_action",
+      "mappingSource": "learned_head",
+      "confidence": 0.88,
+      "latencyMs": 18.5,
+      "fastGateLatencyMs": 1.8,
+      "slowGateLatencyMs": 16.7,
+      "modelVersion": "TargetInterventionHead-v1.0.0-int8",
+      "contextEncodingVersion": "R6-v1.0.0",
+      "bothGatesEvaluated": false
+    },
+    {
+      "timestamp": 2000,
+      "sessionId": "sess-ctrl-adaptive-t2-002",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "adaptive",
+      "windowId": 3,
+      "matchedGate": "fast",
+      "interventionType": "highlight_primary_action",
+      "mappingSource": "fast_gate_pattern",
+      "confidence": 0.95,
+      "latencyMs": 3.1,
+      "fastGateLatencyMs": 3.1,
+      "bothGatesEvaluated": false
+    }
+  ],
+  "interventions": [
+    {
+      "timestamp": 1760,
+      "type": "applied",
+      "intervention": "highlight_primary_action",
+      "componentId": "btn-apply-filters",
+      "source": "slow",
+      "mappingSource": "learned_head",
+      "confidence": 0.88,
+      "interventionEpisodeId": "ep-t2-adaptive-01",
+      "windowId": 2,
+      "sessionId": "sess-ctrl-adaptive-t2-002",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1860,
+      "type": "reverted",
+      "intervention": "highlight_primary_action",
+      "componentId": "btn-apply-filters",
+      "source": "slow",
+      "mappingSource": "learned_head",
+      "confidence": 0.88,
+      "interventionEpisodeId": "ep-t2-adaptive-01",
+      "windowId": 3,
+      "sessionId": "sess-ctrl-adaptive-t2-002",
+      "conditionId": "adaptive"
+    }
+  ],
+  "taskEvents": [
+    {
+      "timestamp": 1000,
+      "type": "task_start",
+      "taskId": "T2",
+      "status": "In Progress",
+      "errors": 0,
+      "sessionId": "sess-ctrl-adaptive-t2-002",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1850,
+      "type": "task_step",
+      "taskId": "T2",
+      "taskStepId": "T2-1",
+      "status": "In Progress",
+      "errors": 0,
+      "sessionId": "sess-ctrl-adaptive-t2-002",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 2600,
+      "type": "task_step",
+      "taskId": "T2",
+      "taskStepId": "T2-2",
+      "status": "In Progress",
+      "errors": 0,
+      "sessionId": "sess-ctrl-adaptive-t2-002",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 2700,
+      "type": "task_complete",
+      "taskId": "T2",
+      "status": "Completed",
+      "errors": 0,
+      "sessionId": "sess-ctrl-adaptive-t2-002",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "adaptive"
+    }
+  ]
+}

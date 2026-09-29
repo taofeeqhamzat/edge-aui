@@ -12,7 +12,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const EXPERIMENT_TRACE_SCHEMA_VERSION = '1.1.0';
+const EXPERIMENT_TRACE_SCHEMA_VERSION = '1.2.0';
+const SUPPORTED_SCHEMA_VERSIONS = ['1.2.0', '1.1.0'];
 
 const EXPERIMENTAL_TASKS = {
   T1: {
@@ -72,12 +73,16 @@ export function verifyTraceCompleteness(data) {
     errors.length === 0 ? undefined : `Base trace validation failed: ${errors.join('; ')}`
   );
 
+  const isSupportedSchema =
+    data.schemaVersion === EXPERIMENT_TRACE_SCHEMA_VERSION ||
+    SUPPORTED_SCHEMA_VERSIONS.includes(data.schemaVersion);
+
   addCheck(
     'schema_version',
-    data.schemaVersion === EXPERIMENT_TRACE_SCHEMA_VERSION,
-    data.schemaVersion === EXPERIMENT_TRACE_SCHEMA_VERSION
+    isSupportedSchema,
+    isSupportedSchema
       ? undefined
-      : `Expected schemaVersion '${EXPERIMENT_TRACE_SCHEMA_VERSION}', received '${data.schemaVersion}'`
+      : `Expected schemaVersion '${EXPERIMENT_TRACE_SCHEMA_VERSION}' (or supported legacy '1.1.0'), received '${data.schemaVersion}'`
   );
 
   // Correlation IDs

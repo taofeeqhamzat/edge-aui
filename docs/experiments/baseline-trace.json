@@ -1,0 +1,224 @@
+{
+  "schemaVersion": "1.2.0",
+  "exportedAt": "2026-09-29T12:00:00.000Z",
+  "session": {
+    "sessionId": "sess-ctrl-baseline-t2-001",
+    "startedAt": 1000,
+    "startedAtEpochMs": 1790683200000,
+    "experimentId": "exp-controlled-pair-01",
+    "conditionId": "baseline",
+    "taskId": "T2"
+  },
+  "task": {
+    "currentTaskId": "T2",
+    "status": "Completed",
+    "currentStepIndex": 2,
+    "completedSteps": ["T2-1", "T2-2"],
+    "errors": 0
+  },
+  "metadata": {
+    "durationMs": 4500,
+    "totalEvents": 14,
+    "behaviourCount": 6,
+    "microTensorCount": 3,
+    "macroCount": 2,
+    "outcomeCount": 3,
+    "predictionCount": 3,
+    "interventionCount": 0,
+    "taskEventCount": 4,
+    "finalTaskStatus": "Completed",
+    "experimentId": "exp-controlled-pair-01",
+    "conditionId": "baseline",
+    "uiVersion": "1.0.0"
+  },
+  "behaviourEvents": [
+    {
+      "timestamp": 1100,
+      "type": "pointermove",
+      "x": 0.42,
+      "y": 0.38,
+      "route": "Analytics",
+      "componentId": "filter-drawer"
+    },
+    {
+      "timestamp": 1250,
+      "type": "click",
+      "x": 0.45,
+      "y": 0.40,
+      "action": "click",
+      "route": "Analytics",
+      "componentId": "filter-region"
+    },
+    {
+      "timestamp": 1600,
+      "type": "pointermove",
+      "x": 0.52,
+      "y": 0.48,
+      "route": "Analytics",
+      "componentId": "filter-region"
+    },
+    {
+      "timestamp": 1900,
+      "type": "click",
+      "x": 0.55,
+      "y": 0.52,
+      "action": "click",
+      "route": "Analytics",
+      "componentId": "btn-apply-filters"
+    },
+    {
+      "timestamp": 2300,
+      "type": "pointermove",
+      "x": 0.60,
+      "y": 0.60,
+      "route": "Analytics",
+      "componentId": "results-table"
+    },
+    {
+      "timestamp": 2700,
+      "type": "click",
+      "x": 0.62,
+      "y": 0.62,
+      "action": "click",
+      "route": "Analytics",
+      "componentId": "btn-export"
+    }
+  ],
+  "microTensors": [
+    {
+      "windowId": 1,
+      "windowStart": 1000,
+      "windowEnd": 1500,
+      "values": [0.12, 0.05, 0.25, 0.02, 1.0, 45.0, 120.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "eventCount": 2,
+      "inactive": false
+    },
+    {
+      "windowId": 2,
+      "windowStart": 1250,
+      "windowEnd": 1750,
+      "values": [0.08, 0.03, 0.18, 0.01, 0.0, 0.0, 60.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "eventCount": 2,
+      "inactive": false
+    },
+    {
+      "windowId": 3,
+      "windowStart": 1500,
+      "windowEnd": 2000,
+      "values": [0.15, 0.06, 0.30, 0.03, 1.0, 30.0, 140.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "eventCount": 2,
+      "inactive": false
+    }
+  ],
+  "macroInteractions": [
+    {
+      "timestamp": 1250,
+      "symbol": "FILTER_SELECT",
+      "componentId": "filter-region",
+      "windowId": 1
+    },
+    {
+      "timestamp": 1900,
+      "symbol": "FILTER_APPLY",
+      "componentId": "btn-apply-filters",
+      "windowId": 3
+    }
+  ],
+  "outcomes": [
+    {
+      "timestamp": 1500,
+      "outcome": "CLICK",
+      "windowId": 1
+    },
+    {
+      "timestamp": 1750,
+      "outcome": "NO_OUTCOME",
+      "windowId": 2
+    },
+    {
+      "timestamp": 2000,
+      "outcome": "CLICK",
+      "windowId": 3
+    }
+  ],
+  "predictions": [
+    {
+      "timestamp": 1500,
+      "sessionId": "sess-ctrl-baseline-t2-001",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "baseline",
+      "windowId": 1,
+      "matchedGate": "none",
+      "latencyMs": 1.2,
+      "fastGateLatencyMs": 1.2,
+      "bothGatesEvaluated": false
+    },
+    {
+      "timestamp": 1750,
+      "sessionId": "sess-ctrl-baseline-t2-001",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "baseline",
+      "windowId": 2,
+      "matchedGate": "none",
+      "latencyMs": 1.1,
+      "fastGateLatencyMs": 1.1,
+      "bothGatesEvaluated": false
+    },
+    {
+      "timestamp": 2000,
+      "sessionId": "sess-ctrl-baseline-t2-001",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "baseline",
+      "windowId": 3,
+      "matchedGate": "none",
+      "latencyMs": 1.3,
+      "fastGateLatencyMs": 1.3,
+      "bothGatesEvaluated": false
+    }
+  ],
+  "interventions": [],
+  "taskEvents": [
+    {
+      "timestamp": 1000,
+      "type": "task_start",
+      "taskId": "T2",
+      "status": "In Progress",
+      "errors": 0,
+      "sessionId": "sess-ctrl-baseline-t2-001",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "baseline"
+    },
+    {
+      "timestamp": 1900,
+      "type": "task_step",
+      "taskId": "T2",
+      "taskStepId": "T2-1",
+      "status": "In Progress",
+      "errors": 0,
+      "sessionId": "sess-ctrl-baseline-t2-001",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "baseline"
+    },
+    {
+      "timestamp": 2700,
+      "type": "task_step",
+      "taskId": "T2",
+      "taskStepId": "T2-2",
+      "status": "In Progress",
+      "errors": 0,
+      "sessionId": "sess-ctrl-baseline-t2-001",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "baseline"
+    },
+    {
+      "timestamp": 2800,
+      "type": "task_complete",
+      "taskId": "T2",
+      "status": "Completed",
+      "errors": 0,
+      "sessionId": "sess-ctrl-baseline-t2-001",
+      "experimentId": "exp-controlled-pair-01",
+      "conditionId": "baseline"
+    }
+  ]
+}
