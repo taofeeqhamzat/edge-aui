@@ -27,6 +27,10 @@ export interface InferenceResult {
   fastDecision: GateDecision;
   slowResult?: SlowGateResult;
   latencyMs: number;
+  /** Independent latency of Fast Gate evaluation (ADR-003). */
+  fastGateLatencyMs?: number;
+  /** Independent latency of Slow Gate evaluation (ADR-003). Undefined when short-circuited. */
+  slowGateLatencyMs?: number;
   timestamp: number;
 }
 
@@ -61,15 +65,19 @@ export class AdaptiveInferenceEngine {
       matched: false,
       source: 'fast'
     };
+    let fastGateLatencyMs: number | undefined;
+    let slowGateLatencyMs: number | undefined;
 
     // 1. Evaluate Fast Gate if enabled
     if (this.enableFastGate && this.fastGate) {
+      const fastStart = performance.now();
       try {
         fastDecision = await this.fastGate.evaluate(context.macroSequence);
       } catch (err) {
         console.error('[AdaptiveInferenceEngine] Fast Gate evaluation error:', err);
         fastDecision = { matched: false, source: 'fast' };
       }
+      fastGateLatencyMs = performance.now() - fastStart;
 
       // ADR-002: Fast Gate Precedence - Short-circuit Slow Gate on match
       if (fastDecision.matched && fastDecision.intervention && fastDecision.intervention.type !== 'no_op') {
@@ -79,6 +87,8 @@ export class AdaptiveInferenceEngine {
           matchedGate: 'fast',
           fastDecision,
           latencyMs,
+          fastGateLatencyMs,
+          slowGateLatencyMs: undefined,
           timestamp
         };
       }
@@ -88,6 +98,7 @@ export class AdaptiveInferenceEngine {
     let slowResult: SlowGateResult | undefined;
 
     if (this.enableSlowGate && this.slowGate) {
+      const slowStart = performance.now();
       try {
         const shape = context.tensorShape ?? [1, 8, 18];
         slowResult = await this.slowGate.infer({
@@ -95,20 +106,23 @@ export class AdaptiveInferenceEngine {
           shape,
           context: context.uiContext
         });
-
-        if (slowResult.intervention && slowResult.intervention.type !== 'no_op') {
-          const latencyMs = performance.now() - startTime;
-          return {
-            intervention: slowResult.intervention,
-            matchedGate: 'slow',
-            fastDecision,
-            slowResult,
-            latencyMs,
-            timestamp
-          };
-        }
       } catch (err) {
         console.error('[AdaptiveInferenceEngine] Slow Gate inference error:', err);
+      }
+      slowGateLatencyMs = performance.now() - slowStart;
+
+      if (slowResult?.intervention && slowResult.intervention.type !== 'no_op') {
+        const latencyMs = performance.now() - startTime;
+        return {
+          intervention: slowResult.intervention,
+          matchedGate: 'slow',
+          fastDecision,
+          slowResult,
+          latencyMs,
+          fastGateLatencyMs,
+          slowGateLatencyMs,
+          timestamp
+        };
       }
     }
 
@@ -119,6 +133,8 @@ export class AdaptiveInferenceEngine {
       fastDecision,
       slowResult,
       latencyMs,
+      fastGateLatencyMs,
+      slowGateLatencyMs,
       timestamp
     };
   }
