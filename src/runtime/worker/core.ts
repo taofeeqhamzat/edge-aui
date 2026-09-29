@@ -35,7 +35,12 @@ export class RuntimeWorkerCore {
   private sequenceBuilder: SequenceBuilder;
   private inferenceEngine: AdaptiveInferenceEngine;
   private macroHistory: MacroInteraction[] = [];
-  private options: { modelUrl?: string; minOutcomeConfidence?: number } | null = null;
+  private options: {
+    modelUrl?: string;
+    interventionModelUrl?: string;
+    useDeterministicMapping?: boolean;
+    minOutcomeConfidence?: number;
+  } | null = null;
 
   private fastGateMode: FastGateMode = 'mock';
   private slowGateMode: SlowGateMode = 'mock';
@@ -60,19 +65,35 @@ export class RuntimeWorkerCore {
    * that cannot be executed surfaces at initialisation rather than silently degrading
    * to a heuristic at inference time (assessment §19.1).
    */
-  private async createSlowGate(): Promise<{ gate: SlowGate; provider: string; modelLoaded: boolean }> {
+  private async createSlowGate(): Promise<{
+    gate: SlowGate;
+    provider: string;
+    modelLoaded: boolean;
+    foundationLoaded?: boolean;
+    interventionLoaded?: boolean;
+    providers?: { foundation?: string; intervention?: string };
+  }> {
     if (this.slowGateMode !== 'onnx') {
       return { gate: new MockSlowGate(), provider: 'mock', modelLoaded: false };
     }
 
     const gate = new OnnxSlowGate({
       modelUrl: this.options?.modelUrl,
-      confidenceThreshold: this.options?.minOutcomeConfidence
+      interventionModelUrl: this.options?.interventionModelUrl,
+      confidenceThreshold: this.options?.minOutcomeConfidence,
+      useDeterministicMapping: this.options?.useDeterministicMapping
     });
 
     try {
       const warm = await gate.warmup();
-      return { gate, provider: warm.executionProvider, modelLoaded: warm.modelLoaded };
+      return {
+        gate,
+        provider: warm.executionProvider,
+        modelLoaded: warm.modelLoaded,
+        foundationLoaded: warm.foundationLoaded,
+        interventionLoaded: warm.interventionLoaded,
+        providers: warm.providers
+      };
     } catch (err) {
       console.error('[RuntimeWorkerCore] ONNX Slow Gate unavailable:', err);
       return { gate: new MockSlowGate(), provider: 'unavailable', modelLoaded: false };
@@ -167,6 +188,8 @@ export class RuntimeWorkerCore {
           this.minPatternConfidence = request.payload?.minPatternConfidence ?? 0;
           this.options = {
             modelUrl: request.payload?.modelUrl,
+            interventionModelUrl: request.payload?.interventionModelUrl,
+            useDeterministicMapping: request.payload?.useDeterministicMapping,
             minOutcomeConfidence: request.payload?.minOutcomeConfidence
           };
 
@@ -193,7 +216,9 @@ export class RuntimeWorkerCore {
               fastGateMode: this.fastGateMode,
               slowGateMode: this.slowGateMode,
               executionProvider: this.executionProvider,
-              modelLoaded: this.modelLoaded
+              modelLoaded: this.modelLoaded,
+              interventionModelLoaded: slow.interventionLoaded,
+              executionProviders: slow.providers
             }
           };
           break;

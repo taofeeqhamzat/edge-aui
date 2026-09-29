@@ -57,8 +57,12 @@ export interface RuntimeInitRequest {
     minPatternConfidence?: number;
     /** Which Slow Gate implementation to construct. Default 'mock'. */
     slowGateMode?: SlowGateMode;
-    /** Model URL for the ONNX Slow Gate. */
+    /** Model URL for the foundation ONNX Slow Gate. */
     modelUrl?: string;
+    /** Model URL for the target intervention head ONNX Slow Gate. */
+    interventionModelUrl?: string;
+    /** Explicit ablation arm: use deterministic mapping instead of learned head. */
+    useDeterministicMapping?: boolean;
     /** Minimum outcome confidence required to emit an intervention. */
     minOutcomeConfidence?: number;
     /** Context vector dimension expected by the Slow Gate head. */
@@ -152,6 +156,11 @@ export interface RuntimeInitOkResponse {
     /** The execution provider that actually served the session, if a model loaded. */
     executionProvider?: string;
     modelLoaded?: boolean;
+    interventionModelLoaded?: boolean;
+    executionProviders?: {
+      foundation?: string;
+      intervention?: string;
+    };
   };
 }
 

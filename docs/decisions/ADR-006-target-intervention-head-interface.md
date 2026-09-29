@@ -1,7 +1,7 @@
 # ADR-006: Target Intervention Head Interface
 
-- **Status:** Proposed — awaiting human approval
-- **Date:** 2026-09-24
+- **Status:** Accepted (Option A: Separate versioned graph)
+- **Date:** 2026-09-24 (Decided 2026-09-29)
 - **Related:** ADR-004, ADR-007, ADR-011
 
 ## 1. Context

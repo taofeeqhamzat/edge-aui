@@ -1,7 +1,7 @@
 # ADR-010: Privacy and Retention Model
 
-- **Status:** Proposed — decision required before any participant-facing collection
-- **Date:** 2026-09-24
+- **Status:** Accepted (Option A now with automated test guarantees, Option B at study time)
+- **Date:** 2026-09-24 (Decided 2026-09-29)
 - **Related:** ADR-009, ADR-011
 
 ## 1. Context

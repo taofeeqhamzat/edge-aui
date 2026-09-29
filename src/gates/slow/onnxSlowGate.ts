@@ -1,22 +1,23 @@
 /**
  * ONNX-Backed Slow Gate
  *
- * The assessment (§15, §18) found that the running pipeline never executed a model:
- * `OnnxGateClient` was constructed with an empty model URL, the shipped graph expected
- * 9 input features and emitted 6 logits while the runtime produced `(1, 8, 18)` and
- * expected 7 outcome classes, and the inference handler always called a soft-coded
- * heuristic while reporting `provider: webgpu`.
+ * Implements Stage 7.2 & 12 specifications from docs/plan/1/tasks/5.1.md and ADR-006.
  *
- * This gate implements the `SlowGate` interface against the re-exported graph
- * (18-D input, 7 outcome logits) and reports its execution provider honestly.
+ * Runs inside the runtime worker (or in-process in test harness), hosting:
+ * 1. TargetInterventionHead (intervention_head_int8.onnx):
+ *    Dual inputs: sequence_input (1, T, 18) + context_input (1, 6) -> intervention_logits (1, 5).
+ *    Produces learned candidate UI interventions conditioned on continuous kinematics and UIContext.
+ * 2. FoundationOutcomeHead (model_int8.onnx):
+ *    Single input: input (1, T, 18) -> output (1, 7).
+ *    Retained alongside the intervention head for outcome diagnostics, auxiliary prediction,
+ *    and controlled ablation comparison (ADR-006 Option A).
  *
- * It runs inside the runtime worker, receives a `(1, T, 18)` tensor plus the encoded
- * UI context vector, and maps the 7 logits onto the outcome taxonomy and the declared
- * intervention space.
+ * Honest execution provider reporting: reports the provider actually serving each session
+ * ('webgpu' | 'wasm' | 'cpu' | 'unavailable').
  */
 
 import type * as OrtNamespace from 'onnxruntime-web';
-import { SlowGate, SlowGateInput, SlowGateResult } from './types';
+import { SlowGate, SlowGateInput, SlowGateResult, SlowGateMappingSource } from './types';
 import { InterventionCommand, InterventionType } from '../../intervention/types';
 import { OutcomeType } from '../../telemetry/events';
 import { CONTEXT_VECTOR_DIM, encodeUIContext } from '../../types/contextVector';
@@ -36,12 +37,21 @@ export const OUTCOME_CLASS_ORDER: OutcomeType[] = [
 export const SLOW_GATE_NUM_CLASSES = OUTCOME_CLASS_ORDER.length;
 
 /**
- * Default outcome → intervention mapping for the target head.
- *
- * The end-to-end target head (`TargetInterventionHead`, 5 classes conditioned on the UI
- * context vector) is not yet exported; until it is, this deterministic mapping turns the
- * foundation outcome distribution into a candidate intervention, which keeps the policy
- * and actuator layers exercised against real model output.
+ * Target intervention class order, aligned with model-preparation/src/config.yaml
+ * and bundle.json `target_intervention_vocabulary`.
+ */
+export const TARGET_INTERVENTION_ORDER: InterventionType[] = [
+  'simplify_options',
+  'highlight_primary_action',
+  'offer_assistance',
+  'expand_tooltip',
+  'no_op'
+];
+
+export const TARGET_INTERVENTION_NUM_CLASSES = TARGET_INTERVENTION_ORDER.length;
+
+/**
+ * Default outcome → intervention mapping for deterministic baseline / ablation arm.
  */
 export const DEFAULT_OUTCOME_INTERVENTIONS: Partial<Record<OutcomeType, InterventionType>> = {
   HOVER_DWELL: 'expand_tooltip',
@@ -53,82 +63,174 @@ export const DEFAULT_OUTCOME_INTERVENTIONS: Partial<Record<OutcomeType, Interven
   FORM_SUBMIT: 'no_op'
 };
 
-/**
- * Location of the bundled graph.
- *
- * The artifact lives under `public/models/` so it is served as a static asset at a stable
- * URL, rather than being colocated with a source module. `*.onnx` is gitignored, so the
- * file must be produced by the export step in `model-preparation` before a browser build
- * can execute the Slow Gate.
- */
+/** Default bundled graph URLs. */
 export const DEFAULT_MODEL_URL = '/models/model_int8.onnx';
+export const DEFAULT_INTERVENTION_MODEL_URL = '/models/intervention_head_int8.onnx';
 
 /**
- * Absolute URL for the bundled graph, correct in both window and worker scopes.
+ * Resolves model path or URL in both browser worker and Node.js testing scopes.
  */
-export function resolveDefaultModelUrl(): string {
+export function resolveModelPathOrUrl(url: string): string {
   if (typeof location !== 'undefined' && typeof location.origin === 'string') {
-    return new URL(DEFAULT_MODEL_URL, location.origin).href;
+    return new URL(url, location.origin).href;
   }
-  return DEFAULT_MODEL_URL;
+  if (typeof process !== 'undefined' && typeof process.cwd === 'function') {
+    if (url.startsWith('/models/')) {
+      return `${process.cwd()}/public${url}`;
+    }
+  }
+  return url;
+}
+
+export function resolveDefaultModelUrl(): string {
+  return resolveModelPathOrUrl(DEFAULT_MODEL_URL);
+}
+
+export function resolveDefaultInterventionModelUrl(): string {
+  return resolveModelPathOrUrl(DEFAULT_INTERVENTION_MODEL_URL);
 }
 
 export interface OnnxSlowGateOptions {
-  /** Model URL. Defaults to the bundled INT8 graph. */
-  modelUrl?: string;
+  /** Foundation outcome model URL. Defaults to /models/model_int8.onnx. Set null to disable. */
+  modelUrl?: string | null;
+  /** Target intervention head model URL. Defaults to /models/intervention_head_int8.onnx. Set null to disable. */
+  interventionModelUrl?: string | null;
   /** Preferred execution provider order. */
   executionProviders?: ('webgpu' | 'wasm' | 'cpu')[];
   /** Minimum confidence required to emit a candidate intervention. Default 0.5. */
   confidenceThreshold?: number;
-  /** Outcome → intervention overrides. */
+  /** Minimum outcome confidence for foundation head. */
+  minOutcomeConfidence?: number;
+  /** Explicit ablation arm: use deterministic mapping instead of learned head even if loaded. Default false. */
+  useDeterministicMapping?: boolean;
+  /** Outcome → intervention overrides for deterministic mapping. */
   interventionByOutcome?: Partial<Record<OutcomeType, InterventionType>>;
-  /** Maximum class probability accepted as confident. Default null (no cap). */
+  /** Injected ORT module for tests. */
   ortModule?: typeof OrtNamespace;
 }
 
-interface SessionBundle {
+export interface ModelSessionInfo {
   session: OrtNamespace.InferenceSession;
-  ort: typeof OrtNamespace;
   executionProvider: string;
-  inputName: string;
+  inputNames: readonly string[];
+  outputNames: readonly string[];
   modelLoaded: boolean;
 }
 
-let cached: SessionBundle | null = null;
+export interface DualSessionBundle {
+  ort: typeof OrtNamespace;
+  foundation?: ModelSessionInfo;
+  intervention?: ModelSessionInfo;
+  primaryProvider: string;
+  modelsLoaded: boolean;
+}
+
+let cached: DualSessionBundle | null = null;
+
+async function createSingleSession(
+  ort: typeof OrtNamespace,
+  rawUrl: string,
+  providers: ('webgpu' | 'wasm' | 'cpu')[]
+): Promise<ModelSessionInfo> {
+  let session: OrtNamespace.InferenceSession;
+
+  // In Node.js / test environments (e.g. jsdom where location.origin is http://localhost:3000),
+  // read the file directly into a Uint8Array if it exists on disk.
+  let loadedFromDisk = false;
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    try {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      let candidatePath = rawUrl;
+      if (candidatePath.startsWith('http://localhost:3000/')) {
+        candidatePath = candidatePath.replace('http://localhost:3000/', '/');
+      }
+      if (candidatePath.startsWith('/models/')) {
+        candidatePath = path.join(process.cwd(), 'public', candidatePath);
+      }
+      if (fs.existsSync(candidatePath)) {
+        const fileBuf = fs.readFileSync(candidatePath);
+        const uint8 = new Uint8Array(fileBuf.buffer, fileBuf.byteOffset, fileBuf.byteLength);
+        session = await ort.InferenceSession.create(uint8, {
+          executionProviders: providers as never
+        });
+        loadedFromDisk = true;
+      }
+    } catch {
+      // Fall through to standard path
+    }
+  }
+
+  if (!loadedFromDisk) {
+    const modelUrl = resolveModelPathOrUrl(rawUrl);
+    session = await ort.InferenceSession.create(modelUrl, {
+      executionProviders: providers as never
+    });
+  }
+
+  const selected =
+    (session! as unknown as { executionProvider?: string }).executionProvider ??
+    providers[0] ??
+    'wasm';
+
+  return {
+    session: session!,
+    executionProvider: selected,
+    inputNames: session!.inputNames,
+    outputNames: session!.outputNames,
+    modelLoaded: true
+  };
+}
 
 /**
- * Loads the ONNX session once per worker and reports the provider that actually served
- * the session, rather than the provider that was requested.
+ * Loads ONNX sessions once per worker and reports the providers that actually served
+ * the sessions, rather than the providers that were requested.
  */
-async function getSession(options: OnnxSlowGateOptions): Promise<SessionBundle | null> {
+async function getSession(options: OnnxSlowGateOptions): Promise<DualSessionBundle | null> {
   if (cached) return cached;
 
   const ort = options.ortModule ?? (await import('onnxruntime-web'));
-  // Resolve to an absolute URL: ONNX Runtime loads the graph from inside a worker, where a
-  // bare web-root-relative path would resolve against the worker's own base URL.
-  const modelUrl = options.modelUrl ?? resolveDefaultModelUrl();
   const providers = options.executionProviders ?? ['webgpu', 'wasm', 'cpu'];
 
   ort.env.wasm.numThreads = 1;
   ort.env.wasm.simd = true;
 
-  const session = await ort.InferenceSession.create(modelUrl, {
-    executionProviders: providers as never
-  });
+  const foundationUrl =
+    options.modelUrl === null
+      ? null
+      : options.modelUrl !== undefined
+        ? options.modelUrl
+        : DEFAULT_MODEL_URL;
 
-  // Some builds do not expose the selected provider; fall back to the first requested.
-  const selected =
-    (session as unknown as { executionProvider?: string }).executionProvider ??
-    providers[0] ??
-    'wasm';
+  const interventionUrl =
+    options.interventionModelUrl === null
+      ? null
+      : options.interventionModelUrl !== undefined
+        ? options.interventionModelUrl
+        : DEFAULT_INTERVENTION_MODEL_URL;
+
+  let foundation: ModelSessionInfo | undefined;
+  let intervention: ModelSessionInfo | undefined;
+
+  if (foundationUrl) {
+    foundation = await createSingleSession(ort, foundationUrl, providers);
+  }
+  if (interventionUrl) {
+    intervention = await createSingleSession(ort, interventionUrl, providers);
+  }
+
+  const primaryProvider =
+    intervention?.executionProvider ?? foundation?.executionProvider ?? 'unavailable';
+  const modelsLoaded = Boolean(intervention?.modelLoaded || foundation?.modelLoaded);
 
   cached = {
-    session,
     ort,
-    executionProvider: selected,
-    inputName: session.inputNames[0] ?? 'input',
-    modelLoaded: true
+    foundation,
+    intervention,
+    primaryProvider,
+    modelsLoaded
   };
+
   return cached;
 }
 
@@ -148,70 +250,182 @@ export class OnnxSlowGate implements SlowGate {
   }
 
   /**
-   * Loads the model eagerly so a deployment failure is visible at start-up rather than
+   * Loads both models eagerly so a deployment failure is visible at start-up rather than
    * silently degrading to a heuristic at inference time.
    */
-  public async warmup(): Promise<{ modelLoaded: boolean; executionProvider: string }> {
+  public async warmup(): Promise<{
+    modelLoaded: boolean;
+    executionProvider: string;
+    foundationLoaded: boolean;
+    interventionLoaded: boolean;
+    providers: { foundation?: string; intervention?: string };
+  }> {
     const bundle = await getSession(this.options);
-    if (!bundle) {
+    if (!bundle || !bundle.modelsLoaded) {
       this.lastProvider = 'unavailable';
-      return { modelLoaded: false, executionProvider: this.lastProvider };
+      return {
+        modelLoaded: false,
+        executionProvider: this.lastProvider,
+        foundationLoaded: false,
+        interventionLoaded: false,
+        providers: {}
+      };
     }
-    this.lastProvider = bundle.executionProvider;
-    return { modelLoaded: bundle.modelLoaded, executionProvider: this.lastProvider };
+    this.lastProvider = bundle.primaryProvider;
+    return {
+      modelLoaded: bundle.modelsLoaded,
+      executionProvider: this.lastProvider,
+      foundationLoaded: Boolean(bundle.foundation?.modelLoaded),
+      interventionLoaded: Boolean(bundle.intervention?.modelLoaded),
+      providers: {
+        foundation: bundle.foundation?.executionProvider,
+        intervention: bundle.intervention?.executionProvider
+      }
+    };
   }
 
   public async infer(input: SlowGateInput): Promise<SlowGateResult> {
     const bundle = await getSession(this.options);
 
-    if (!bundle) {
+    if (!bundle || !bundle.modelsLoaded) {
       // Fail visibly: no model, no fabricated probabilities.
       return { outcome: 'NO_OUTCOME', confidence: 0, source: 'slow' };
     }
 
     this.assertShape(input);
-    this.lastProvider = bundle.executionProvider;
+    this.lastProvider = bundle.primaryProvider;
 
-    const { ort, session, inputName } = bundle;
+    const { ort } = bundle;
+    const [batch] = input.shape;
 
-    const tensor = new ort.Tensor('float32', input.sequence, input.shape as never);
-
-    // The context vector is computed even though the currently exported graph consumes
-    // only the MicroTensor sequence: the target head requires it, and computing it here
-    // keeps the encoding path exercised end to end.
+    // Compute R^6 context vector
     const contextVector = encodeUIContext(input.context);
     if (contextVector.length !== CONTEXT_VECTOR_DIM) {
-      throw new Error(`Context vector must have ${CONTEXT_VECTOR_DIM} elements`);
+      throw new Error(
+        `[OnnxSlowGate] Context vector must have ${CONTEXT_VECTOR_DIM} elements, received ${contextVector.length}`
+      );
+    }
+
+    const seqTensor = new ort.Tensor('float32', input.sequence, input.shape as never);
+    const ctxTensor = new ort.Tensor('float32', contextVector, [batch, CONTEXT_VECTOR_DIM]);
+
+    let seqInputName = 'sequence_input';
+    let ctxInputName = 'context_input';
+    if (bundle.intervention) {
+      const names = bundle.intervention.inputNames;
+      if (names.length !== 2) {
+        throw new Error(
+          `[OnnxSlowGate] TargetInterventionHead graph must declare 2 inputs (sequence and context), found ${names.length} (${names.join(', ')})`
+        );
+      }
+      seqInputName = names.find((n) => n.includes('seq') || n === 'sequence_input') ?? names[0];
+      ctxInputName = names.find((n) => n.includes('context') || n === 'context_input') ?? names[1];
+    }
+
+    let fndInputName = 'input';
+    if (bundle.foundation) {
+      fndInputName = bundle.foundation.inputNames[0] ?? 'input';
     }
 
     const start = performance.now();
-    const outputs = await defaultCollector.timeAsync(
-      'ONNX inference',
-      'model',
-      () => session.run({ [inputName]: tensor })
-    );
+    const [interventionOutputs, foundationOutputs] = await Promise.all([
+      bundle.intervention
+        ? defaultCollector.timeAsync(
+            'ONNX inference',
+            'model',
+            () =>
+              bundle.intervention!.session.run({
+                [seqInputName]: seqTensor,
+                [ctxInputName]: ctxTensor
+              }),
+            { metadata: { head: 'intervention' } }
+          )
+        : Promise.resolve(null),
+      bundle.foundation
+        ? defaultCollector.timeAsync(
+            'ONNX inference',
+            'model',
+            () => bundle.foundation!.session.run({ [fndInputName]: seqTensor }),
+            { metadata: { head: 'foundation' } }
+          )
+        : Promise.resolve(null)
+    ]);
     const latencyMs = performance.now() - start;
-
-    const outputName = session.outputNames[0] ?? 'output';
-    const logits = outputs[outputName].data as Float32Array;
-    const probabilities = softmax(logits);
-    const { outcome, confidence } = this.argmaxOutcome(probabilities);
-    const intervention = this.buildIntervention(outcome, confidence, input);
-
-    this.lastOutcome = outcome;
     this.lastLatencyMs = latencyMs;
+
+    let outcome: OutcomeType = 'NO_OUTCOME';
+    let outcomeConfidence = 0;
+    let outcomeProbabilities: Float32Array | undefined;
+
+    if (foundationOutputs && bundle.foundation) {
+      const fndOutputName = bundle.foundation.outputNames[0] ?? 'output';
+      const fndLogits = foundationOutputs[fndOutputName].data as Float32Array;
+      if (fndLogits.length !== SLOW_GATE_NUM_CLASSES) {
+        throw new Error(
+          `[OnnxSlowGate] Expected foundation output dimension ${SLOW_GATE_NUM_CLASSES}, received ${fndLogits.length}`
+        );
+      }
+      outcomeProbabilities = softmax(fndLogits);
+      const argmax = this.argmaxOutcome(outcomeProbabilities);
+      outcome = argmax.outcome;
+      outcomeConfidence = argmax.confidence;
+      this.lastOutcome = outcome;
+    }
+
+    let interventionProbabilities: Float32Array | undefined;
+    let interventionConfidence = 0;
+    let predictedInterventionType: InterventionType = 'no_op';
+
+    if (interventionOutputs && bundle.intervention) {
+      const intOutputName = bundle.intervention.outputNames[0] ?? 'intervention_logits';
+      const intLogits = interventionOutputs[intOutputName].data as Float32Array;
+      if (intLogits.length !== TARGET_INTERVENTION_NUM_CLASSES) {
+        throw new Error(
+          `[OnnxSlowGate] Expected intervention output dimension ${TARGET_INTERVENTION_NUM_CLASSES}, received ${intLogits.length}`
+        );
+      }
+      interventionProbabilities = softmax(intLogits);
+      const argmaxInt = this.argmaxIntervention(interventionProbabilities);
+      predictedInterventionType = argmaxInt.type;
+      interventionConfidence = argmaxInt.confidence;
+    }
+
+    let mappingSource: SlowGateMappingSource;
+    let intervention: InterventionCommand | undefined;
+
+    if (this.options.useDeterministicMapping || !interventionOutputs) {
+      mappingSource = 'deterministic_mapping';
+      intervention = this.buildDeterministicIntervention(outcome, outcomeConfidence, input);
+    } else {
+      mappingSource = 'learned_head';
+      intervention = this.buildLearnedIntervention(
+        predictedInterventionType,
+        interventionConfidence,
+        input
+      );
+    }
 
     return {
       outcome,
-      confidence,
-      probabilities,
+      confidence: outcomeConfidence,
+      probabilities: outcomeProbabilities,
       intervention,
+      interventionProbabilities,
+      interventionConfidence,
+      mappingSource,
       source: 'slow'
     };
   }
 
   public getExecutionProvider(): string {
     return this.lastProvider;
+  }
+
+  public getExecutionProviders(): { foundation?: string; intervention?: string } {
+    return {
+      foundation: cached?.foundation?.executionProvider,
+      intervention: cached?.intervention?.executionProvider
+    };
   }
 
   public getLastOutcome(): OutcomeType | undefined {
@@ -247,7 +461,44 @@ export class OnnxSlowGate implements SlowGate {
     return { outcome: OUTCOME_CLASS_ORDER[bestIdx] ?? 'NO_OUTCOME', confidence: bestProb };
   }
 
-  private buildIntervention(
+  private argmaxIntervention(
+    probabilities: Float32Array
+  ): { type: InterventionType; confidence: number } {
+    let bestIdx = 0;
+    let bestProb = -Infinity;
+    for (let i = 0; i < probabilities.length; i++) {
+      if (probabilities[i] > bestProb) {
+        bestProb = probabilities[i];
+        bestIdx = i;
+      }
+    }
+    return {
+      type: TARGET_INTERVENTION_ORDER[bestIdx] ?? 'no_op',
+      confidence: bestProb
+    };
+  }
+
+  private buildLearnedIntervention(
+    type: InterventionType,
+    confidence: number,
+    input: SlowGateInput
+  ): InterventionCommand | undefined {
+    const threshold = this.options.confidenceThreshold ?? 0.5;
+    if (confidence < threshold) return undefined;
+    if (type === 'no_op') return undefined;
+
+    return {
+      type,
+      source: 'slow',
+      mappingSource: 'learned_head',
+      confidence,
+      issuedAt: Date.now(),
+      targetComponentId: input.context.activeComponentId,
+      reason: `ONNX TargetInterventionHead predicted ${type} (p=${confidence.toFixed(3)}) via ${this.lastProvider}`
+    };
+  }
+
+  private buildDeterministicIntervention(
     outcome: OutcomeType,
     confidence: number,
     input: SlowGateInput
@@ -262,15 +513,16 @@ export class OnnxSlowGate implements SlowGate {
     return {
       type,
       source: 'slow',
+      mappingSource: 'deterministic_mapping',
       confidence,
       issuedAt: Date.now(),
       targetComponentId: input.context.activeComponentId,
-      reason: `ONNX Slow Gate predicted ${outcome} (p=${confidence.toFixed(3)}) via ${this.lastProvider}`
+      reason: `ONNX Slow Gate (deterministic mapping) predicted ${outcome} -> ${type} (p=${confidence.toFixed(3)}) via ${this.lastProvider}`
     };
   }
 }
 
-/** Numerically stable softmax over the model's outcome logits. */
+/** Numerically stable softmax over model logits. */
 export function softmax(logits: Float32Array): Float32Array {
   const max = Math.max(...logits);
   const exps = new Float32Array(logits.length);

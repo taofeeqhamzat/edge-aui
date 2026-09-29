@@ -10,7 +10,7 @@ The table below indexes every versioned schema and interface in the framework, a
 
 | Index | Schema / Contract | Version | Declaring File | Primary TypeScript Interface | Purpose |
 |---|---|---|---|---|---|
-| **1** | **Experiment Trace Schema** | `1.1.0` | `src/telemetry/traceSchema.ts` | `SerializableExperimentTrace` | Chronological session replay containing telemetry, MicroTensors, outcomes, predictions, and effective config. |
+| **1** | **Experiment Trace Schema** | `1.2.0` | `src/telemetry/traceSchema.ts` | `SerializableExperimentTrace` | Chronological session replay containing telemetry, MicroTensors, outcomes, predictions (with model attribution), interventions (with mapping source), and effective config. (Legacy `1.1.0` backward-compatible). |
 | **2** | **MicroTensor Feature Schema** | `1.0.0` | `src/microtensor/window.ts` | `MicroTensorWindow` | 18-D feature vector representation (`[X ⊙ M, M]`: 9 kinematic features + 9 binary modality masks) over 500 ms windows. |
 | **3** | **Runtime Configuration Schema**| `1.0.0` | `src/config/runtimeConfig.ts` | `RuntimeConfig` | Layer 2 configuration spanning 9 parameter groups with default initialization and invariant validation. |
 | **4** | **Synced Pipeline Configuration**| `1.0.0` | `src/config/pipelineConfig.ts` | `PipelineConfig` | Layer 1 cross-repo hyperparameters synchronized from `model-preparation/src/config.yaml`. |
@@ -21,16 +21,17 @@ The table below indexes every versioned schema and interface in the framework, a
 
 ## 2. Detailed Schema Specifications
 
-### Schema 1: Experiment Trace Schema (`v1.1.0`)
+### Schema 1: Experiment Trace Schema (`v1.2.0`)
 - **Owning File:** [`src/telemetry/traceSchema.ts`](../src/telemetry/traceSchema.ts)
-- **Constant:** `EXPERIMENT_TRACE_SCHEMA_VERSION = '1.1.0'`
+- **Constant:** `EXPERIMENT_TRACE_SCHEMA_VERSION = '1.2.0'`
+- **Supported Versions:** `SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.2.0', '1.1.0']`
 - **Validation:** `validateExperimentTrace(trace: unknown): TraceValidationResult`
 - **Specification:**
   An experiment trace captures a complete evaluation session for offline replay, ablation, and statistical analysis without any network egress.
 
 ```typescript
 export interface SerializableExperimentTrace {
-  schemaVersion: '1.1.0';
+  schemaVersion: '1.2.0';
   exportedAt: string; // ISO 8601 UTC timestamp
   session: SessionContext;
   task: UiTaskStateSnapshot;
@@ -50,6 +51,9 @@ export interface SerializableExperimentTrace {
 - `microTensors.values` is serialized from native `Float32Array` to standard `number[]` for valid JSON output.
 - `metadata.durationMs` is computed strictly using epoch timestamps (`startedAtEpochMs` to `Date.now()`) to prevent monotonic clock skew.
 - `effectiveConfig` captures the exact Layer 2 configuration active during the session, allowing reproducible evaluation runs.
+- **Intervention Attribution (Schema 1.2.0):** Every `InterventionEvent` carries `mappingSource?: 'learned_head' | 'deterministic_mapping' | 'fast_gate_pattern'` explicitly tagging the generative mechanism that caused the adaptation.
+- **Model Attribution (Schema 1.2.0):** Every `PredictionEvent` carries `modelVersion?: string`, `contextEncodingVersion?: string`, and `mappingSource?: MappingSource`.
+- **Migration & Backward Compatibility:** Traces declaring schema `1.1.0` continue to validate successfully via `validateExperimentTrace` with `isLegacyVersion: true`. Upgrading from `1.1.0` to `1.2.0` requires populating `mappingSource` on intervention records and `modelVersion` / `contextEncodingVersion` on prediction events. Unknown schema versions (e.g. `< 1.1.0`) are rejected with actionable error messages.
 
 ---
 
@@ -134,3 +138,27 @@ export interface UiAdapter {
   onDestroy?(): void;
 }
 ```
+
+---
+
+## 3. Trace Identifiers & Linkability Specification (ADR-010 / Task 5.2)
+
+Per ADR-010 (Guarantee 4), every identifier present in an exported `SerializableExperimentTrace` is enumerated below with its linkability and privacy guarantees explicitly stated:
+
+| Identifier Key | Location in Trace | Format / Type | Scope & Lifetime | Cross-Session Linkability | Privacy Rationale & Guarantees |
+|---|---|---|---|---|---|
+| `sessionId` | `session.sessionId`, `metadata`, events | UUID v4 string (e.g. `c7f5...`) | Session-scoped ephemeral identifier generated at runtime initialisation | **Unlinkable** across sessions or browser restarts | Rotated on every session creation; cannot be tied to persistent user or device identity. |
+| `experimentId` | `session.experimentId`, `metadata`, events | Alphanumeric slug (e.g. `exp-001`) | Study trial configuration group | **Unlinkable** to individuals | Identifies the study arm or evaluation protocol version; contains zero subject information. |
+| `conditionId` | `session.conditionId`, `metadata`, events | Enum: `'baseline'` \| `'adaptive'` | Study condition | **Unlinkable** to individuals | Differentiates control vs intervention arm; identical across all participants in that arm. |
+| `taskId` | `session.taskId`, `task.currentTaskId`, events | Token: `'T1'`, `'T2'`, `'T3'` | Active study task duration | **Unlinkable** to individuals | Represents standardized protocol task definition. |
+| `taskStepId` | `task.completedSteps`, `taskEvents`, events | Token (e.g. `'T1-1'`, `'T1-2'`) | Active task sub-step duration | **Unlinkable** to individuals | Protocol milestone tracking token. |
+| `windowId` | `microTensors`, `macroInteractions`, `outcomes`, `predictions`, `interventions` | Monotonic integer (`0, 1, 2, ...`) | Session-scoped rolling window sequence index | **Unlinkable** across sessions | Used strictly for intra-session temporal correlation across MicroTensors, outcomes, predictions, and adaptations. |
+| `interventionEpisodeId`| `interventions` | Monotonic token (`'ep_1'`, `'ep_2'`) | Single adaptation episode lifecycle | **Unlinkable** across sessions | Correlates the `issued` → `accepted` → `applied` → `dismissed`/`reverted` states of a single intervention event. |
+| `componentId` | `behaviourEvents`, `interventions`, context | Semantic string (e.g. `'btn-save'`) | DOM component lifetime | **Unlinkable** to individuals | Static DOM widget identifier derived from `data-aui-component` or element tag; carries zero user input or free text. |
+
+### Data Minimization & Privacy Guarantees (ADR-010)
+
+1. **Zero Field Values (Guarantee 1):** The passive observer (`TelemetryObserver`) captures structural metadata (`componentId`, `componentRole`, `action`, `route`) but **never** reads or serializes input values (`input.value`, `textarea.value`, `select.value`, or text contents). Form field values and confidential sentinels are provably absent from all traces (enforced by `tests/context_redaction.test.ts`).
+2. **Zero Network Egress (Guarantee 2):** Telemetry observation, windowing, inference, policy evaluation, DOM adaptation, and trace export run entirely on the client edge. Zero network egress primitives (`fetch`, `XMLHttpRequest`, `WebSocket`, `navigator.sendBeacon`) are invoked during telemetry execution (enforced by `tests/context_redaction.test.ts`).
+3. **Session-Scoped Storage (Guarantee 3):** All recorded events and buffers reside in volatile JavaScript memory. Traces exist only for the duration of the page lifecycle unless explicitly exported by local researcher download. Persistent storage and remote upload are explicitly deferred (ADR-009 / ADR-014 D1).
+

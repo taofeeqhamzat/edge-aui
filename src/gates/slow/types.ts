@@ -15,11 +15,19 @@ export interface SlowGateInput {
   context: UIContext;
 }
 
+export type SlowGateMappingSource = 'learned_head' | 'deterministic_mapping';
+
 export interface SlowGateResult {
   outcome?: OutcomeType;
   intervention?: InterventionCommand;
   probabilities?: Float32Array;
   confidence?: number;
+  /** Explicit intervention head probability distribution over the 5 target classes. */
+  interventionProbabilities?: Float32Array;
+  /** Confidence score of the top-ranked intervention class. */
+  interventionConfidence?: number;
+  /** Attribution of how candidate intervention was produced (ADR-006). */
+  mappingSource?: SlowGateMappingSource;
   source: 'slow';
 }
 
