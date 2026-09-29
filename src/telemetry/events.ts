@@ -168,9 +168,16 @@ export interface OutcomeEvent {
   derivation?: OutcomeDerivationMetadata;
 }
 
+/** Closed taxonomy of generative mechanisms that can produce an intervention command (ADR-006 / Task 5.3). */
+export type MappingSource =
+  | 'learned_head'
+  | 'deterministic_mapping'
+  | 'fast_gate_pattern';
+
 /**
  * Model prediction record. The assessment (§16.3) identified the absence of any
  * prediction logging as a reproducibility gap.
+ * Schema 1.2.0 adds mappingSource, modelVersion, and contextEncodingVersion.
  */
 export interface PredictionEvent {
   timestamp: number;
@@ -181,8 +188,13 @@ export interface PredictionEvent {
   matchedGate: 'fast' | 'slow' | 'none';
   outcome?: OutcomeType;
   interventionType?: string;
+  mappingSource?: MappingSource;
   confidence?: number;
   latencyMs?: number;
+  fastGateLatencyMs?: number;
+  slowGateLatencyMs?: number;
+  modelVersion?: string;
+  contextEncodingVersion?: string;
   /** True when both gates were evaluated and returned no intervention. */
   bothGatesEvaluated: boolean;
 }
@@ -203,6 +215,8 @@ export interface InterventionEvent {
   intervention: string;
   componentId?: string;
   source: 'fast' | 'slow' | 'rule';
+  /** Generative mechanism that produced this adaptation (Task 5.3). */
+  mappingSource?: MappingSource;
   confidence?: number;
   /** Correlates the issued/accepted/applied/dismissed/reverted lifecycle of one episode. */
   interventionEpisodeId?: string;

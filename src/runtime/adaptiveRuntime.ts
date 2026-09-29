@@ -92,8 +92,12 @@ export interface AdaptiveRuntimeOptions {
    * ONNX Runtime Web cannot initialise) and `onnx` in a browser.
    */
   slowGateMode?: 'mock' | 'onnx';
-  /** URL of the ONNX graph. Defaults to the bundled INT8 artifact. */
+  /** URL of the foundation ONNX graph. Defaults to the bundled INT8 artifact. */
   modelUrl?: string;
+  /** URL of the learned intervention head ONNX graph. Defaults to /models/intervention_head_int8.onnx. */
+  interventionModelUrl?: string;
+  /** Explicit ablation arm: use deterministic mapping instead of learned head. Default false. */
+  useDeterministicMapping?: boolean;
   /** Minimum outcome confidence required to emit an intervention. */
   minOutcomeConfidence?: number;
   /** Skip worker dispatch entirely and evaluate in-process (tests). */
@@ -300,6 +304,8 @@ export class AdaptiveRuntime {
         ...baseInit,
         slowGateMode: desiredSlowGate,
         modelUrl: this.options.modelUrl,
+        interventionModelUrl: this.options.interventionModelUrl,
+        useDeterministicMapping: this.options.useDeterministicMapping,
         minOutcomeConfidence: this.options.minOutcomeConfidence
       });
 
@@ -586,6 +592,18 @@ export class AdaptiveRuntime {
       const macroSequence = this.macroStream.getRecent(this.config.macro.recentSequenceLookback);
       const result: InferenceResult = await this.workerClient.evaluate(uiContext, macroSequence);
 
+      const resolvedMappingSource =
+        result.intervention?.mappingSource ??
+        (result.matchedGate === 'fast'
+          ? 'fast_gate_pattern'
+          : result.matchedGate === 'slow'
+            ? (result.slowResult?.mappingSource ?? (this.options.useDeterministicMapping ? 'deterministic_mapping' : 'learned_head'))
+            : undefined);
+
+      const modelVersion =
+        this.options.interventionModelUrl ??
+        (this.modelLoaded ? 'TargetInterventionHead-v1.0.0-int8' : undefined);
+
       experimentRecorder.recordPrediction({
         timestamp: result.timestamp,
         sessionId: sessionManager.getActiveSession()?.sessionId,
@@ -595,8 +613,13 @@ export class AdaptiveRuntime {
         matchedGate: result.matchedGate,
         outcome: result.slowResult?.outcome,
         interventionType: result.intervention?.type,
+        mappingSource: resolvedMappingSource,
         confidence: result.intervention?.confidence ?? result.slowResult?.confidence,
         latencyMs: result.latencyMs,
+        fastGateLatencyMs: result.fastGateLatencyMs,
+        slowGateLatencyMs: result.slowGateLatencyMs,
+        modelVersion,
+        contextEncodingVersion: 'R6-v1.0.0',
         bothGatesEvaluated: result.matchedGate === 'none'
       });
       this.counters.predictionsRecorded++;
@@ -647,6 +670,7 @@ export class AdaptiveRuntime {
         intervention: decision.command.type,
         componentId: decision.command.targetComponentId,
         source: decision.command.source,
+        mappingSource: decision.command.mappingSource ?? resolvedMappingSource,
         confidence: decision.command.confidence,
         interventionEpisodeId: this.currentEpisode,
         sessionId: sessionManager.getActiveSession()?.sessionId,

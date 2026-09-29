@@ -83,6 +83,7 @@ export class UIActuator {
           intervention: 'no_op',
           componentId: command.targetComponentId,
           source: command.source,
+          mappingSource: command.mappingSource,
           confidence: command.confidence
         });
         return;
@@ -131,6 +132,7 @@ export class UIActuator {
           intervention: command.type,
           componentId: command.targetComponentId,
           source: command.source,
+          mappingSource: command.mappingSource,
           confidence: command.confidence
         });
       }
@@ -156,6 +158,7 @@ export class UIActuator {
             intervention: command.type,
             componentId: command.targetComponentId,
             source: command.source,
+            mappingSource: command.mappingSource,
             confidence: command.confidence
           });
         }
@@ -180,6 +183,7 @@ export class UIActuator {
         intervention: type,
         componentId: record.command.targetComponentId,
         source: record.command.source,
+        mappingSource: record.command.mappingSource,
         confidence: record.command.confidence
       });
     }
@@ -391,6 +395,7 @@ export class UIActuator {
           intervention: command.type,
           componentId: command.targetComponentId,
           source: command.source,
+          mappingSource: command.mappingSource,
           confidence: command.confidence
         });
       }
@@ -473,6 +478,7 @@ export class UIActuator {
         intervention: command.type,
         componentId: command.targetComponentId,
         source: command.source,
+        mappingSource: command.mappingSource,
         confidence: command.confidence
       });
     };

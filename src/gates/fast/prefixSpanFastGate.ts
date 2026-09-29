@@ -202,6 +202,7 @@ export class PrefixSpanFastGate implements FastGate {
       return {
         type: target,
         source: 'fast',
+        mappingSource: 'fast_gate_pattern',
         confidence: this.options.defaultConfidence,
         issuedAt: now,
         reason
@@ -212,6 +213,7 @@ export class PrefixSpanFastGate implements FastGate {
     return {
       type: command.type ?? 'no_op',
       source: 'fast',
+      mappingSource: 'fast_gate_pattern',
       confidence: command.confidence ?? this.options.defaultConfidence,
       issuedAt: command.issuedAt ?? now,
       targetComponentId: command.targetComponentId,

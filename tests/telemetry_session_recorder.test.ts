@@ -185,7 +185,7 @@ describe('telemetry/recorder', () => {
 
     expect(validation.valid).toBe(true);
     expect(validation.errors).toHaveLength(0);
-    expect(serializable.schemaVersion).toBe('1.1.0');
+    expect(serializable.schemaVersion).toBe('1.2.0');
     expect(serializable.metadata.totalEvents).toBe(2);
     expect(serializable.metadata.conditionId).toBeDefined();
     expect(serializable.microTensors[0].windowId).toBe(0);

@@ -28,7 +28,8 @@ import { SessionContext } from './session';
 import { UiTaskStateSnapshot } from '../integration/types';
 import type { RuntimeConfig } from '../config/runtimeConfig';
 
-export const EXPERIMENT_TRACE_SCHEMA_VERSION = '1.1.0';
+export const EXPERIMENT_TRACE_SCHEMA_VERSION = '1.2.0';
+export const SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.2.0', '1.1.0'] as const;
 
 export interface SerializableMicroTensorWindow {
   windowId: number;
@@ -76,6 +77,7 @@ export interface SerializableExperimentTrace {
 export interface TraceValidationResult {
   valid: boolean;
   errors: string[];
+  isLegacyVersion?: boolean;
 }
 
 /**
@@ -90,8 +92,13 @@ export function validateExperimentTrace(data: unknown): TraceValidationResult {
 
   const trace = data as Partial<SerializableExperimentTrace>;
 
-  if (trace.schemaVersion !== EXPERIMENT_TRACE_SCHEMA_VERSION) {
-    errors.push(`Invalid schemaVersion: expected '${EXPERIMENT_TRACE_SCHEMA_VERSION}', received '${trace.schemaVersion}'`);
+  const isCurrentVersion = trace.schemaVersion === EXPERIMENT_TRACE_SCHEMA_VERSION;
+  const isSupportedLegacy = trace.schemaVersion === '1.1.0';
+
+  if (!isCurrentVersion && !isSupportedLegacy) {
+    errors.push(
+      `Invalid schemaVersion: expected '${EXPERIMENT_TRACE_SCHEMA_VERSION}' (or supported legacy '1.1.0'), received '${trace.schemaVersion}'`
+    );
   }
 
   if (typeof trace.exportedAt !== 'string' || Number.isNaN(Date.parse(trace.exportedAt))) {
@@ -190,7 +197,8 @@ export function validateExperimentTrace(data: unknown): TraceValidationResult {
 
   return {
     valid: errors.length === 0,
-    errors
+    errors,
+    isLegacyVersion: isSupportedLegacy
   };
 }
 

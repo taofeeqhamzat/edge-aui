@@ -34,6 +34,8 @@ export function isInterventionType(val: unknown): val is InterventionType {
   );
 }
 
+export type InterventionMappingSource = 'learned_head' | 'deterministic_mapping' | 'fast_gate_pattern';
+
 /**
  * Declarative command representing a desired UI adaptation.
  * Must contain zero direct DOM references or side-effects.
@@ -43,6 +45,7 @@ export interface InterventionCommand {
   targetComponentId?: string;
   confidence?: number;
   source: InterventionSource;
+  mappingSource?: InterventionMappingSource;
   issuedAt: number;
   ttlMs?: number;
   reason?: string;
@@ -53,6 +56,7 @@ export interface CreateInterventionOptions {
   targetComponentId?: string;
   confidence?: number;
   source?: InterventionSource;
+  mappingSource?: InterventionMappingSource;
   issuedAt?: number;
   ttlMs?: number;
   reason?: string;
@@ -73,6 +77,7 @@ export function createInterventionCommand(
     targetComponentId: options.targetComponentId,
     confidence: options.confidence,
     source: options.source ?? 'rule',
+    mappingSource: options.mappingSource,
     issuedAt: options.issuedAt ?? Date.now(),
     ttlMs: options.ttlMs,
     reason: options.reason
