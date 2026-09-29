@@ -177,17 +177,20 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
 
 ### Slow Gate — `src/gates/slow/onnxSlowGate.ts`
 
-- Loads the INT8 GRU graph (`public/models/model_int8.onnx`) and warms it during worker
-  `INIT`, so an unusable model surfaces at start-up rather than degrading silently.
-- Input `(1, T, 18)`, output 7 outcome logits → softmax → outcome + candidate intervention.
+- Implements dual-graph inference ([ADR-006](decisions/ADR-006-target-intervention-head-interface.md) Option A):
+  1. Base GRU recurrent graph (`public/models/model_int8.onnx`): processes sequence `(1, 8, 18)` to generate 64-dimensional latent behavioral state \(h_T\).
+  2. Target Intervention Head graph (`public/models/intervention_head_int8.onnx`): concatenates \(h_T\) with the 6-dimensional normalized UI context vector \(R^6\) to evaluate 5 uncalibrated logits (`simplify_options`, `highlight_primary_action`, `offer_assistance`, `expand_tooltip`, `no_op`).
+- Operates on INT8-quantized ONNX graphs loaded and warmed during worker `INIT` over WebGPU with CPU WASM fallback.
+- In ablation arm (`useDeterministicMapping: true`), candidate command is produced via heuristic outcome mapping (`mappingSource: 'deterministic_mapping'`).
 - Reports the **execution provider that actually served the session**.
 - Fails visibly when no session exists: `NO_OUTCOME` at confidence 0, no probabilities.
 
 ### Arbitration — `src/gates/arbitration.ts`
 
-Implements Fast Gate precedence: the Slow Gate is invoked only when the Fast Gate returns
+Implements Fast Gate precedence ([ADR-002](decisions/ADR-002-rust-wasm-prefixspan-boundary.md)): the Slow Gate is invoked only when the Fast Gate returns
 `matched: false`, or a match without an actionable (non-`no_op`) intervention. Both gate calls
-are individually guarded, and per-evaluation wall-clock latency is measured.
+are individually guarded, and per-gate wall-clock latencies (`fastGateLatencyMs` and `slowGateLatencyMs`)
+are measured independently ([ADR-003](decisions/ADR-003-worker-main-thread-boundary.md)).
 
 ---
 
@@ -292,8 +295,11 @@ interface PredictionEvent {
   timestamp: number; windowId?: number;
   matchedGate: 'fast' | 'slow' | 'none';
   outcome?: OutcomeType; interventionType?: string; confidence?: number;
-  latencyMs?: number; bothGatesEvaluated: boolean;
+  latencyMs?: number; fastGateLatencyMs?: number; slowGateLatencyMs?: number;
+  bothGatesEvaluated: boolean;
   sessionId?: string; experimentId?: string; conditionId?: ExperimentalCondition;
+  modelVersion?: string; contextEncodingVersion?: string;
+  mappingSource?: 'learned_head' | 'deterministic_mapping' | 'fast_gate_pattern';
 }
 
 interface TaskEvent {
@@ -311,17 +317,18 @@ interface InterventionCommand {
   targetComponentId?: string;
   confidence?: number;
   source: 'fast' | 'slow' | 'rule';
+  mappingSource?: 'learned_head' | 'deterministic_mapping' | 'fast_gate_pattern';
   issuedAt: number; ttlMs?: number; reason?: string;
 }
 ```
 
-### Experiment trace (`schemaVersion 1.1.0`)
+### Experiment trace (`schemaVersion 1.2.0`)
 
-`ExperimentRecorder` produces one `SerializableExperimentTrace` per session:
+`ExperimentRecorder` produces one `SerializableExperimentTrace` per session conforming to Schema `1.2.0` (with backward compatibility for `1.1.0`):
 
 ```typescript
 {
-  schemaVersion: '1.1.0';
+  schemaVersion: '1.2.0';
   exportedAt: string;                       // ISO 8601
   session: SessionContext;                  // sessionId, startedAt, startedAtEpochMs,
                                             // experimentId, conditionId, taskId
@@ -334,15 +341,15 @@ interface InterventionCommand {
   macroInteractions: MacroInteraction[];
   outcomes: OutcomeEvent[];
   predictions: PredictionEvent[];
-  interventions: InterventionEvent[];
+  interventions: InterventionEvent[];       // includes mappingSource and interventionEpisodeId
   taskEvents: TaskEvent[];
 }
 ```
 
 - `metadata.durationMs` is derived from `startedAtEpochMs` only. Subtracting the monotonic
   `startedAt` from `Date.now()` produced meaningless values.
-- `validateExperimentTrace()` checks structure, including a required `windowId` on every
-  window and outcome and a required `conditionId`.
+- `validateExperimentTrace()` checks structure across schemas `1.2.0` and `1.1.0`, requiring
+  valid correlation IDs (`sessionId`, `experimentId`, `conditionId`, `windowId`) and task completeness.
 - `reconstructReplayStream()` flattens behaviour, macro, outcome, prediction, intervention and
   task records into one chronological stream.
 - Export is a client-side `Blob` download. Nothing leaves the browser.
@@ -372,15 +379,21 @@ being produced.
 
 ## 11. Privacy
 
-- No network egress: no `fetch`, `XMLHttpRequest`, `WebSocket`, or `sendBeacon` in `src/`.
-- No persistence: no `localStorage`, `sessionStorage`, or IndexedDB.
+In accordance with [ADR-010](decisions/ADR-010-privacy-retention-model.md):
+
+- **Guarantee 1 (Zero Form/PII Leakage):** Free-text inputs, typed values, and form values are
+  strictly redacted at the observation boundary. Tests (`tests/context_redaction.test.ts`) assert
+  that sentinel input strings never leak into serialized traces, tensors, or console logs.
+- **Guarantee 2 (Zero Network Egress):** No network primitives (`fetch`, `XMLHttpRequest`,
+  `WebSocket`, `sendBeacon`) are reachable or called during telemetry processing or model inference.
+- **No Local Persistence:** No unmanaged `localStorage`, `sessionStorage`, or IndexedDB storage.
+  All state is retained in-memory only and flushed upon tab close or task reset.
 - Raw pixel coordinates are never stored in the trace; only normalised values and derived
   tensors.
 - Buffers are bounded (`RollingWindowBuffer` capacity and retention, recorder FIFO).
 - Traces are exported by the user as a local JSON download.
-
-Buffer eviction bounds retention and memory; it is **not** a privacy guarantee, and no such
-guarantee is claimed.
+- Full trace identifier linkability and pseudonymization audit is documented in Section 3 of
+  [`docs/data_schemas.md`](data_schemas.md).
 
 ---
 

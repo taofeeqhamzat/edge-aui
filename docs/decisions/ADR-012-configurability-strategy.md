@@ -110,9 +110,12 @@ This is the acceptance criterion for plan 1 task 4.2.
 > **Evidence required to revisit:** Reported friction during ablation runs.
 
 > **Decision:** Making `sync_config.test.ts` hermetic.
+> **Status:** Closed in Phase B Task 4.2.
 > **Deferred until:** Plan 1 task 4.2, where the sync script is already being touched.
-> **Reason:** Measured idempotent today; not isolated. Touching it separately would churn a test
-> file twice.
+> **Reason:** Measured idempotent previously; not isolated. Touching it separately would churn a test file twice.
+> **Current workaround:** Closed — tests now use isolated temporary directory fixtures (`tmpdir`).
+> **Risk:** None (resolved).
+> **Evidence required to revisit:** Resolved — verified by `tests/sync_config.test.ts`.
 
 ## 9. Conditions that would force this decision to be revisited
 

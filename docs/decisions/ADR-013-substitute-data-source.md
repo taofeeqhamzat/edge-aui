@@ -111,6 +111,9 @@ Results from this dataset may **not** be reported as:
 > **Decision:** Establishing construct validity of the scripted label policy.
 > **Deferred until:** Real participant traces exist to compare against.
 > **Reason:** A scripted policy cannot be validated against itself.
+> **Current workaround:** Documented limitation; evaluation is framed as engineering proof-of-concept rather than human validity.
+> **Risk:** Medium — policy assumptions are ungrounded in observed user behavior.
+> **Evidence required to revisit:** Empirical comparison between scripted traces and real participant interaction sessions.
 
 ## 9. Conditions that would force this decision to be revisited
 

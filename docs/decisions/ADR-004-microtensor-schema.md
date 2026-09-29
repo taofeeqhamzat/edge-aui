@@ -94,6 +94,7 @@ deferred.
 > intervention-head milestone.
 > **Current workaround:** `npm run parity:check` compares against checked-in JSON.
 > **Risk:** Medium — a stale fixture would silently pass.
+> **Evidence required to revisit:** CI script that calls Python test suite or manifest generation.
 
 ## 9. Conditions that would force this decision to be revisited
 
