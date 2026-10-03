@@ -2,7 +2,7 @@
  * ADR Register Consistency & Deferment Audit Tests (Task 8.2 / Brief §19)
  *
  * Verifies that:
- * 1. All 14 ADR files exist and parse with valid status and date headers.
+ * 1. All expected ADR files exist and parse with valid status and date headers.
  * 2. Every deferment block adheres strictly to the six-field form required by Brief §19:
  *    - Decision
  *    - Deferred until
@@ -35,9 +35,19 @@ describe('Task 8.2: Architectural Decision Record (ADR) Register Consistency', (
     'Evidence required to revisit:'
   ];
 
-  it('contains all 14 expected ADR records (ADR-001 through ADR-014)', () => {
-    expect(adrFiles.length).toBeGreaterThanOrEqual(14);
-    for (let i = 1; i <= 14; i++) {
+  /**
+   * Highest ADR number the register must contain.
+   *
+   * ADR-015 … ADR-023 were added by the supervisor-ready deployment milestone: Supabase
+   * persistence, Cloudflare Pages deployment and the ORT entry point, the canonical trace contract
+   * and clock, scripted-vs-participant provenance, session persistence, Fast Gate bounds,
+   * intervention observability, retention/export, and participant identification.
+   */
+  const EXPECTED_ADR_COUNT = 23;
+
+  it(`contains all ${EXPECTED_ADR_COUNT} expected ADR records (ADR-001 through ADR-023)`, () => {
+    expect(adrFiles.length).toBeGreaterThanOrEqual(EXPECTED_ADR_COUNT);
+    for (let i = 1; i <= EXPECTED_ADR_COUNT; i++) {
       const numStr = String(i).padStart(3, '0');
       const found = adrFiles.find((f) => f.startsWith(`ADR-${numStr}`));
       expect(found, `Expected file for ADR-${numStr} to exist`).toBeDefined();

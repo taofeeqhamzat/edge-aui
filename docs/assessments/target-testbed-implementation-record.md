@@ -1,5 +1,25 @@
 # Target Testbed Implementation Record
 
+> **HISTORICAL DOCUMENT — dated 2026-09-22. Read it as a record of that moment, not current state.**
+>
+> Several statements below have since been superseded and must not be read as current:
+>
+> - §4 limitation 6 ("The target intervention head is not exported") — the head is exported, shipped
+>   and loaded; `public/models/intervention_head_int8.onnx` is committed.
+> - `src/runtime/worker.ts` — the file is `src/runtime/worker/core.ts`; `worker.ts` does not exist.
+> - References to trace schema `1.1.0` / `1.2.0` — the current contract is **1.3.0**, on a single
+>   epoch clock, with policy-decision records and provenance
+>   ([ADR-017](../decisions/ADR-017-canonical-trace-contract-and-clock.md)).
+> - "No local persistence" and "no telemetry egress" — both are superseded by
+>   [ADR-018](../decisions/ADR-018-scripted-vs-participant-provenance.md) and
+>   [ADR-019](../decisions/ADR-019-session-persistence-and-recovery.md).
+> - WebGPU as the Slow Gate provider — the deployed provider is WASM
+>   ([ADR-016](../decisions/ADR-016-cloudflare-pages-deployment.md)).
+>
+> For current state see [`docs/architecture.md`](../architecture.md),
+> [`docs/data_schemas.md`](../data_schemas.md), [`docs/deploy/`](../deploy/README.md) and
+> [`supervisor-ready-deploy-record.md`](./supervisor-ready-deploy-record.md).
+
 **Companion to:** [`target-testbed-quality-assessment.md`](./target-testbed-quality-assessment.md)
 **Implementation date:** 2026-09-22
 **Repositories:** `edge-aui-framework` (changed) · `model-preparation` (read-only; no tracked file modified)

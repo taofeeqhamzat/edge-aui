@@ -1,9 +1,23 @@
 # Controlled Condition Trace Comparison: Baseline (A) vs. Adaptive (B)
 
+> **SUPERSEDED — do not cite this as evidence.** The "trace artifacts" this document compares
+> (`baseline-trace.json`, `adaptive-trace.json`) are **hand-authored fixtures**, not exports from a
+> live run: their session ids (`sess-ctrl-baseline-t2-001`), integer timestamps and episode ids match
+> nothing the runtime generates (assessment F-12). They were constructed to satisfy the comparison
+> harness, so the comparison demonstrates the harness rather than the system.
+>
+> The underlying *engineering* claim — that the baseline condition applies no DOM mutation — was
+> independently verified live during the audit. See
+> [`target-testbed-quality-assessment-2-findings.md`](../assessments/target-testbed-quality-assessment-2-findings.md)
+> §F-12 and, for a real runtime-produced capture, [`deploy-verification/`](./deploy-verification/).
+> Whether a condition comparison belongs in the thesis is a supervisor decision.
+>
+> Retained below as the historical record of what was produced at that time.
+
 - **Date:** 2026-09-29
 - **Task:** Phase G Task 6.2 ([`docs/plan/1/tasks/6.2.md`](../plan/1/tasks/6.2.md))
-- **Decision Informs:** [ADR-006: TargetInterventionHead Interface](../decisions/ADR-006-target-intervention-head-interface.md), [ADR-010: Privacy and Retention Model](../decisions/ADR-010-privacy-retention-model.md), [ADR-014: Participant Pipeline Scope Boundaries](../decisions/ADR-014-participant-pipeline-scope-boundaries.md)
-- **Status:** Complete — Verified by Automated Tests & Comparative CLI Harness
+- **Decision Informs:** [ADR-006: TargetInterventionHead Interface](../decisions/ADR-006-target-intervention-head-interface.md), [ADR-010: Privacy and Retention Model](../decisions/ADR-010-privacy-retention-model.md), [ADR-014: Deferred Target-UI Features](../decisions/ADR-014-deferred-target-ui-features.md)
+- **Status:** Superseded — see the disclaimer above
 
 ---
 

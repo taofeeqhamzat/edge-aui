@@ -79,7 +79,11 @@ describe('Documentation Schema Index Contract (Task 4.4)', () => {
     }
 
     expect(content).toContain('UiAdapter');
-    expect(content).toContain('data-aui-target');
+    // `data-aui-role` is the real semantic-role attribute the actuator reads. This assertion
+    // previously required `data-aui-target`, which the implementation never had — the test was
+    // enforcing the documentation defect it should have caught (assessment F-25).
+    expect(content).toContain('data-aui-role');
+    expect(content).not.toContain('data-aui-target');
     expect(content).toContain('Zero External Egress');
   });
 
