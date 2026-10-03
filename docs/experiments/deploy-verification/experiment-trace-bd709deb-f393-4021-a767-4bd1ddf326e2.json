@@ -1,0 +1,2360 @@
+{
+  "schemaVersion": "1.3.0",
+  "exportedAt": "2026-10-03T20:51:27.018Z",
+  "session": {
+    "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+    "startedAt": 12434.415125,
+    "startedAtEpochMs": 1791060683273,
+    "experimentId": "exp-deploy-verification",
+    "conditionId": "adaptive",
+    "provenance": "scripted",
+    "participantId": null
+  },
+  "task": {
+    "currentTaskId": null,
+    "status": "Idle",
+    "currentStepIndex": 0,
+    "completedSteps": [],
+    "errors": 0
+  },
+  "metadata": {
+    "durationMs": 3744.863525390625,
+    "totalEvents": 112,
+    "behaviourCount": 46,
+    "microTensorCount": 12,
+    "macroCount": 36,
+    "outcomeCount": 12,
+    "predictionCount": 3,
+    "interventionCount": 0,
+    "policyDecisionCount": 3,
+    "taskEventCount": 0,
+    "finalTaskStatus": "Idle",
+    "experimentId": "exp-deploy-verification",
+    "conditionId": "adaptive",
+    "uiVersion": "1.0.0",
+    "settlementDelayMs": 250,
+    "effectiveConfig": {
+      "telemetry": {
+        "enabledEventTypes": [
+          "mousemove",
+          "mousedown",
+          "mouseup",
+          "click",
+          "scroll",
+          "input",
+          "change",
+          "submit"
+        ],
+        "sampleIntervalMs": 0,
+        "captureGeometry": true,
+        "maxBufferSize": 10000,
+        "sessionSettings": {
+          "idleTimeoutMs": 1800000,
+          "storagePrefix": "edge_aui_"
+        }
+      },
+      "windowing": {
+        "windowDurationMs": 500,
+        "strideMs": 250,
+        "minEventCount": 3,
+        "inactivityThresholdMs": 2000,
+        "lateEventPolicy": "settle",
+        "settlementDelayMs": 250,
+        "pendingOutcomeGraceMs": 2000,
+        "emitInactiveWindows": true
+      },
+      "microtensor": {
+        "schemaVersion": "1.0.0",
+        "inputDim": 18,
+        "featureNames": [
+          "meanVelocity",
+          "maxVelocity",
+          "meanAcceleration",
+          "hesitationCount",
+          "totalTrajectoryLength",
+          "dwellTimeMs",
+          "trajectoryEntropy",
+          "scrollDepthPercentage",
+          "scrollVelocity"
+        ],
+        "normalization": {
+          "mean_velocity_scale": 10,
+          "max_velocity_scale": 10,
+          "mean_acceleration_scale": 1,
+          "hesitation_scale": 25,
+          "trajectory_scale": 2000,
+          "scroll_velocity_scale": 5
+        }
+      },
+      "macro": {
+        "groupingIntervalMs": 2000,
+        "maxHistoryLength": 400,
+        "maxRecentSymbols": 6,
+        "recentSequenceLookback": 40
+      },
+      "fastGate": {
+        "miner": "wasm",
+        "minSupport": 1,
+        "minConfidence": 0.6,
+        "maxPatternLength": 4,
+        "maxPatterns": 32,
+        "maxCorpusSequences": 40,
+        "miningTimeoutMs": 1500,
+        "rpcTimeoutMs": 3000,
+        "rankingStrategy": "confidence",
+        "patternInterventionMap": {
+          "OPEN_FILTERS > APPLY_FILTER": "highlight_primary_action",
+          "NAV_ANALYTICS > OPEN_FILTERS": "simplify_options",
+          "NAV_ANALYTICS > OPEN_FILTERS > APPLY_FILTER": "highlight_primary_action",
+          "SELECT_DATE > OPEN_FILTERS > SELECT_REGION > APPLY_FILTER": "highlight_primary_action",
+          "HOVER_KPI > HOVER_KPI": "expand_tooltip"
+        }
+      },
+      "slowGate": {
+        "modelPath": "/models/gru_edge_aui.onnx",
+        "executionProvider": "auto",
+        "sequenceLength": 8,
+        "batchSize": 1,
+        "confidenceThreshold": 0.75,
+        "targetContextEncoding": "R6",
+        "fallbackBehavior": "mock",
+        "enabled": true
+      },
+      "policy": {
+        "confidenceThreshold": 0.75,
+        "requiredConsecutiveWindows": 2,
+        "sustainedConfidenceDurationMs": 500,
+        "cooldownMs": 5000,
+        "dismissalCooldownMs": 15000,
+        "ttlMs": 8000,
+        "maxInterventionsPerTask": 2,
+        "conflictResolution": "highest_confidence",
+        "enforceContextEligibility": true
+      },
+      "actuation": {
+        "defaultMechanism": "css_class",
+        "defaultTtlMs": 8000,
+        "revertBehavior": "on_reset",
+        "defaultAssistanceText": "Can we help with this step?"
+      },
+      "experiment": {
+        "experimentId": "exp-deploy-verification",
+        "conditionId": "adaptive",
+        "trialOrder": [
+          "T1",
+          "T2",
+          "T3"
+        ],
+        "taskTimeoutsMs": {
+          "T1": 120000,
+          "T2": 90000,
+          "T3": 150000
+        },
+        "traceSchemaVersion": "1.3.0"
+      }
+    },
+    "clock": "epoch_ms",
+    "provenance": "scripted",
+    "applicationVersion": "0.1.0",
+    "modelVersion": "TargetInterventionHead-v1.0.0-int8",
+    "executionProvider": "wasm",
+    "policyVersion": "1.0.0",
+    "mining": {
+      "executed": 0,
+      "skipped": 9,
+      "superseded": 0,
+      "timedOut": 0,
+      "droppedWindows": 0
+    },
+    "evictions": {
+      "total": 0,
+      "byBuffer": {
+        "behaviourEvents": 0,
+        "microTensors": 0,
+        "macroInteractions": 0,
+        "outcomes": 0,
+        "predictions": 0,
+        "policyDecisions": 0,
+        "interventions": 0,
+        "taskEvents": 0
+      },
+      "truncated": false
+    },
+    "integrityWarnings": []
+  },
+  "effectiveConfig": {
+    "telemetry": {
+      "enabledEventTypes": [
+        "mousemove",
+        "mousedown",
+        "mouseup",
+        "click",
+        "scroll",
+        "input",
+        "change",
+        "submit"
+      ],
+      "sampleIntervalMs": 0,
+      "captureGeometry": true,
+      "maxBufferSize": 10000,
+      "sessionSettings": {
+        "idleTimeoutMs": 1800000,
+        "storagePrefix": "edge_aui_"
+      }
+    },
+    "windowing": {
+      "windowDurationMs": 500,
+      "strideMs": 250,
+      "minEventCount": 3,
+      "inactivityThresholdMs": 2000,
+      "lateEventPolicy": "settle",
+      "settlementDelayMs": 250,
+      "pendingOutcomeGraceMs": 2000,
+      "emitInactiveWindows": true
+    },
+    "microtensor": {
+      "schemaVersion": "1.0.0",
+      "inputDim": 18,
+      "featureNames": [
+        "meanVelocity",
+        "maxVelocity",
+        "meanAcceleration",
+        "hesitationCount",
+        "totalTrajectoryLength",
+        "dwellTimeMs",
+        "trajectoryEntropy",
+        "scrollDepthPercentage",
+        "scrollVelocity"
+      ],
+      "normalization": {
+        "mean_velocity_scale": 10,
+        "max_velocity_scale": 10,
+        "mean_acceleration_scale": 1,
+        "hesitation_scale": 25,
+        "trajectory_scale": 2000,
+        "scroll_velocity_scale": 5
+      }
+    },
+    "macro": {
+      "groupingIntervalMs": 2000,
+      "maxHistoryLength": 400,
+      "maxRecentSymbols": 6,
+      "recentSequenceLookback": 40
+    },
+    "fastGate": {
+      "miner": "wasm",
+      "minSupport": 1,
+      "minConfidence": 0.6,
+      "maxPatternLength": 4,
+      "maxPatterns": 32,
+      "maxCorpusSequences": 40,
+      "miningTimeoutMs": 1500,
+      "rpcTimeoutMs": 3000,
+      "rankingStrategy": "confidence",
+      "patternInterventionMap": {
+        "OPEN_FILTERS > APPLY_FILTER": "highlight_primary_action",
+        "NAV_ANALYTICS > OPEN_FILTERS": "simplify_options",
+        "NAV_ANALYTICS > OPEN_FILTERS > APPLY_FILTER": "highlight_primary_action",
+        "SELECT_DATE > OPEN_FILTERS > SELECT_REGION > APPLY_FILTER": "highlight_primary_action",
+        "HOVER_KPI > HOVER_KPI": "expand_tooltip"
+      }
+    },
+    "slowGate": {
+      "modelPath": "/models/gru_edge_aui.onnx",
+      "executionProvider": "auto",
+      "sequenceLength": 8,
+      "batchSize": 1,
+      "confidenceThreshold": 0.75,
+      "targetContextEncoding": "R6",
+      "fallbackBehavior": "mock",
+      "enabled": true
+    },
+    "policy": {
+      "confidenceThreshold": 0.75,
+      "requiredConsecutiveWindows": 2,
+      "sustainedConfidenceDurationMs": 500,
+      "cooldownMs": 5000,
+      "dismissalCooldownMs": 15000,
+      "ttlMs": 8000,
+      "maxInterventionsPerTask": 2,
+      "conflictResolution": "highest_confidence",
+      "enforceContextEligibility": true
+    },
+    "actuation": {
+      "defaultMechanism": "css_class",
+      "defaultTtlMs": 8000,
+      "revertBehavior": "on_reset",
+      "defaultAssistanceText": "Can we help with this step?"
+    },
+    "experiment": {
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "trialOrder": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "taskTimeoutsMs": {
+        "T1": 120000,
+        "T2": 90000,
+        "T3": 150000
+      },
+      "traceSchemaVersion": "1.3.0"
+    }
+  },
+  "behaviourEvents": [
+    {
+      "timestamp": 1791060683278.496,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "nav-Analytics",
+      "componentRole": "navigation",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683280.159,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "filter-Region",
+      "componentRole": "accordion",
+      "action": "click",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683282.7417,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "btn-apply-filters",
+      "componentRole": "primary-action",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683284.314,
+      "type": "submit",
+      "componentId": "filter-drawer",
+      "componentRole": "filter",
+      "action": "submit",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "form",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683285.6677,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "kpi-card-revenue",
+      "componentRole": "kpi-card",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "div",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683638.4678,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "nav-Analytics",
+      "componentRole": "navigation",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683639.7612,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "filter-Region",
+      "componentRole": "accordion",
+      "action": "click",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683641.6377,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "btn-apply-filters",
+      "componentRole": "primary-action",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683643.2039,
+      "type": "submit",
+      "componentId": "filter-drawer",
+      "componentRole": "filter",
+      "action": "submit",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "form",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683644.558,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "kpi-card-revenue",
+      "componentRole": "kpi-card",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "div",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683997.2808,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "nav-Analytics",
+      "componentRole": "navigation",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060683998.849,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "filter-Region",
+      "componentRole": "accordion",
+      "action": "click",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684000.5603,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "btn-apply-filters",
+      "componentRole": "primary-action",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684001.8708,
+      "type": "submit",
+      "componentId": "filter-drawer",
+      "componentRole": "filter",
+      "action": "submit",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "form",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684003.2039,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "kpi-card-revenue",
+      "componentRole": "kpi-card",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "div",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684354.9265,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "nav-Analytics",
+      "componentRole": "navigation",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684356.0898,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "filter-Region",
+      "componentRole": "accordion",
+      "action": "click",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684358.1995,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "btn-apply-filters",
+      "componentRole": "primary-action",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684359.918,
+      "type": "submit",
+      "componentId": "filter-drawer",
+      "componentRole": "filter",
+      "action": "submit",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "form",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684361.062,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "kpi-card-revenue",
+      "componentRole": "kpi-card",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "div",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684713.715,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "nav-Analytics",
+      "componentRole": "navigation",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684714.992,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "filter-Region",
+      "componentRole": "accordion",
+      "action": "click",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684717.3518,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "btn-apply-filters",
+      "componentRole": "primary-action",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684718.821,
+      "type": "submit",
+      "componentId": "filter-drawer",
+      "componentRole": "filter",
+      "action": "submit",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "form",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060684720.2253,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "kpi-card-revenue",
+      "componentRole": "kpi-card",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "div",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685077.1636,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "nav-Analytics",
+      "componentRole": "navigation",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685079.3481,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "filter-Region",
+      "componentRole": "accordion",
+      "action": "click",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685080.8098,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "btn-apply-filters",
+      "componentRole": "primary-action",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685082.7104,
+      "type": "submit",
+      "componentId": "filter-drawer",
+      "componentRole": "filter",
+      "action": "submit",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "form",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685085.9712,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "kpi-card-revenue",
+      "componentRole": "kpi-card",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "div",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685438.0928,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "nav-Analytics",
+      "componentRole": "navigation",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685439.3564,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "filter-Region",
+      "componentRole": "accordion",
+      "action": "click",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685440.6084,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "btn-apply-filters",
+      "componentRole": "primary-action",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685442.3145,
+      "type": "submit",
+      "componentId": "filter-drawer",
+      "componentRole": "filter",
+      "action": "submit",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "form",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685443.5232,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "kpi-card-revenue",
+      "componentRole": "kpi-card",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "div",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685797.559,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "nav-Analytics",
+      "componentRole": "navigation",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685799.4717,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "filter-Region",
+      "componentRole": "accordion",
+      "action": "click",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685800.6606,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "btn-apply-filters",
+      "componentRole": "primary-action",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685801.7722,
+      "type": "submit",
+      "componentId": "filter-drawer",
+      "componentRole": "filter",
+      "action": "submit",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "form",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060685802.9907,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "kpi-card-revenue",
+      "componentRole": "kpi-card",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "div",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060686157.3376,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "nav-Analytics",
+      "componentRole": "navigation",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060686158.5405,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "filter-Region",
+      "componentRole": "accordion",
+      "action": "click",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060686160.1072,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "btn-apply-filters",
+      "componentRole": "primary-action",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "button",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060686161.3591,
+      "type": "submit",
+      "componentId": "filter-drawer",
+      "componentRole": "filter",
+      "action": "submit",
+      "ariaExpanded": false,
+      "route": "Overview",
+      "targetTag": "form",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060686162.7783,
+      "type": "click",
+      "x": 0.0390625,
+      "y": 0.052083333333333336,
+      "componentId": "kpi-card-revenue",
+      "componentRole": "kpi-card",
+      "action": "click",
+      "route": "Overview",
+      "targetTag": "div",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "width": 1024,
+        "height": 768,
+        "scrollableWidth": 0,
+        "scrollableHeight": 0
+      }
+    },
+    {
+      "timestamp": 1791060686517.064,
+      "type": "pagehide",
+      "route": "Overview",
+      "action": "pagehide"
+    }
+  ],
+  "microTensors": [
+    {
+      "windowId": 0,
+      "windowStart": 1791060683278.496,
+      "windowEnd": 1791060683528.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 5,
+      "inactive": false
+    },
+    {
+      "windowId": 1,
+      "windowStart": 1791060683528.496,
+      "windowEnd": 1791060683778.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 5,
+      "inactive": false
+    },
+    {
+      "windowId": 2,
+      "windowStart": 1791060683778.496,
+      "windowEnd": 1791060684028.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 5,
+      "inactive": false
+    },
+    {
+      "windowId": 3,
+      "windowStart": 1791060684028.496,
+      "windowEnd": 1791060684278.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 0,
+      "inactive": true
+    },
+    {
+      "windowId": 4,
+      "windowStart": 1791060684278.496,
+      "windowEnd": 1791060684528.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 5,
+      "inactive": false
+    },
+    {
+      "windowId": 5,
+      "windowStart": 1791060684528.496,
+      "windowEnd": 1791060684778.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 5,
+      "inactive": false
+    },
+    {
+      "windowId": 6,
+      "windowStart": 1791060684778.496,
+      "windowEnd": 1791060685028.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 0,
+      "inactive": true
+    },
+    {
+      "windowId": 7,
+      "windowStart": 1791060685028.496,
+      "windowEnd": 1791060685278.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 5,
+      "inactive": false
+    },
+    {
+      "windowId": 8,
+      "windowStart": 1791060685278.496,
+      "windowEnd": 1791060685528.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 5,
+      "inactive": false
+    },
+    {
+      "windowId": 9,
+      "windowStart": 1791060685528.496,
+      "windowEnd": 1791060685778.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 0,
+      "inactive": true
+    },
+    {
+      "windowId": 10,
+      "windowStart": 1791060685778.496,
+      "windowEnd": 1791060686028.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 5,
+      "inactive": false
+    },
+    {
+      "windowId": 11,
+      "windowStart": 1791060686028.496,
+      "windowEnd": 1791060686278.496,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 5,
+      "inactive": false
+    }
+  ],
+  "macroInteractions": [
+    {
+      "timestamp": 1791060683278.496,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1791060683280.159,
+      "symbol": "CLOSE_FILTERS",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1791060683282.7417,
+      "symbol": "APPLY_FILTER",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1791060683285.6677,
+      "symbol": "HOVER_KPI",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1791060683638.4678,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1791060683639.7612,
+      "symbol": "CLOSE_FILTERS",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1791060683641.6377,
+      "symbol": "APPLY_FILTER",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1791060683644.558,
+      "symbol": "HOVER_KPI",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1791060683997.2808,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 0
+    },
+    {
+      "timestamp": 1791060683998.849,
+      "symbol": "CLOSE_FILTERS",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 0
+    },
+    {
+      "timestamp": 1791060684000.5603,
+      "symbol": "APPLY_FILTER",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 0
+    },
+    {
+      "timestamp": 1791060684003.2039,
+      "symbol": "HOVER_KPI",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 0
+    },
+    {
+      "timestamp": 1791060684354.9265,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 2
+    },
+    {
+      "timestamp": 1791060684356.0898,
+      "symbol": "CLOSE_FILTERS",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 2
+    },
+    {
+      "timestamp": 1791060684358.1995,
+      "symbol": "APPLY_FILTER",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 2
+    },
+    {
+      "timestamp": 1791060684361.062,
+      "symbol": "HOVER_KPI",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 2
+    },
+    {
+      "timestamp": 1791060684713.715,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 3
+    },
+    {
+      "timestamp": 1791060684714.992,
+      "symbol": "CLOSE_FILTERS",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 3
+    },
+    {
+      "timestamp": 1791060684717.3518,
+      "symbol": "APPLY_FILTER",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 3
+    },
+    {
+      "timestamp": 1791060684720.2253,
+      "symbol": "HOVER_KPI",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 3
+    },
+    {
+      "timestamp": 1791060685077.1636,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 5
+    },
+    {
+      "timestamp": 1791060685079.3481,
+      "symbol": "CLOSE_FILTERS",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 5
+    },
+    {
+      "timestamp": 1791060685080.8098,
+      "symbol": "APPLY_FILTER",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 5
+    },
+    {
+      "timestamp": 1791060685085.9712,
+      "symbol": "HOVER_KPI",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 5
+    },
+    {
+      "timestamp": 1791060685438.0928,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 6
+    },
+    {
+      "timestamp": 1791060685439.3564,
+      "symbol": "CLOSE_FILTERS",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 6
+    },
+    {
+      "timestamp": 1791060685440.6084,
+      "symbol": "APPLY_FILTER",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 6
+    },
+    {
+      "timestamp": 1791060685443.5232,
+      "symbol": "HOVER_KPI",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 6
+    },
+    {
+      "timestamp": 1791060685797.559,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 7
+    },
+    {
+      "timestamp": 1791060685799.4717,
+      "symbol": "CLOSE_FILTERS",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 7
+    },
+    {
+      "timestamp": 1791060685800.6606,
+      "symbol": "APPLY_FILTER",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 7
+    },
+    {
+      "timestamp": 1791060685802.9907,
+      "symbol": "HOVER_KPI",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 7
+    },
+    {
+      "timestamp": 1791060686157.3376,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 9
+    },
+    {
+      "timestamp": 1791060686158.5405,
+      "symbol": "CLOSE_FILTERS",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 9
+    },
+    {
+      "timestamp": 1791060686160.1072,
+      "symbol": "APPLY_FILTER",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 9
+    },
+    {
+      "timestamp": 1791060686162.7783,
+      "symbol": "HOVER_KPI",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "Overview",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 9
+    }
+  ],
+  "outcomes": [
+    {
+      "timestamp": 1791060684354.9265,
+      "outcome": "CLICK",
+      "lookaheadComplete": true,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 0,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060684354.9265,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060684028.496,
+        "lookaheadEndMs": 1791060685028.496,
+        "candidateCount": 8,
+        "earliestTimestampMs": 1791060684354.9265,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060684354.9265,
+      "outcome": "CLICK",
+      "lookaheadComplete": true,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 1,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060684354.9265,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060684278.496,
+        "lookaheadEndMs": 1791060685278.496,
+        "candidateCount": 12,
+        "earliestTimestampMs": 1791060684354.9265,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060684713.715,
+      "outcome": "CLICK",
+      "lookaheadComplete": true,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 2,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060684713.715,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060684528.496,
+        "lookaheadEndMs": 1791060685528.496,
+        "candidateCount": 12,
+        "earliestTimestampMs": 1791060684713.715,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060685077.1636,
+      "outcome": "CLICK",
+      "lookaheadComplete": true,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 3,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060685077.1636,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060684778.496,
+        "lookaheadEndMs": 1791060685778.496,
+        "candidateCount": 8,
+        "earliestTimestampMs": 1791060685077.1636,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060685077.1636,
+      "outcome": "CLICK",
+      "lookaheadComplete": true,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 4,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060685077.1636,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060685028.496,
+        "lookaheadEndMs": 1791060686028.496,
+        "candidateCount": 12,
+        "earliestTimestampMs": 1791060685077.1636,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060685438.0928,
+      "outcome": "CLICK",
+      "lookaheadComplete": true,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 5,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060685438.0928,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060685278.496,
+        "lookaheadEndMs": 1791060686278.496,
+        "candidateCount": 12,
+        "earliestTimestampMs": 1791060685438.0928,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060685797.559,
+      "outcome": "CLICK",
+      "lookaheadComplete": false,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 6,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060685797.559,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060685528.496,
+        "lookaheadEndMs": 1791060686528.496,
+        "candidateCount": 9,
+        "earliestTimestampMs": 1791060685797.559,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060685797.559,
+      "outcome": "CLICK",
+      "lookaheadComplete": false,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 7,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060685797.559,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060685778.496,
+        "lookaheadEndMs": 1791060686778.496,
+        "candidateCount": 9,
+        "earliestTimestampMs": 1791060685797.559,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060686157.3376,
+      "outcome": "CLICK",
+      "lookaheadComplete": false,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 8,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060686157.3376,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060686028.496,
+        "lookaheadEndMs": 1791060687028.496,
+        "candidateCount": 5,
+        "earliestTimestampMs": 1791060686157.3376,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060686517.064,
+      "outcome": "ABANDON",
+      "lookaheadComplete": false,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 9,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060686517.064,
+      "sourceEventType": "pagehide",
+      "route": "Overview",
+      "derivation": {
+        "lookaheadStartMs": 1791060686278.496,
+        "lookaheadEndMs": 1791060687278.496,
+        "candidateCount": 1,
+        "earliestTimestampMs": 1791060686517.064,
+        "tieBroken": false,
+        "source": "lifecycle_event",
+        "observableTermination": true
+      }
+    },
+    {
+      "timestamp": 1791060686028.496,
+      "outcome": "ABANDON",
+      "lookaheadComplete": false,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 10,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "derivation": {
+        "lookaheadStartMs": 1791060686528.496,
+        "lookaheadEndMs": 1791060687528.496,
+        "candidateCount": 0,
+        "earliestTimestampMs": null,
+        "tieBroken": false,
+        "source": "stream_exhaustion",
+        "observableTermination": false
+      }
+    },
+    {
+      "timestamp": 1791060686278.496,
+      "outcome": "ABANDON",
+      "lookaheadComplete": false,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "windowId": 11,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "derivation": {
+        "lookaheadStartMs": 1791060686778.496,
+        "lookaheadEndMs": 1791060687778.496,
+        "candidateCount": 0,
+        "earliestTimestampMs": null,
+        "tieBroken": false,
+        "source": "stream_exhaustion",
+        "observableTermination": false
+      }
+    }
+  ],
+  "predictions": [
+    {
+      "timestamp": 1791060685812.0745,
+      "predictionId": "pred_1",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 8,
+      "evaluatedWindowIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "matchedGate": "none",
+      "outcome": "NO_OUTCOME",
+      "confidence": 0.47721394896507263,
+      "latencyMs": 1.0353330000016285,
+      "fastGateLatencyMs": 0.013166000000637723,
+      "slowGateLatencyMs": 1.0157920000001468,
+      "modelVersion": "TargetInterventionHead-v1.0.0-int8",
+      "contextEncodingVersion": "R6-v1.0.0",
+      "bothGatesEvaluated": true
+    },
+    {
+      "timestamp": 1791060686324.0928,
+      "predictionId": "pred_2",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 10,
+      "evaluatedWindowIds": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "matchedGate": "none",
+      "outcome": "NO_OUTCOME",
+      "confidence": 0.47498562932014465,
+      "latencyMs": 1.2403329999997368,
+      "fastGateLatencyMs": 0.01529100000152539,
+      "slowGateLatencyMs": 1.2189999999991414,
+      "modelVersion": "TargetInterventionHead-v1.0.0-int8",
+      "contextEncodingVersion": "R6-v1.0.0",
+      "bothGatesEvaluated": true
+    },
+    {
+      "timestamp": 1791060686579.6099,
+      "predictionId": "pred_3",
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 11,
+      "evaluatedWindowIds": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "matchedGate": "none",
+      "outcome": "NO_OUTCOME",
+      "confidence": 0.47721394896507263,
+      "latencyMs": 4.6415410000008706,
+      "fastGateLatencyMs": 0.013708000000406173,
+      "slowGateLatencyMs": 4.620707999998558,
+      "modelVersion": "TargetInterventionHead-v1.0.0-int8",
+      "contextEncodingVersion": "R6-v1.0.0",
+      "bothGatesEvaluated": true
+    }
+  ],
+  "policyDecisions": [
+    {
+      "timestamp": 1791060685813.276,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 8,
+      "predictionId": "pred_1",
+      "accepted": false,
+      "policyDecision": "no_prediction",
+      "policyReason": "No intervention: both gates evaluated and returned no candidate",
+      "candidateCount": 0,
+      "cooldownRemainingMs": 0,
+      "phase": "no_prediction"
+    },
+    {
+      "timestamp": 1791060686325.6316,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 10,
+      "predictionId": "pred_2",
+      "accepted": false,
+      "policyDecision": "no_prediction",
+      "policyReason": "No intervention: both gates evaluated and returned no candidate",
+      "candidateCount": 0,
+      "cooldownRemainingMs": 0,
+      "phase": "no_prediction"
+    },
+    {
+      "timestamp": 1791060686584.5845,
+      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 11,
+      "predictionId": "pred_3",
+      "accepted": false,
+      "policyDecision": "no_prediction",
+      "policyReason": "No intervention: both gates evaluated and returned no candidate",
+      "candidateCount": 0,
+      "cooldownRemainingMs": 0,
+      "phase": "no_prediction"
+    }
+  ],
+  "interventions": [],
+  "taskEvents": []
+}

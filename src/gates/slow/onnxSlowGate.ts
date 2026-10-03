@@ -68,6 +68,19 @@ export const DEFAULT_MODEL_URL = '/models/model_int8.onnx';
 export const DEFAULT_INTERVENTION_MODEL_URL = '/models/intervention_head_int8.onnx';
 
 /**
+ * Identity of the deployed intervention-head graph.
+ *
+ * The shipped ONNX files carry no version metadata beyond an `onnxruntime.quant` producer
+ * string, so the runtime cannot read the training-side bundle manifest. Pinning the
+ * identity here at least makes the value checkable against the committed artifact set:
+ * swapping in a different export requires changing this constant, which a test enforces.
+ *
+ * This replaces a literal that was assigned only when a model happened to be loaded, which
+ * meant two genuinely different graphs were both recorded under one name (F-19).
+ */
+export const TARGET_INTERVENTION_MODEL_VERSION = 'TargetInterventionHead-v1.0.0-int8';
+
+/**
  * Resolves model path or URL in both browser worker and Node.js testing scopes.
  */
 export function resolveModelPathOrUrl(url: string): string {
@@ -183,14 +196,40 @@ async function createSingleSession(
 }
 
 /**
+ * Execution providers this deployment uses.
+ *
+ * WebGPU was the preferred provider, but requesting it makes ONNX Runtime Web load the
+ * `jsep` WASM build, and that single asset is 26,827,543 bytes — above Cloudflare Pages'
+ * hard 25 MiB per-file limit, so the deployment was rejected outright. The stack already ran
+ * with `numThreads = 1`, which is the configuration every existing ONNX test passes under,
+ * so the provider list is `wasm, cpu`.
+ *
+ * This is a packaging and backend decision only. Model architecture, weights, the target head
+ * and the intervention policy are unchanged. See ADR-016.
+ */
+export const DEPLOYMENT_EXECUTION_PROVIDERS: ('webgpu' | 'wasm' | 'cpu')[] = ['wasm', 'cpu'];
+
+/**
+ * Loads the ONNX Runtime Web entry point.
+ *
+ * `onnxruntime-web/wasm` resolves to the WASM-only distribution
+ * (`ort-wasm-simd-threaded.wasm`, 13,479,978 bytes). The default entry point can pull in the
+ * WebGPU/JSEP binary depending on how the bundler tree-shakes, which is what pushed the
+ * deployed asset over the size limit.
+ */
+async function loadOrtModule(): Promise<typeof OrtNamespace> {
+  return import('onnxruntime-web/wasm');
+}
+
+/**
  * Loads ONNX sessions once per worker and reports the providers that actually served
  * the sessions, rather than the providers that were requested.
  */
 async function getSession(options: OnnxSlowGateOptions): Promise<DualSessionBundle | null> {
   if (cached) return cached;
 
-  const ort = options.ortModule ?? (await import('onnxruntime-web'));
-  const providers = options.executionProviders ?? ['webgpu', 'wasm', 'cpu'];
+  const ort = options.ortModule ?? (await loadOrtModule());
+  const providers = options.executionProviders ?? DEPLOYMENT_EXECUTION_PROVIDERS;
 
   ort.env.wasm.numThreads = 1;
   ort.env.wasm.simd = true;
@@ -258,6 +297,7 @@ export class OnnxSlowGate implements SlowGate {
     executionProvider: string;
     foundationLoaded: boolean;
     interventionLoaded: boolean;
+    modelVersion: string;
     providers: { foundation?: string; intervention?: string };
   }> {
     const bundle = await getSession(this.options);
@@ -268,6 +308,7 @@ export class OnnxSlowGate implements SlowGate {
         executionProvider: this.lastProvider,
         foundationLoaded: false,
         interventionLoaded: false,
+        modelVersion: TARGET_INTERVENTION_MODEL_VERSION,
         providers: {}
       };
     }
@@ -277,6 +318,7 @@ export class OnnxSlowGate implements SlowGate {
       executionProvider: this.lastProvider,
       foundationLoaded: Boolean(bundle.foundation?.modelLoaded),
       interventionLoaded: Boolean(bundle.intervention?.modelLoaded),
+      modelVersion: TARGET_INTERVENTION_MODEL_VERSION,
       providers: {
         foundation: bundle.foundation?.executionProvider,
         intervention: bundle.intervention?.executionProvider

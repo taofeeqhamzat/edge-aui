@@ -178,12 +178,30 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
 ### Slow Gate — `src/gates/slow/onnxSlowGate.ts`
 
 - Implements dual-graph inference ([ADR-006](decisions/ADR-006-target-intervention-head-interface.md) Option A):
-  1. Base GRU recurrent graph (`public/models/model_int8.onnx`): processes sequence `(1, 8, 18)` to generate 64-dimensional latent behavioral state \(h_T\).
-  2. Target Intervention Head graph (`public/models/intervention_head_int8.onnx`): concatenates \(h_T\) with the 6-dimensional normalized UI context vector \(R^6\) to evaluate 5 uncalibrated logits (`simplify_options`, `highlight_primary_action`, `offer_assistance`, `expand_tooltip`, `no_op`).
-- Operates on INT8-quantized ONNX graphs loaded and warmed during worker `INIT` over WebGPU with CPU WASM fallback.
+  1. Foundation graph (`public/models/model_int8.onnx`): classifies the observable outcome.
+  2. Target Intervention Head graph (`public/models/intervention_head_int8.onnx`): evaluates 5
+     uncalibrated logits (`simplify_options`, `highlight_primary_action`, `offer_assistance`,
+     `expand_tooltip`, `no_op`).
+- **The deployed ONNX input topology is a dual-input encoder, not a hidden-state-only interface.**
+  The graphs accept `sequence_input (batch, seq, 18)` and `context_input (batch, 6)` and produce
+  `intervention_logits (batch, 5)`; the head concatenates the encoded sequence with the context
+  **inside** the exported graph (`head.fc.0.weight` is `[64, 70]`, i.e. 64 encoded features + 6
+  context features). The runtime therefore feeds the raw `[1, 8, 18]` sequence tensor and never reads
+  or surfaces \(h_T\). Earlier revisions of this document described the fusion as
+  \(h_T \oplus R^6\), which is the conceptual training architecture and was never the deployed
+  interface (assessment F-24, [ADR-016](decisions/ADR-016-cloudflare-pages-deployment.md)).
+- Operates on INT8-quantized ONNX graphs loaded and warmed during worker `INIT` using **ONNX Runtime
+  Web's WASM-only entry point** (`onnxruntime-web/wasm`) with providers `['wasm','cpu']` and
+  `numThreads = 1`. WebGPU is not requested: it loads a 26,827,543-byte WASM binary that exceeds
+  Cloudflare Pages' 25 MiB per-asset limit
+  ([ADR-016](decisions/ADR-016-cloudflare-pages-deployment.md)).
 - In ablation arm (`useDeterministicMapping: true`), candidate command is produced via heuristic outcome mapping (`mappingSource: 'deterministic_mapping'`).
-- Reports the **execution provider that actually served the session**.
+- Reports the **execution provider that actually served the session** (`wasm` for this deployment).
 - Fails visibly when no session exists: `NO_OUTCOME` at confidence 0, no probabilities.
+- Fast Gate execution is bounded and observable: corpus size, pattern length, pattern count and a
+  mining deadline are configurable, and `trace.metadata.mining` records
+  `executed` / `skipped` / `superseded` / `timedOut` / `droppedWindows`
+  ([ADR-020](decisions/ADR-020-fast-gate-execution-bounds.md)).
 
 ### Arbitration — `src/gates/arbitration.ts`
 
@@ -379,7 +397,9 @@ being produced.
 
 ## 11. Privacy
 
-In accordance with [ADR-010](decisions/ADR-010-privacy-retention-model.md):
+In accordance with [ADR-010](decisions/ADR-010-privacy-retention-model.md), as amended by
+[ADR-018](decisions/ADR-018-scripted-vs-participant-provenance.md) and
+[ADR-019](decisions/ADR-019-session-persistence-and-recovery.md):
 
 - **Guarantee 1 (Zero Form/PII Leakage):** Free-text inputs, typed values, and form values are
   strictly redacted at the observation boundary. Tests (`tests/context_redaction.test.ts`) assert
@@ -390,7 +410,9 @@ In accordance with [ADR-010](decisions/ADR-010-privacy-retention-model.md):
   All state is retained in-memory only and flushed upon tab close or task reset.
 - Raw pixel coordinates are never stored in the trace; only normalised values and derived
   tensors.
-- Buffers are bounded (`RollingWindowBuffer` capacity and retention, recorder FIFO).
+- Buffers are bounded (`RollingWindowBuffer` capacity and retention, recorder FIFO). FIFO eviction is
+  **counted** and reported as `metadata.evictions` plus an integrity warning, so truncation is never
+  silent.
 - Traces are exported by the user as a local JSON download.
 - Full trace identifier linkability and pseudonymization audit is documented in Section 3 of
   [`docs/data_schemas.md`](data_schemas.md).
