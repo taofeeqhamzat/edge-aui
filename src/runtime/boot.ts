@@ -15,6 +15,9 @@ import { ExperimentalCondition } from '../telemetry/events';
 import { InterventionType } from '../intervention/types';
 import { sessionManager } from '../telemetry/session';
 import { experimentRecorder } from '../telemetry/recorder';
+import { ResearchCollection } from '../telemetry/collection';
+import { debugBus } from '../debug/debugBus';
+import { getRuntimeDiagnostics, startRuntimeDiagnostics } from './diagnostics';
 
 export interface BootOptions extends AdaptiveRuntimeOptions {
   conditionId?: ExperimentalCondition;
@@ -118,7 +121,68 @@ export async function bootTestbed(
 
   await runtime.start();
   currentRuntime = runtime;
+
+  // Re-point the diagnostics handle at the new runtime. The previous handle closed over the
+  // terminated runtime, so after the first condition switch `window.__EDGE_AUI__` reported
+  // `running: false` and stale recorder counts while a fresh runtime was in fact running
+  // (assessment F-21).
+  const previousHandle = getRuntimeDiagnostics();
+  if (previousHandle) {
+    previousHandle.stop();
+    startRuntimeDiagnostics(runtime);
+  }
+
+  // Start (or re-point) research collection for this session. Collection is owned by the
+  // composition root because it must outlive an individual runtime while the condition
+  // switch rebuilds one.
+  await startCollectionForSession();
+
   return runtime;
+}
+
+let currentCollection: ResearchCollection | null = null;
+
+/**
+ * Points collection at the active session and schedules periodic local persistence.
+ *
+ * Idempotent per session: a condition switch retains the same session, so the existing
+ * collection instance is reused rather than opening a second one.
+ */
+async function startCollectionForSession(): Promise<void> {
+  const sessionId = experimentRecorder.getSessionId();
+  if (currentCollection && currentCollection.getStatus().currentSessionId === sessionId) {
+    return;
+  }
+
+  if (!currentCollection) {
+    currentCollection = new ResearchCollection();
+  }
+
+  await currentCollection.beginSession();
+  currentCollection.startPeriodicFlush();
+  publishCollectionStatus();
+}
+
+/** Mirrors collection state into the debug bus so the panel can show it. */
+export function publishCollectionStatus(): void {
+  if (!currentCollection) return;
+  const status = currentCollection.getStatus();
+  debugBus.update({
+    collectionState: status.state,
+    collectionDetail: {
+      configured: status.configured,
+      durable: status.durable,
+      mode: status.mode,
+      uploadAttempts: status.uploadAttempts,
+      lastError: status.lastError,
+      recoverableSessionId: status.recoverableSessionId,
+      recoverableReason: status.recoverableReason
+    }
+  });
+}
+
+export function getCollection(): ResearchCollection | null {
+  return currentCollection;
 }
 
 export function getRuntime(): AdaptiveRuntime | null {

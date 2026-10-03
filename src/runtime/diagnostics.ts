@@ -21,8 +21,12 @@ export interface RuntimeDiagnosticsHandle {
   trace: () => string;
   /** Window-tagged macro sequences available to the PrefixSpan Fast Gate. */
   macroSequences: () => string[][];
-  /** The most recent gate decision, for live inspection. */
+  /** The most recent gate evaluation produced per pre-approval policy decision IDs. */
   lastDecision: () => unknown;
+  /** Bounded Fast Gate execution counters (F-02). */
+  miningCounters: () => ReturnType<AdaptiveRuntime['getMiningCounters']>;
+  /** Records discarded by buffer eviction, proving truncation is not silent (F-16). */
+  evictionCounters: () => ReturnType<typeof experimentRecorder.getEvictionCounters>;
   /** Granular timing records per stage and side. */
   timingRecords: () => ReturnType<AdaptiveRuntime['getTimingRecords']>;
   /** Summary timing stats aggregated per stage and side. */
@@ -45,9 +49,11 @@ let activeHandle: RuntimeDiagnosticsHandle | null = null;
 function diagnosticsEnabled(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
-    const forced = new URLSearchParams(window.location.search).get('auiDiagnostics') === '1';
-    return Boolean(env?.DEV) || forced;
+    const env = (import.meta as ImportMeta & { env?: { DEV?: boolean; VITE_AUI_DIAGNOSTICS?: string } }).env;
+    const params = new URLSearchParams(window.location.search);
+    const forced = params.get('auiDiagnostics') === '1' || params.get('auiDiagnostics') === 'true';
+    const envForced = env?.VITE_AUI_DIAGNOSTICS === '1' || env?.VITE_AUI_DIAGNOSTICS === 'true';
+    return Boolean(env?.DEV) || forced || envForced;
   } catch {
     return false;
   }
@@ -71,6 +77,8 @@ export function startRuntimeDiagnostics(
     trace: () => experimentRecorder.exportJSON(),
     macroSequences: () => runtime.getMacroSequences(),
     lastDecision: () => runtime.getLastGateDecision(),
+    miningCounters: () => runtime.getMiningCounters(),
+    evictionCounters: () => experimentRecorder.getEvictionCounters(),
     timingRecords: () => runtime.getTimingRecords(),
     timings: () => runtime.getTimingSummary(),
     clearTimings: () => runtime.clearTimings(),
@@ -102,10 +110,16 @@ export function startRuntimeDiagnostics(
 
   const timer = window.setInterval(() => {
     const status = runtime.getStatus();
+    // `latestMacroSequence` is deliberately NOT written here. It used to be set to
+    // `undefined` on every tick, which erased the value the macro stream published and
+    // made the panel report "No macro events recorded" while dozens were buffered (F-08).
     debugBus.update({
       workerStatus: status.running ? 'ready' : 'uninitialized',
-      latestMacroSequence: undefined,
-      stageTimings: runtime.getTimingSummary()
+      stageTimings: runtime.getTimingSummary(),
+      runtimeCounters: { ...experimentRecorder.getEventCounts() },
+      recorderCounts: { ...experimentRecorder.getEventCounts() },
+      evictedRecords: experimentRecorder.getEvictionCounters().total,
+      miningCounters: { ...runtime.getMiningCounters() }
     });
   }, intervalMs);
 

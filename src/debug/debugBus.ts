@@ -9,6 +9,10 @@ export interface LiveDebugMetrics {
   sessionTimestamp?: number;
   latestMicroTensor?: number[];
   latestMacroSequence?: string[];
+  /** True when the currently displayed MicroTensor came from an inactivity window. */
+  latestWindowInactive?: boolean;
+  /** Event count of the currently displayed MicroTensor window. */
+  latestWindowEventCount?: number;
   fastGateStatus?: {
     matched: boolean;
     pattern?: string;
@@ -27,8 +31,51 @@ export interface LiveDebugMetrics {
     confidence?: number;
     state: string;
   };
+  /** Which gate actually produced the current decision. */
+  matchedGate?: 'fast' | 'slow' | 'none';
+  /** Generative mechanism behind the current candidate (ADR-006 / Task 5.3). */
+  mappingSource?: string;
+  /**
+   * Explicit decision state, so the panel never requires the observer to infer
+   * "why nothing happened" from an absence of information (F-08).
+   */
+  policyState?:
+    | 'NO PREDICTION'
+    | 'FAST MATCH'
+    | 'SLOW GATE'
+    | 'BELOW THRESHOLD'
+    | 'POLICY ACCEPTED'
+    | 'POLICY ACCEPTED (BASELINE — NOT APPLIED)'
+    | 'POLICY REJECTED'
+    | 'ACTUATED'
+    | 'EXPIRED'
+    | 'DISMISSED'
+    | 'ACTUATION FAILED';
+  /** Human-readable reason behind the current policy decision. */
+  policyReason?: string;
+  /** Cooldown remaining in milliseconds at the last decision. */
+  policyCooldownRemainingMs?: number;
+  /** Consecutive-window persistence count at the last decision. */
+  candidateCount?: number;
+  /** Episode id of the intervention currently visible in the interface. */
+  activeEpisodeId?: string;
+  /** Adaptation type currently visible in the interface. */
+  activeIntervention?: string;
+  /** Declared lifetime of the active adaptation, in milliseconds. */
+  activeInterventionTtlMs?: number;
+  /** Remaining lifetime of the active adaptation at the time of the last update. */
+  activeInterventionExpiresInMs?: number;
+  /** Window whose closing state was most recently evaluated. */
+  latestWindowId?: number;
+  /** Stable id of the most recent prediction, for trace↔panel correlation. */
+  latestPredictionId?: string;
+  modelVersion?: string;
   inferenceLatencyMs?: number;
-  featureLatencyMs?: number;
+  /**
+   * Duration of the whole evaluate-and-act cycle. Previously mislabelled
+   * `featureLatencyMs`, which implied feature-extraction time it never measured (F-08).
+   */
+  evaluationCycleLatencyMs?: number;
   workerStatus?: 'ready' | 'busy' | 'uninitialized' | 'error';
   /** Which Slow Gate implementation is active. */
   slowGateMode?: 'mock' | 'onnx';
@@ -38,6 +85,24 @@ export interface LiveDebugMetrics {
   modelLoaded?: boolean;
   /** Counters published by the runtime composition. */
   runtimeCounters?: Record<string, number>;
+  /** Bounded Fast Gate execution counters (F-02). */
+  miningCounters?: Record<string, number>;
+  /** Per-buffer record counts currently held in memory. */
+  recorderCounts?: Record<string, number>;
+  /** Records discarded by buffer eviction, proving truncation is not silent (F-16). */
+  evictedRecords?: number;
+  /** Collection/persistence state of the research trace. */
+  collectionState?: string;
+  /** Detail behind the collection state, for the researcher panel. */
+  collectionDetail?: {
+    configured: boolean;
+    durable: boolean;
+    mode: string;
+    uploadAttempts: number;
+    lastError?: string;
+    recoverableSessionId?: string;
+    recoverableReason?: string;
+  };
   /** Stage timing aggregates by stage and thread side. */
   stageTimings?: Record<string, StageTimingStats>;
 }
