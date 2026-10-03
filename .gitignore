@@ -26,8 +26,24 @@ dist-ssr
 # Rust & WASM build artifacts
 target/
 wasm-vectorizer/target/
-wasm-vectorizer/pkg/
-pkg/
+
+# The compiled WASM package IS committed, against the usual rule for build outputs.
+#
+# `src/gates/fast/prefixSpanMiner.ts` imports `wasm-vectorizer/pkg/wasm_vectorizer.js`, so a
+# clean clone could not build without it — "npm run build" failed for anyone who had not
+# already run a local Rust build. Cloudflare Pages builds from a clean checkout on every push
+# and has no Rust step, so the artifact is a deployment input, not a local by-product.
+# `npm run check:wasm-pkg` fails loudly if it is missing, and `npm run build:wasm` regenerates
+# it. The Rust sources remain the source of truth; see docs/deploy/README.md.
+!wasm-vectorizer/pkg/
+!wasm-vectorizer/pkg/*.js
+!wasm-vectorizer/pkg/*.wasm
+!wasm-vectorizer/pkg/*.d.ts
+!wasm-vectorizer/pkg/package.json
+
+# Regenerable by `npm run build:wasm`; never needed by a build and large to diff.
+wasm-vectorizer/pkg/.gitignore
+*.wasm.d.ts.map
 
 # ML models
 # `*.onnx` is ignored because model artifacts are build outputs. The one exception is the
@@ -54,6 +70,25 @@ docs/agents/**
 docs/experiments/**
 !docs/experiments/**/.gitkeep
 !docs/experiments/*.md
+# A real runtime-produced capture, committed deliberately: the cross-repository ingestion
+# contract test in model-preparation consumes it, and the audit found that check passing only
+# because a genuine capture was being silently skipped.
+!docs/experiments/deploy-verification/
+!docs/experiments/deploy-verification/*.json
 !docs/experiments/baseline-trace.json
 !docs/experiments/adaptive-trace.json
+
+# Verification scratch space: clean-clone checkouts, agent-browser sessions, exported traces
+.data/
+
+# Secrets and per-environment configuration.
+# `.env` was NOT ignored before this milestone, so a `VITE_SUPABASE_ANON_KEY` written to it
+# during setup could have been committed. The template is tracked; real files are not.
+.env
+.env.*
+!.env.example
+
+# Supabase CLI working state (the migrations themselves are tracked)
+supabase/.temp/
+supabase/.branches/
 
