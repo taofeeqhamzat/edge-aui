@@ -521,7 +521,10 @@ describe('Acceptance artefact: a real exported 1.3.0 capture', () => {
     // check depend on run history.
     fs.rmSync(targetDir, { recursive: true, force: true });
     fs.mkdirSync(targetDir, { recursive: true });
-    const targetPath = path.join(targetDir, `experiment-trace-${trace.session.sessionId}.json`);
+    // A fixed filename, not the session id: the session id is regenerated per run, so keying
+    // the artifact on it would leave one committed file per test execution and make the
+    // cross-repository contract depend on run history.
+    const targetPath = path.join(targetDir, 'experiment-trace-deploy-verification.json');
     fs.writeFileSync(targetPath, JSON.stringify(trace, null, 2));
 
     // The artefact must be a genuinely usable capture, not an empty shell.

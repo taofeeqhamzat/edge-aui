@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.3.0",
-  "exportedAt": "2026-10-03T20:51:27.018Z",
+  "exportedAt": "2026-10-03T20:55:36.185Z",
   "session": {
-    "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
-    "startedAt": 12434.415125,
-    "startedAtEpochMs": 1791060683273,
+    "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
+    "startedAt": 890.474625,
+    "startedAtEpochMs": 1791060931950,
     "experimentId": "exp-deploy-verification",
     "conditionId": "adaptive",
     "provenance": "scripted",
@@ -18,12 +18,12 @@
     "errors": 0
   },
   "metadata": {
-    "durationMs": 3744.863525390625,
-    "totalEvents": 112,
+    "durationMs": 4235.146728515625,
+    "totalEvents": 114,
     "behaviourCount": 46,
-    "microTensorCount": 12,
+    "microTensorCount": 13,
     "macroCount": 36,
-    "outcomeCount": 12,
+    "outcomeCount": 13,
     "predictionCount": 3,
     "interventionCount": 0,
     "policyDecisionCount": 3,
@@ -161,7 +161,7 @@
     "policyVersion": "1.0.0",
     "mining": {
       "executed": 0,
-      "skipped": 9,
+      "skipped": 10,
       "superseded": 0,
       "timedOut": 0,
       "droppedWindows": 0
@@ -304,7 +304,7 @@
   },
   "behaviourEvents": [
     {
-      "timestamp": 1791060683278.496,
+      "timestamp": 1791060932422.1914,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -325,7 +325,7 @@
       }
     },
     {
-      "timestamp": 1791060683280.159,
+      "timestamp": 1791060932424.5615,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -347,7 +347,7 @@
       }
     },
     {
-      "timestamp": 1791060683282.7417,
+      "timestamp": 1791060932426.726,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -368,7 +368,7 @@
       }
     },
     {
-      "timestamp": 1791060683284.314,
+      "timestamp": 1791060932429.957,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -388,7 +388,7 @@
       }
     },
     {
-      "timestamp": 1791060683285.6677,
+      "timestamp": 1791060932432.8323,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -409,7 +409,7 @@
       }
     },
     {
-      "timestamp": 1791060683638.4678,
+      "timestamp": 1791060932786.2383,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -430,7 +430,7 @@
       }
     },
     {
-      "timestamp": 1791060683639.7612,
+      "timestamp": 1791060932787.485,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -452,7 +452,7 @@
       }
     },
     {
-      "timestamp": 1791060683641.6377,
+      "timestamp": 1791060932788.415,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -473,7 +473,7 @@
       }
     },
     {
-      "timestamp": 1791060683643.2039,
+      "timestamp": 1791060932789.94,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -493,7 +493,7 @@
       }
     },
     {
-      "timestamp": 1791060683644.558,
+      "timestamp": 1791060932791.4424,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -514,7 +514,7 @@
       }
     },
     {
-      "timestamp": 1791060683997.2808,
+      "timestamp": 1791060933144.8496,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -535,7 +535,7 @@
       }
     },
     {
-      "timestamp": 1791060683998.849,
+      "timestamp": 1791060933146.1238,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -557,7 +557,7 @@
       }
     },
     {
-      "timestamp": 1791060684000.5603,
+      "timestamp": 1791060933148.1436,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -578,7 +578,7 @@
       }
     },
     {
-      "timestamp": 1791060684001.8708,
+      "timestamp": 1791060933149.9377,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -598,7 +598,7 @@
       }
     },
     {
-      "timestamp": 1791060684003.2039,
+      "timestamp": 1791060933151.437,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -619,7 +619,7 @@
       }
     },
     {
-      "timestamp": 1791060684354.9265,
+      "timestamp": 1791060933504.427,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -640,7 +640,7 @@
       }
     },
     {
-      "timestamp": 1791060684356.0898,
+      "timestamp": 1791060933505.5132,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -662,7 +662,7 @@
       }
     },
     {
-      "timestamp": 1791060684358.1995,
+      "timestamp": 1791060933506.535,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -683,7 +683,7 @@
       }
     },
     {
-      "timestamp": 1791060684359.918,
+      "timestamp": 1791060933507.7104,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -703,7 +703,7 @@
       }
     },
     {
-      "timestamp": 1791060684361.062,
+      "timestamp": 1791060933508.8904,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -724,7 +724,7 @@
       }
     },
     {
-      "timestamp": 1791060684713.715,
+      "timestamp": 1791060933862.5688,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -745,7 +745,7 @@
       }
     },
     {
-      "timestamp": 1791060684714.992,
+      "timestamp": 1791060933863.4836,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -767,7 +767,7 @@
       }
     },
     {
-      "timestamp": 1791060684717.3518,
+      "timestamp": 1791060933864.4456,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -788,7 +788,7 @@
       }
     },
     {
-      "timestamp": 1791060684718.821,
+      "timestamp": 1791060933865.803,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -808,7 +808,7 @@
       }
     },
     {
-      "timestamp": 1791060684720.2253,
+      "timestamp": 1791060933867.7156,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -829,7 +829,7 @@
       }
     },
     {
-      "timestamp": 1791060685077.1636,
+      "timestamp": 1791060934221.5896,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -850,7 +850,7 @@
       }
     },
     {
-      "timestamp": 1791060685079.3481,
+      "timestamp": 1791060934223.323,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -872,7 +872,7 @@
       }
     },
     {
-      "timestamp": 1791060685080.8098,
+      "timestamp": 1791060934224.0918,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -893,7 +893,7 @@
       }
     },
     {
-      "timestamp": 1791060685082.7104,
+      "timestamp": 1791060934224.9072,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -913,7 +913,7 @@
       }
     },
     {
-      "timestamp": 1791060685085.9712,
+      "timestamp": 1791060934225.78,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -934,7 +934,7 @@
       }
     },
     {
-      "timestamp": 1791060685438.0928,
+      "timestamp": 1791060934579.3054,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -955,7 +955,7 @@
       }
     },
     {
-      "timestamp": 1791060685439.3564,
+      "timestamp": 1791060934580.6538,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -977,7 +977,7 @@
       }
     },
     {
-      "timestamp": 1791060685440.6084,
+      "timestamp": 1791060934581.512,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -998,7 +998,7 @@
       }
     },
     {
-      "timestamp": 1791060685442.3145,
+      "timestamp": 1791060934583.2256,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -1018,7 +1018,7 @@
       }
     },
     {
-      "timestamp": 1791060685443.5232,
+      "timestamp": 1791060934585.2683,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1039,7 +1039,7 @@
       }
     },
     {
-      "timestamp": 1791060685797.559,
+      "timestamp": 1791060934967.7676,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1060,7 +1060,7 @@
       }
     },
     {
-      "timestamp": 1791060685799.4717,
+      "timestamp": 1791060934968.447,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1082,7 +1082,7 @@
       }
     },
     {
-      "timestamp": 1791060685800.6606,
+      "timestamp": 1791060934968.969,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1103,7 +1103,7 @@
       }
     },
     {
-      "timestamp": 1791060685801.7722,
+      "timestamp": 1791060934969.5388,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -1123,7 +1123,7 @@
       }
     },
     {
-      "timestamp": 1791060685802.9907,
+      "timestamp": 1791060934970.1538,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1144,7 +1144,7 @@
       }
     },
     {
-      "timestamp": 1791060686157.3376,
+      "timestamp": 1791060935323.103,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1165,7 +1165,7 @@
       }
     },
     {
-      "timestamp": 1791060686158.5405,
+      "timestamp": 1791060935324.1492,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1187,7 +1187,7 @@
       }
     },
     {
-      "timestamp": 1791060686160.1072,
+      "timestamp": 1791060935325.0757,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1208,7 +1208,7 @@
       }
     },
     {
-      "timestamp": 1791060686161.3591,
+      "timestamp": 1791060935326.1348,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -1228,7 +1228,7 @@
       }
     },
     {
-      "timestamp": 1791060686162.7783,
+      "timestamp": 1791060935327.2842,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1249,7 +1249,7 @@
       }
     },
     {
-      "timestamp": 1791060686517.064,
+      "timestamp": 1791060935681.419,
       "type": "pagehide",
       "route": "Overview",
       "action": "pagehide"
@@ -1258,8 +1258,8 @@
   "microTensors": [
     {
       "windowId": 0,
-      "windowStart": 1791060683278.496,
-      "windowEnd": 1791060683528.496,
+      "windowStart": 1791060932422.1914,
+      "windowEnd": 1791060932672.1914,
       "values": [
         0,
         0,
@@ -1285,8 +1285,8 @@
     },
     {
       "windowId": 1,
-      "windowStart": 1791060683528.496,
-      "windowEnd": 1791060683778.496,
+      "windowStart": 1791060932672.1914,
+      "windowEnd": 1791060932922.1914,
       "values": [
         0,
         0,
@@ -1312,8 +1312,8 @@
     },
     {
       "windowId": 2,
-      "windowStart": 1791060683778.496,
-      "windowEnd": 1791060684028.496,
+      "windowStart": 1791060932922.1914,
+      "windowEnd": 1791060933172.1914,
       "values": [
         0,
         0,
@@ -1339,8 +1339,8 @@
     },
     {
       "windowId": 3,
-      "windowStart": 1791060684028.496,
-      "windowEnd": 1791060684278.496,
+      "windowStart": 1791060933172.1914,
+      "windowEnd": 1791060933422.1914,
       "values": [
         0,
         0,
@@ -1366,8 +1366,8 @@
     },
     {
       "windowId": 4,
-      "windowStart": 1791060684278.496,
-      "windowEnd": 1791060684528.496,
+      "windowStart": 1791060933422.1914,
+      "windowEnd": 1791060933672.1914,
       "values": [
         0,
         0,
@@ -1393,8 +1393,8 @@
     },
     {
       "windowId": 5,
-      "windowStart": 1791060684528.496,
-      "windowEnd": 1791060684778.496,
+      "windowStart": 1791060933672.1914,
+      "windowEnd": 1791060933922.1914,
       "values": [
         0,
         0,
@@ -1420,8 +1420,8 @@
     },
     {
       "windowId": 6,
-      "windowStart": 1791060684778.496,
-      "windowEnd": 1791060685028.496,
+      "windowStart": 1791060933922.1914,
+      "windowEnd": 1791060934172.1914,
       "values": [
         0,
         0,
@@ -1447,8 +1447,8 @@
     },
     {
       "windowId": 7,
-      "windowStart": 1791060685028.496,
-      "windowEnd": 1791060685278.496,
+      "windowStart": 1791060934172.1914,
+      "windowEnd": 1791060934422.1914,
       "values": [
         0,
         0,
@@ -1474,8 +1474,8 @@
     },
     {
       "windowId": 8,
-      "windowStart": 1791060685278.496,
-      "windowEnd": 1791060685528.496,
+      "windowStart": 1791060934422.1914,
+      "windowEnd": 1791060934672.1914,
       "values": [
         0,
         0,
@@ -1501,8 +1501,8 @@
     },
     {
       "windowId": 9,
-      "windowStart": 1791060685528.496,
-      "windowEnd": 1791060685778.496,
+      "windowStart": 1791060934672.1914,
+      "windowEnd": 1791060934922.1914,
       "values": [
         0,
         0,
@@ -1528,8 +1528,8 @@
     },
     {
       "windowId": 10,
-      "windowStart": 1791060685778.496,
-      "windowEnd": 1791060686028.496,
+      "windowStart": 1791060934922.1914,
+      "windowEnd": 1791060935172.1914,
       "values": [
         0,
         0,
@@ -1555,8 +1555,8 @@
     },
     {
       "windowId": 11,
-      "windowStart": 1791060686028.496,
-      "windowEnd": 1791060686278.496,
+      "windowStart": 1791060935172.1914,
+      "windowEnd": 1791060935422.1914,
       "values": [
         0,
         0,
@@ -1579,393 +1579,420 @@
       ],
       "eventCount": 5,
       "inactive": false
+    },
+    {
+      "windowId": 12,
+      "windowStart": 1791060935422.1914,
+      "windowEnd": 1791060935672.1914,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "eventCount": 0,
+      "inactive": true
     }
   ],
   "macroInteractions": [
     {
-      "timestamp": 1791060683278.496,
+      "timestamp": 1791060932422.1914,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791060683280.159,
+      "timestamp": 1791060932424.5615,
       "symbol": "CLOSE_FILTERS",
       "componentId": "filter-Region",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791060683282.7417,
+      "timestamp": 1791060932426.726,
       "symbol": "APPLY_FILTER",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791060683285.6677,
+      "timestamp": 1791060932432.8323,
       "symbol": "HOVER_KPI",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791060683638.4678,
+      "timestamp": 1791060932786.2383,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791060683639.7612,
+      "timestamp": 1791060932787.485,
       "symbol": "CLOSE_FILTERS",
       "componentId": "filter-Region",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791060683641.6377,
+      "timestamp": 1791060932788.415,
       "symbol": "APPLY_FILTER",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791060683644.558,
+      "timestamp": 1791060932791.4424,
       "symbol": "HOVER_KPI",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791060683997.2808,
+      "timestamp": 1791060933144.8496,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1791060683998.849,
+      "timestamp": 1791060933146.1238,
       "symbol": "CLOSE_FILTERS",
       "componentId": "filter-Region",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1791060684000.5603,
+      "timestamp": 1791060933148.1436,
       "symbol": "APPLY_FILTER",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1791060684003.2039,
+      "timestamp": 1791060933151.437,
       "symbol": "HOVER_KPI",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1791060684354.9265,
+      "timestamp": 1791060933504.427,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 2
+      "windowId": 1
     },
     {
-      "timestamp": 1791060684356.0898,
+      "timestamp": 1791060933505.5132,
       "symbol": "CLOSE_FILTERS",
       "componentId": "filter-Region",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 2
+      "windowId": 1
     },
     {
-      "timestamp": 1791060684358.1995,
+      "timestamp": 1791060933506.535,
       "symbol": "APPLY_FILTER",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 2
+      "windowId": 1
     },
     {
-      "timestamp": 1791060684361.062,
+      "timestamp": 1791060933508.8904,
       "symbol": "HOVER_KPI",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 2
+      "windowId": 1
     },
     {
-      "timestamp": 1791060684713.715,
+      "timestamp": 1791060933862.5688,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1791060684714.992,
+      "timestamp": 1791060933863.4836,
       "symbol": "CLOSE_FILTERS",
       "componentId": "filter-Region",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1791060684717.3518,
+      "timestamp": 1791060933864.4456,
       "symbol": "APPLY_FILTER",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1791060684720.2253,
+      "timestamp": 1791060933867.7156,
       "symbol": "HOVER_KPI",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1791060685077.1636,
+      "timestamp": 1791060934221.5896,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1791060685079.3481,
+      "timestamp": 1791060934223.323,
       "symbol": "CLOSE_FILTERS",
       "componentId": "filter-Region",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1791060685080.8098,
+      "timestamp": 1791060934224.0918,
       "symbol": "APPLY_FILTER",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1791060685085.9712,
+      "timestamp": 1791060934225.78,
       "symbol": "HOVER_KPI",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1791060685438.0928,
+      "timestamp": 1791060934579.3054,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 6
     },
     {
-      "timestamp": 1791060685439.3564,
+      "timestamp": 1791060934580.6538,
       "symbol": "CLOSE_FILTERS",
       "componentId": "filter-Region",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 6
     },
     {
-      "timestamp": 1791060685440.6084,
+      "timestamp": 1791060934581.512,
       "symbol": "APPLY_FILTER",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 6
     },
     {
-      "timestamp": 1791060685443.5232,
+      "timestamp": 1791060934585.2683,
       "symbol": "HOVER_KPI",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 6
     },
     {
-      "timestamp": 1791060685797.559,
+      "timestamp": 1791060934967.7676,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 7
+      "windowId": 8
     },
     {
-      "timestamp": 1791060685799.4717,
+      "timestamp": 1791060934968.447,
       "symbol": "CLOSE_FILTERS",
       "componentId": "filter-Region",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 7
+      "windowId": 8
     },
     {
-      "timestamp": 1791060685800.6606,
+      "timestamp": 1791060934968.969,
       "symbol": "APPLY_FILTER",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 7
+      "windowId": 8
     },
     {
-      "timestamp": 1791060685802.9907,
+      "timestamp": 1791060934970.1538,
       "symbol": "HOVER_KPI",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 7
+      "windowId": 8
     },
     {
-      "timestamp": 1791060686157.3376,
+      "timestamp": 1791060935323.103,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1791060686158.5405,
+      "timestamp": 1791060935324.1492,
       "symbol": "CLOSE_FILTERS",
       "componentId": "filter-Region",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1791060686160.1072,
+      "timestamp": 1791060935325.0757,
       "symbol": "APPLY_FILTER",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1791060686162.7783,
+      "timestamp": 1791060935327.2842,
       "symbol": "HOVER_KPI",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "Overview",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
@@ -1973,235 +2000,256 @@
   ],
   "outcomes": [
     {
-      "timestamp": 1791060684354.9265,
+      "timestamp": 1791060933504.427,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 0,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060684354.9265,
+      "sourceEventTimestamp": 1791060933504.427,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060684028.496,
-        "lookaheadEndMs": 1791060685028.496,
+        "lookaheadStartMs": 1791060933172.1914,
+        "lookaheadEndMs": 1791060934172.1914,
         "candidateCount": 8,
-        "earliestTimestampMs": 1791060684354.9265,
+        "earliestTimestampMs": 1791060933504.427,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
       }
     },
     {
-      "timestamp": 1791060684354.9265,
+      "timestamp": 1791060933504.427,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 1,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060684354.9265,
+      "sourceEventTimestamp": 1791060933504.427,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060684278.496,
-        "lookaheadEndMs": 1791060685278.496,
+        "lookaheadStartMs": 1791060933422.1914,
+        "lookaheadEndMs": 1791060934422.1914,
         "candidateCount": 12,
-        "earliestTimestampMs": 1791060684354.9265,
+        "earliestTimestampMs": 1791060933504.427,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
       }
     },
     {
-      "timestamp": 1791060684713.715,
+      "timestamp": 1791060933862.5688,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 2,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060684713.715,
+      "sourceEventTimestamp": 1791060933862.5688,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060684528.496,
-        "lookaheadEndMs": 1791060685528.496,
+        "lookaheadStartMs": 1791060933672.1914,
+        "lookaheadEndMs": 1791060934672.1914,
         "candidateCount": 12,
-        "earliestTimestampMs": 1791060684713.715,
-        "tieBroken": false,
+        "earliestTimestampMs": 1791060933862.5688,
+        "tieBroken": true,
         "source": "dom_action",
         "observableTermination": false
       }
     },
     {
-      "timestamp": 1791060685077.1636,
+      "timestamp": 1791060934221.5896,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 3,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060685077.1636,
+      "sourceEventTimestamp": 1791060934221.5896,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060684778.496,
-        "lookaheadEndMs": 1791060685778.496,
+        "lookaheadStartMs": 1791060933922.1914,
+        "lookaheadEndMs": 1791060934922.1914,
         "candidateCount": 8,
-        "earliestTimestampMs": 1791060685077.1636,
+        "earliestTimestampMs": 1791060934221.5896,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
       }
     },
     {
-      "timestamp": 1791060685077.1636,
+      "timestamp": 1791060934221.5896,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 4,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060685077.1636,
+      "sourceEventTimestamp": 1791060934221.5896,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060685028.496,
-        "lookaheadEndMs": 1791060686028.496,
+        "lookaheadStartMs": 1791060934172.1914,
+        "lookaheadEndMs": 1791060935172.1914,
         "candidateCount": 12,
-        "earliestTimestampMs": 1791060685077.1636,
+        "earliestTimestampMs": 1791060934221.5896,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
       }
     },
     {
-      "timestamp": 1791060685438.0928,
+      "timestamp": 1791060934579.3054,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 5,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060685438.0928,
+      "sourceEventTimestamp": 1791060934579.3054,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060685278.496,
-        "lookaheadEndMs": 1791060686278.496,
+        "lookaheadStartMs": 1791060934422.1914,
+        "lookaheadEndMs": 1791060935422.1914,
         "candidateCount": 12,
-        "earliestTimestampMs": 1791060685438.0928,
+        "earliestTimestampMs": 1791060934579.3054,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
       }
     },
     {
-      "timestamp": 1791060685797.559,
+      "timestamp": 1791060934967.7676,
       "outcome": "CLICK",
-      "lookaheadComplete": false,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "lookaheadComplete": true,
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 6,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060685797.559,
+      "sourceEventTimestamp": 1791060934967.7676,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060685528.496,
-        "lookaheadEndMs": 1791060686528.496,
-        "candidateCount": 9,
-        "earliestTimestampMs": 1791060685797.559,
-        "tieBroken": false,
+        "lookaheadStartMs": 1791060934672.1914,
+        "lookaheadEndMs": 1791060935672.1914,
+        "candidateCount": 8,
+        "earliestTimestampMs": 1791060934967.7676,
+        "tieBroken": true,
         "source": "dom_action",
         "observableTermination": false
       }
     },
     {
-      "timestamp": 1791060685797.559,
+      "timestamp": 1791060934967.7676,
       "outcome": "CLICK",
       "lookaheadComplete": false,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 7,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060685797.559,
+      "sourceEventTimestamp": 1791060934967.7676,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060685778.496,
-        "lookaheadEndMs": 1791060686778.496,
+        "lookaheadStartMs": 1791060934922.1914,
+        "lookaheadEndMs": 1791060935922.1914,
         "candidateCount": 9,
-        "earliestTimestampMs": 1791060685797.559,
-        "tieBroken": false,
+        "earliestTimestampMs": 1791060934967.7676,
+        "tieBroken": true,
         "source": "dom_action",
         "observableTermination": false
       }
     },
     {
-      "timestamp": 1791060686157.3376,
+      "timestamp": 1791060935323.103,
       "outcome": "CLICK",
       "lookaheadComplete": false,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 8,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060686157.3376,
+      "sourceEventTimestamp": 1791060935323.103,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060686028.496,
-        "lookaheadEndMs": 1791060687028.496,
+        "lookaheadStartMs": 1791060935172.1914,
+        "lookaheadEndMs": 1791060936172.1914,
         "candidateCount": 5,
-        "earliestTimestampMs": 1791060686157.3376,
+        "earliestTimestampMs": 1791060935323.103,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
       }
     },
     {
-      "timestamp": 1791060686517.064,
+      "timestamp": 1791060935681.419,
       "outcome": "ABANDON",
       "lookaheadComplete": false,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 9,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791060686517.064,
+      "sourceEventTimestamp": 1791060935681.419,
       "sourceEventType": "pagehide",
       "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060686278.496,
-        "lookaheadEndMs": 1791060687278.496,
+        "lookaheadStartMs": 1791060935422.1914,
+        "lookaheadEndMs": 1791060936422.1914,
         "candidateCount": 1,
-        "earliestTimestampMs": 1791060686517.064,
+        "earliestTimestampMs": 1791060935681.419,
         "tieBroken": false,
         "source": "lifecycle_event",
         "observableTermination": true
       }
     },
     {
-      "timestamp": 1791060686028.496,
+      "timestamp": 1791060935681.419,
       "outcome": "ABANDON",
       "lookaheadComplete": false,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "windowId": 10,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
+      "sourceEventTimestamp": 1791060935681.419,
+      "sourceEventType": "pagehide",
+      "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791060686528.496,
-        "lookaheadEndMs": 1791060687528.496,
+        "lookaheadStartMs": 1791060935672.1914,
+        "lookaheadEndMs": 1791060936672.1914,
+        "candidateCount": 1,
+        "earliestTimestampMs": 1791060935681.419,
+        "tieBroken": false,
+        "source": "lifecycle_event",
+        "observableTermination": true
+      }
+    },
+    {
+      "timestamp": 1791060935422.1914,
+      "outcome": "ABANDON",
+      "lookaheadComplete": false,
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
+      "windowId": 11,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "derivation": {
+        "lookaheadStartMs": 1791060935922.1914,
+        "lookaheadEndMs": 1791060936922.1914,
         "candidateCount": 0,
         "earliestTimestampMs": null,
         "tieBroken": false,
@@ -2210,16 +2258,16 @@
       }
     },
     {
-      "timestamp": 1791060686278.496,
+      "timestamp": 1791060935672.1914,
       "outcome": "ABANDON",
       "lookaheadComplete": false,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
-      "windowId": 11,
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
+      "windowId": 12,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "derivation": {
-        "lookaheadStartMs": 1791060686778.496,
-        "lookaheadEndMs": 1791060687778.496,
+        "lookaheadStartMs": 1791060936172.1914,
+        "lookaheadEndMs": 1791060937172.1914,
         "candidateCount": 0,
         "earliestTimestampMs": null,
         "tieBroken": false,
@@ -2230,9 +2278,9 @@
   ],
   "predictions": [
     {
-      "timestamp": 1791060685812.0745,
+      "timestamp": 1791060934937.641,
       "predictionId": "pred_1",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 8,
@@ -2249,17 +2297,17 @@
       "matchedGate": "none",
       "outcome": "NO_OUTCOME",
       "confidence": 0.47721394896507263,
-      "latencyMs": 1.0353330000016285,
-      "fastGateLatencyMs": 0.013166000000637723,
-      "slowGateLatencyMs": 1.0157920000001468,
+      "latencyMs": 28.150916999999936,
+      "fastGateLatencyMs": 0.1516670000000886,
+      "slowGateLatencyMs": 27.983291999999892,
       "modelVersion": "TargetInterventionHead-v1.0.0-int8",
       "contextEncodingVersion": "R6-v1.0.0",
       "bothGatesEvaluated": true
     },
     {
-      "timestamp": 1791060686324.0928,
+      "timestamp": 1791060935442.7302,
       "predictionId": "pred_2",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 10,
@@ -2276,17 +2324,17 @@
       "matchedGate": "none",
       "outcome": "NO_OUTCOME",
       "confidence": 0.47498562932014465,
-      "latencyMs": 1.2403329999997368,
-      "fastGateLatencyMs": 0.01529100000152539,
-      "slowGateLatencyMs": 1.2189999999991414,
+      "latencyMs": 1.2312080000001515,
+      "fastGateLatencyMs": 0.014374999999745341,
+      "slowGateLatencyMs": 1.2119999999995343,
       "modelVersion": "TargetInterventionHead-v1.0.0-int8",
       "contextEncodingVersion": "R6-v1.0.0",
       "bothGatesEvaluated": true
     },
     {
-      "timestamp": 1791060686579.6099,
+      "timestamp": 1791060935696.0999,
       "predictionId": "pred_3",
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 11,
@@ -2303,9 +2351,9 @@
       "matchedGate": "none",
       "outcome": "NO_OUTCOME",
       "confidence": 0.47721394896507263,
-      "latencyMs": 4.6415410000008706,
-      "fastGateLatencyMs": 0.013708000000406173,
-      "slowGateLatencyMs": 4.620707999998558,
+      "latencyMs": 1.1167079999995622,
+      "fastGateLatencyMs": 0.01991699999962293,
+      "slowGateLatencyMs": 1.0871250000000146,
       "modelVersion": "TargetInterventionHead-v1.0.0-int8",
       "contextEncodingVersion": "R6-v1.0.0",
       "bothGatesEvaluated": true
@@ -2313,8 +2361,8 @@
   ],
   "policyDecisions": [
     {
-      "timestamp": 1791060685813.276,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "timestamp": 1791060934966.7754,
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 8,
@@ -2327,8 +2375,8 @@
       "phase": "no_prediction"
     },
     {
-      "timestamp": 1791060686325.6316,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "timestamp": 1791060935444.109,
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 10,
@@ -2341,8 +2389,8 @@
       "phase": "no_prediction"
     },
     {
-      "timestamp": 1791060686584.5845,
-      "sessionId": "bd709deb-f393-4021-a767-4bd1ddf326e2",
+      "timestamp": 1791060935697.3145,
+      "sessionId": "c3b50bc1-f0c8-4730-bef7-c3761d7ca97a",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 11,
