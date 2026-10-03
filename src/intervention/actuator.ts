@@ -19,6 +19,7 @@ import {
   InterventionEvent
 } from './types';
 import { defaultCollector } from '../runtime/instrumentation';
+import { getWallClockTimestamp } from '../telemetry/normalizer';
 
 export interface UIActuatorOptions {
   root?: Document | HTMLElement;
@@ -32,6 +33,18 @@ interface ReversionRecord {
   cleanup: () => void;
   /** Timer enforcing the command's TTL, when one was provided. */
   ttlTimer?: ReturnType<typeof setTimeout>;
+}
+
+/**
+ * What an adaptation actually did.
+ *
+ * `element` names the node that received the adaptation so the correlation attributes can
+ * be stamped on it, and a `null` return from an `apply*` method means "nothing was adapted"
+ * — which the caller records as actuation failure rather than reporting success.
+ */
+export interface AdaptationResult {
+  cleanup: () => void;
+  element: Element | null;
 }
 
 /**
@@ -50,6 +63,73 @@ function componentSelector(componentId: string): string {
   return `[data-aui-component="${escapeCssAttributeValue(componentId)}"]`;
 }
 
+/**
+ * DOM token for the current adaptation.
+ *
+ * These short names are the pre-existing contract asserted by `tests/actuator.test.ts`
+ * (`highlight` for `highlight_primary_action`). They are preserved rather than replaced,
+ * because the attribute's *presence* is what was missing for three of the four adaptation
+ * types (F-05) — not its spelling.
+ */
+const ADAPTATION_DOM_TOKENS: Record<InterventionType, string> = {
+  no_op: 'none',
+  highlight_primary_action: 'highlight',
+  simplify_options: 'simplified',
+  expand_tooltip: 'tooltip-expanded',
+  offer_assistance: 'assistance'
+};
+
+/**
+ * DOM attribute naming the adaptation currently applied to an element.
+ *
+ * Every adaptation type sets this. Previously only `highlight_primary_action` did, so a
+ * verifier could not prove from the DOM that the adaptation in the trace was the one
+ * visible, and an applied `simplify_options` left no correlatable footprint (F-05).
+ */
+export const ADAPTATION_ATTRIBUTE = 'data-aui-active-adaptation';
+
+/**
+ * DOM attribute carrying the intervention episode id.
+ *
+ * This is the join key between the exported trace and the live interface: it lets an
+ * automated check assert that episode `ep_N` in the record is episode `ep_N` on screen.
+ */
+export const ADAPTATION_EPISODE_ATTRIBUTE = 'data-aui-adaptation-episode';
+
+/**
+ * Stamps the correlation attributes onto an adapted element.
+ *
+ * Returns a restore function so the attributes are removed with the same care as the
+ * adaptation itself — a leaked attribute would make a reverted adaptation look active.
+ */
+export function markAdaptation(
+  element: Element,
+  adaptation: string,
+  episodeId?: string
+): () => void {
+  const previousAdaptation = element.getAttribute(ADAPTATION_ATTRIBUTE);
+  const previousEpisode = element.getAttribute(ADAPTATION_EPISODE_ATTRIBUTE);
+
+  element.setAttribute(ADAPTATION_ATTRIBUTE, adaptation);
+  if (episodeId) {
+    element.setAttribute(ADAPTATION_EPISODE_ATTRIBUTE, episodeId);
+  }
+
+  return () => {
+    if (previousAdaptation === null) {
+      element.removeAttribute(ADAPTATION_ATTRIBUTE);
+    } else {
+      element.setAttribute(ADAPTATION_ATTRIBUTE, previousAdaptation);
+    }
+
+    if (previousEpisode === null) {
+      element.removeAttribute(ADAPTATION_EPISODE_ATTRIBUTE);
+    } else {
+      element.setAttribute(ADAPTATION_EPISODE_ATTRIBUTE, previousEpisode);
+    }
+  };
+}
+
 export class UIActuator {
   private root: Document | HTMLElement | null;
   private defaultAssistanceText: string;
@@ -60,7 +140,7 @@ export class UIActuator {
     this.root = options.root ?? (typeof document !== 'undefined' ? document : null);
     this.defaultAssistanceText =
       options.defaultAssistanceText ??
-      'Need assistance? Guided steps and contextual filters are available to help complete your task.';
+      'Need assistance? Guided steps and contextual filters are available to help complete the task.';
   }
 
   /**
@@ -71,27 +151,32 @@ export class UIActuator {
   }
 
   /**
-   * Applies non-destructive declarative adaptation.
+   * Applies a non-destructive declarative adaptation.
+   *
+   * Returns `true` only when an element was actually adapted. The return value exists so the
+   * caller can record actuation failure in the trace; previously a failed adaptation was a
+   * `console.warn` and nothing else (F-07).
    */
-  public apply(command: InterventionCommand): void {
-    defaultCollector.timeSync('actuation', 'main', () => {
+  public apply(command: InterventionCommand): boolean {
+    return defaultCollector.timeSync('actuation', 'main', () => {
       // If no_op, clear any active temporary adaptations and emit event
       if (command.type === 'no_op') {
         this.emitEvent({
-          timestamp: Date.now(),
+          timestamp: getWallClockTimestamp(),
           type: 'applied',
           intervention: 'no_op',
           componentId: command.targetComponentId,
           source: command.source,
           mappingSource: command.mappingSource,
-          confidence: command.confidence
+          confidence: command.confidence,
+          interventionEpisodeId: command.episodeId
         });
-        return;
+        return true;
       }
 
       if (!this.root) {
         console.warn('[UIActuator] DOM root not available; adaptation skipped.');
-        return;
+        return false;
       }
 
       // If an adaptation of this type is already active, clear it first
@@ -99,50 +184,71 @@ export class UIActuator {
         this.clear(command);
       }
 
-      let cleanup: (() => void) | null = null;
+      let result: AdaptationResult | null = null;
 
       switch (command.type) {
         case 'highlight_primary_action':
-          cleanup = this.applyHighlightPrimaryAction(command);
+          result = this.applyHighlightPrimaryAction(command);
           break;
         case 'simplify_options':
-          cleanup = this.applySimplifyOptions(command);
+          result = this.applySimplifyOptions(command);
           break;
         case 'expand_tooltip':
-          cleanup = this.applyExpandTooltip(command);
+          result = this.applyExpandTooltip(command);
           break;
         case 'offer_assistance':
-          cleanup = this.applyOfferAssistance(command);
+          result = this.applyOfferAssistance(command);
           break;
       }
 
-      if (cleanup) {
-        // Enforce ttlMs: an adaptation with a declared lifetime reverts on its own.
-        let ttlTimer: ReturnType<typeof setTimeout> | undefined;
-        if (command.ttlMs !== undefined && command.ttlMs > 0) {
-          ttlTimer = setTimeout(() => {
-            this.clear(command);
-          }, command.ttlMs);
-        }
-
-        this.activeAdaptations.set(command.type, { command, cleanup, ttlTimer });
-        this.emitEvent({
-          timestamp: Date.now(),
-          type: 'applied',
-          intervention: command.type,
-          componentId: command.targetComponentId,
-          source: command.source,
-          mappingSource: command.mappingSource,
-          confidence: command.confidence
-        });
+      if (!result) {
+        return false;
       }
+
+      const { cleanup, element } = result;
+
+      // Stamp the correlation attributes so the adaptation is provable from the DOM.
+      const unmark = element
+        ? markAdaptation(element, ADAPTATION_DOM_TOKENS[command.type] ?? command.type, command.episodeId)
+        : () => {};
+
+      // Enforce ttlMs: an adaptation with a declared lifetime reverts on its own.
+      let ttlTimer: ReturnType<typeof setTimeout> | undefined;
+      if (command.ttlMs !== undefined && command.ttlMs > 0) {
+        ttlTimer = setTimeout(() => {
+          this.clear(command, 'ttl');
+        }, command.ttlMs);
+      }
+
+      this.activeAdaptations.set(command.type, {
+        command,
+        cleanup: () => {
+          cleanup();
+          unmark();
+        },
+        ttlTimer
+      });
+      this.emitEvent({
+        timestamp: getWallClockTimestamp(),
+        type: 'applied',
+        intervention: command.type,
+        componentId: command.targetComponentId,
+        source: command.source,
+        mappingSource: command.mappingSource,
+        confidence: command.confidence,
+        interventionEpisodeId: command.episodeId
+      });
+      return true;
     });
   }
 
   /**
-   * Clears specific active adaptation or all if none specified.
+   * Clears a specific active adaptation, or all of them when none is named.
+   *
+   * `reason` is recorded on the terminal event so an expiry is distinguishable from a user
+   * dismissal in the trace (F-03).
    */
-  public clear(command?: InterventionCommand): void {
+  public clear(command?: InterventionCommand, reason: InterventionEvent["reason"] = 'reset'): void {
     defaultCollector.timeSync('actuation', 'main', () => {
       if (command) {
         const active = this.activeAdaptations.get(command.type);
@@ -153,38 +259,45 @@ export class UIActuator {
           active.cleanup();
           this.activeAdaptations.delete(command.type);
           this.emitEvent({
-            timestamp: Date.now(),
+            timestamp: getWallClockTimestamp(),
             type: 'reverted',
             intervention: command.type,
             componentId: command.targetComponentId,
             source: command.source,
             mappingSource: command.mappingSource,
-            confidence: command.confidence
+            confidence: command.confidence,
+            interventionEpisodeId: active.command.episodeId ?? command.episodeId,
+            reason
           });
         }
       } else {
-        this.reset();
+        this.reset(reason);
       }
     });
   }
 
   /**
    * Restores exact initial DOM state, reverting all active adaptations.
+   *
+   * `reason` is recorded on each terminal event: a reversion at a trial boundary is not the
+   * same research fact as an expiry or a dismissal, and the trace must say which happened.
    */
-  public reset(): void {
+  public reset(reason: InterventionEvent["reason"] = 'reset'): void {
     for (const [type, record] of Array.from(this.activeAdaptations.entries())) {
       if (record.ttlTimer !== undefined) {
         clearTimeout(record.ttlTimer);
       }
       record.cleanup();
       this.emitEvent({
-        timestamp: Date.now(),
+        timestamp: getWallClockTimestamp(),
         type: 'reverted',
         intervention: type,
         componentId: record.command.targetComponentId,
         source: record.command.source,
         mappingSource: record.command.mappingSource,
-        confidence: record.command.confidence
+        confidence: record.command.confidence,
+        interventionEpisodeId: record.command.episodeId,
+        reason
       });
     }
     this.activeAdaptations.clear();
@@ -218,7 +331,7 @@ export class UIActuator {
   // =========================================================================
   // 1. highlight_primary_action
   // =========================================================================
-  private applyHighlightPrimaryAction(command: InterventionCommand): (() => void) | null {
+  private applyHighlightPrimaryAction(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
     let targetEl: HTMLElement | null = null;
@@ -237,16 +350,17 @@ export class UIActuator {
     const initialClass = targetEl.getAttribute('class');
 
     targetEl.classList.add('edge-aui-highlight');
-    targetEl.setAttribute('data-aui-active-adaptation', 'highlight');
 
-    return () => {
-      if (targetEl) {
-        if (hadClass && initialClass !== null) {
-          targetEl.setAttribute('class', initialClass);
-        } else {
-          targetEl.removeAttribute('class');
+    return {
+      element: targetEl,
+      cleanup: () => {
+        if (targetEl) {
+          if (hadClass && initialClass !== null) {
+            targetEl.setAttribute('class', initialClass);
+          } else {
+            targetEl.removeAttribute('class');
+          }
         }
-        targetEl.removeAttribute('data-aui-active-adaptation');
       }
     };
   }
@@ -254,7 +368,7 @@ export class UIActuator {
   // =========================================================================
   // 2. simplify_options
   // =========================================================================
-  private applySimplifyOptions(_command: InterventionCommand): (() => void) | null {
+  private applySimplifyOptions(_command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
     const accordionButtons = Array.from(
@@ -304,23 +418,28 @@ export class UIActuator {
       activeEl.focus();
     }
 
-    return () => {
-      if (filterDrawer) {
-        if (drawerHadClass && typeof drawerInitialClass === 'string') {
-          filterDrawer.setAttribute('class', drawerInitialClass);
-        } else {
-          filterDrawer.removeAttribute('class');
+    return {
+      // The first accordion button is the element the adaptation is observable on, so the
+      // correlation attributes go there rather than on a wrapper the user cannot see.
+      element: accordionButtons[0],
+      cleanup: () => {
+        if (filterDrawer) {
+          if (drawerHadClass && typeof drawerInitialClass === 'string') {
+            filterDrawer.setAttribute('class', drawerInitialClass);
+          } else {
+            filterDrawer.removeAttribute('class');
+          }
         }
-      }
-      // Restore previously open accordions
-      for (const item of collapsedItems) {
-        if (item.btn.getAttribute('aria-expanded') !== 'true') {
-          item.btn.click();
+        // Restore previously open accordions
+        for (const item of collapsedItems) {
+          if (item.btn.getAttribute('aria-expanded') !== 'true') {
+            item.btn.click();
+          }
         }
-      }
-      // Guarantee focus integrity is maintained upon restoration
-      if (activeEl && document.activeElement !== activeEl && typeof activeEl.focus === 'function') {
-        activeEl.focus();
+        // Guarantee focus integrity is maintained upon restoration
+        if (activeEl && document.activeElement !== activeEl && typeof activeEl.focus === 'function') {
+          activeEl.focus();
+        }
       }
     };
   }
@@ -328,7 +447,7 @@ export class UIActuator {
   // =========================================================================
   // 3. expand_tooltip
   // =========================================================================
-  private applyExpandTooltip(command: InterventionCommand): (() => void) | null {
+  private applyExpandTooltip(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
     let targetEl: HTMLElement | null = null;
@@ -388,42 +507,47 @@ export class UIActuator {
     // Keyboard dismissibility without stealing focus (PRD §28.4, §45)
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        this.clear(command);
+        this.clear(command, 'user_dismissal');
         this.emitEvent({
-          timestamp: Date.now(),
+          timestamp: getWallClockTimestamp(),
           type: 'dismissed',
           intervention: command.type,
           componentId: command.targetComponentId,
           source: command.source,
           mappingSource: command.mappingSource,
-          confidence: command.confidence
+          confidence: command.confidence,
+          interventionEpisodeId: command.episodeId,
+          reason: 'user_dismissal'
         });
       }
     };
     doc.addEventListener('keydown', onKeyDown);
 
-    return () => {
-      doc.removeEventListener('keydown', onKeyDown);
-      if (targetEl) {
-        if (hadClass && initialClass !== null) {
-          targetEl.setAttribute('class', initialClass);
-        } else {
-          targetEl.removeAttribute('class');
+    return {
+      element: targetEl,
+      cleanup: () => {
+        doc.removeEventListener('keydown', onKeyDown);
+        if (targetEl) {
+          if (hadClass && initialClass !== null) {
+            targetEl.setAttribute('class', initialClass);
+          } else {
+            targetEl.removeAttribute('class');
+          }
+          targetEl.removeAttribute('aria-expanded');
+          if (hadAriaDescribedby && initialAriaDescribedby !== null) {
+            targetEl.setAttribute('aria-describedby', initialAriaDescribedby);
+          } else {
+            targetEl.removeAttribute('aria-describedby');
+          }
+          const savedTitle = targetEl.getAttribute('data-original-title');
+          if (savedTitle) {
+            targetEl.setAttribute('title', savedTitle);
+            targetEl.removeAttribute('data-original-title');
+          }
         }
-        targetEl.removeAttribute('aria-expanded');
-        if (hadAriaDescribedby && initialAriaDescribedby !== null) {
-          targetEl.setAttribute('aria-describedby', initialAriaDescribedby);
-        } else {
-          targetEl.removeAttribute('aria-describedby');
+        if (bubble.parentNode) {
+          bubble.parentNode.removeChild(bubble);
         }
-        const savedTitle = targetEl.getAttribute('data-original-title');
-        if (savedTitle) {
-          targetEl.setAttribute('title', savedTitle);
-          targetEl.removeAttribute('data-original-title');
-        }
-      }
-      if (bubble.parentNode) {
-        bubble.parentNode.removeChild(bubble);
       }
     };
   }
@@ -431,7 +555,7 @@ export class UIActuator {
   // =========================================================================
   // 4. offer_assistance
   // =========================================================================
-  private applyOfferAssistance(command: InterventionCommand): (() => void) | null {
+  private applyOfferAssistance(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
     const doc = this.root instanceof Document ? this.root : this.root.ownerDocument || document;
@@ -471,15 +595,17 @@ export class UIActuator {
     container.appendChild(banner);
 
     const onDismiss = () => {
-      this.clear(command);
+      this.clear(command, 'user_dismissal');
       this.emitEvent({
-        timestamp: Date.now(),
+        timestamp: getWallClockTimestamp(),
         type: 'dismissed',
         intervention: command.type,
         componentId: command.targetComponentId,
         source: command.source,
         mappingSource: command.mappingSource,
-        confidence: command.confidence
+        confidence: command.confidence,
+        interventionEpisodeId: command.episodeId,
+        reason: 'user_dismissal'
       });
     };
 
@@ -493,11 +619,15 @@ export class UIActuator {
     dismissBtn.addEventListener('click', onDismiss);
     doc.addEventListener('keydown', onKeyDown);
 
-    return () => {
-      dismissBtn.removeEventListener('click', onDismiss);
-      doc.removeEventListener('keydown', onKeyDown);
-      if (banner.parentNode) {
-        banner.parentNode.removeChild(banner);
+    return {
+      // The banner itself is the element the adaptation is observable on.
+      element: banner,
+      cleanup: () => {
+        dismissBtn.removeEventListener('click', onDismiss);
+        doc.removeEventListener('keydown', onKeyDown);
+        if (banner.parentNode) {
+          banner.parentNode.removeChild(banner);
+        }
       }
     };
   }

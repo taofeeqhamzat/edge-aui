@@ -9,6 +9,21 @@
  *   separation and pooled-or-separated analysis.
  * - `session.startedAtEpochMs` so `durationMs` is computed from a single clock.
  *
+ * Schema 1.3.0 additions (supervisor-ready deployment, assessment F-01 / F-07 / F-18):
+ * - **One clock.** Every record timestamp is epoch milliseconds. `performance.now()` is not
+ *   durable across navigation, so mixing it with `Date.now()` made the trace's internal
+ *   order unreconstructable and task duration underivable (F-01). `clock` records the
+ *   decision so the format is self-describing.
+ * - `policyDecisions` array: one entry per evaluation, including rejections and the
+ *   baseline decision-only branch, so "why did it not intervene?" is answerable post hoc
+ *   (F-07).
+ * - `predictionId` and `evaluatedWindowIds` so prediction → policy → episode → UI is a
+ *   complete, verifiable chain (F-18).
+ * - `provenance` records scripted vs participant origin so the two can never be pooled or
+ *   confused (ADR-018).
+ * - `mining` counters and `evictedRecords` so bounded execution and buffer pressure are
+ *   visible rather than silent.
+ *
  * Provides:
  * 1. Strict schema definition for offline experiment evaluation and replay.
  * 2. In-memory validation function verifying structural integrity without external libraries.
@@ -21,15 +36,100 @@ import {
   OutcomeEvent,
   InterventionEvent,
   PredictionEvent,
+  PolicyDecisionEvent,
   TaskEvent,
   ExperimentalCondition
 } from './events';
-import { SessionContext } from './session';
+import { SessionContext, SessionProvenance } from './session';
 import { UiTaskStateSnapshot } from '../integration/types';
 import type { RuntimeConfig } from '../config/runtimeConfig';
 
-export const EXPERIMENT_TRACE_SCHEMA_VERSION = '1.2.0';
-export const SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.2.0', '1.1.0'] as const;
+export const EXPERIMENT_TRACE_SCHEMA_VERSION = '1.3.0';
+export const SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.3.0', '1.2.0', '1.1.0'] as const;
+
+/**
+ * The single clock every trace record uses.
+ *
+ * Declared in metadata so a consumer never has to guess: a 1.2.0 trace contains both
+ * `performance.now()` and `Date.now()` values in the same array, which is exactly the
+ * defect 1.3.0 removes.
+ */
+export const TRACE_CLOCK_MODE = 'epoch_ms' as const;
+export type TraceClockMode = typeof TRACE_CLOCK_MODE;
+
+/** Bounded Fast Gate execution counters recorded at export time (F-02). */
+export interface MiningCounters {
+  /** Evaluations that ran the miner. */
+  executed: number;
+  /** Evaluations suppressed because the sequence was not yet full. */
+  skipped: number;
+  /** Evaluations dropped because a newer window arrived while one was in flight. */
+  superseded: number;
+  /** Evaluations abandoned at the mining deadline. */
+  timedOut: number;
+  /** Windows that could not be dispatched to the worker (queue/timeout failure). */
+  droppedWindows: number;
+  /** Largest single mining duration observed, in milliseconds. */
+  observedMaxMiningMs?: number;
+}
+
+/** Counters proving telemetry was not silently truncated (F-16). */
+export interface EvictionCounters {
+  /** Records discarded by FIFO eviction, summed across every buffer. */
+  total: number;
+  /** Per-buffer eviction counts, keyed by buffer name. */
+  byBuffer: Record<string, number>;
+  /** A true value means the trace is incomplete and must not be treated as whole. */
+  truncated: boolean;
+}
+
+/**
+ * Slack added to the outcome-settlement allowance before a window is called orphaned.
+ *
+ * Covers the granularity at which settlement is applied (the runtime ticks at
+ * `stride/2` = 125 ms) plus the possibility of a slightly late event extending a horizon.
+ * Without it a healthy capture would be reported as corrupt because of sub-tick jitter.
+ */
+export const SETTLEMENT_TOLERANCE_MS = 500;
+
+/**
+ * Windows that have passed their whole settlement allowance without an outcome label.
+ *
+ * Outcomes settle lazily: a window is labelled once the observed stream has passed its
+ * lookahead horizon (`windowEnd + lookaheadMax`) or the idle grace period expires. On the
+ * 250 ms stride with a 1500 ms lookahead and a 2000 ms grace, a healthy *live* session always
+ * has roughly a dozen windows legitimately awaiting settlement — they are in flight, not
+ * missing.
+ *
+ * Treating in-flight windows as defects made every real capture fail verification, which is
+ * exactly how the previous verifier came to pass only on hand-authored fixtures (F-13). This
+ * function is the single definition of "orphaned": a window is only orphaned once the newest
+ * window in the trace is older than that window plus the entire settlement allowance.
+ *
+ * @param windows          MicroTensor windows with `windowId`/`windowEnd` (epoch ms).
+ * @param outcomeWindowIds Window ids that do have an outcome record.
+ * @param lookaheadMaxMs   Maximum lookahead offset after `windowEnd`.
+ * @param graceMs          Idle grace period applied when the stream goes quiet.
+ */
+export function findOrphanedWindows(
+  windows: Array<{ windowId: number; windowEnd: number }>,
+  outcomeWindowIds: Set<number>,
+  lookaheadMaxMs: number,
+  graceMs: number
+): number[] {
+  const allowance = lookaheadMaxMs + graceMs + SETTLEMENT_TOLERANCE_MS;
+  const newestWindowEnd = windows.reduce(
+    (max, w) => (Number.isFinite(w.windowEnd) && w.windowEnd > max ? w.windowEnd : max),
+    0
+  );
+
+  return windows
+    .filter((w) => !outcomeWindowIds.has(w.windowId))
+    .filter(
+      (w) => !Number.isFinite(w.windowEnd) || newestWindowEnd - w.windowEnd >= allowance
+    )
+    .map((w) => w.windowId);
+}
 
 export interface SerializableMicroTensorWindow {
   windowId: number;
@@ -49,6 +149,7 @@ export interface TraceReplayMetadata {
   outcomeCount: number;
   predictionCount: number;
   interventionCount: number;
+  policyDecisionCount: number;
   taskEventCount: number;
   finalTaskStatus?: string;
   experimentId?: string;
@@ -56,6 +157,27 @@ export interface TraceReplayMetadata {
   uiVersion?: string;
   settlementDelayMs?: number;
   effectiveConfig?: RuntimeConfig;
+  /** The single clock every record timestamp uses. */
+  clock: TraceClockMode;
+  /** Scripted/synthetic or participant-derived. Never inferred. */
+  provenance: SessionProvenance;
+  /** Application/package version that produced this trace. */
+  applicationVersion: string;
+  /** Model provenance as actually loaded, not as requested (F-10, F-19). */
+  modelVersion?: string;
+  /** Execution provider the ONNX session actually reported (F-10). */
+  executionProvider?: string;
+  /** Policy version in force for this trace. */
+  policyVersion: string;
+  /** Bounded Fast Gate execution counters (F-02). */
+  mining?: MiningCounters;
+  /** Buffer-eviction proof so truncation is never silent (F-16). */
+  evictions?: EvictionCounters;
+  /**
+   * Non-fatal integrity problems detected at export time. A non-empty array means the
+   * trace is usable but must not be treated as a clean capture.
+   */
+  integrityWarnings?: string[];
 }
 
 export interface SerializableExperimentTrace {
@@ -70,6 +192,7 @@ export interface SerializableExperimentTrace {
   macroInteractions: MacroInteraction[];
   outcomes: OutcomeEvent[];
   predictions: PredictionEvent[];
+  policyDecisions: PolicyDecisionEvent[];
   interventions: InterventionEvent[];
   taskEvents: TaskEvent[];
 }
@@ -93,11 +216,28 @@ export function validateExperimentTrace(data: unknown): TraceValidationResult {
   const trace = data as Partial<SerializableExperimentTrace>;
 
   const isCurrentVersion = trace.schemaVersion === EXPERIMENT_TRACE_SCHEMA_VERSION;
-  const isSupportedLegacy = trace.schemaVersion === '1.1.0';
+  const isSupportedLegacy = (SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS as readonly string[]).includes(
+    trace.schemaVersion as string
+  ) && !isCurrentVersion;
+
+  /**
+   * Requirements introduced by the canonical-clock contract apply only from 1.3.0.
+   *
+   * A 1.2.0 capture predates `policyDecisions` and the clock/provenance metadata fields, and
+   * it cannot be retro-fixed. Demanding them of a legacy record would make the verifier
+   * reject exactly the historical captures it exists to audit, which is the failure mode
+   * that let real traces fail while fixture-only checks stayed green (F-13).
+   */
+  const requiresCanonicalContract =
+    typeof trace.schemaVersion === 'string' &&
+    trace.schemaVersion.localeCompare(EXPERIMENT_TRACE_SCHEMA_VERSION, undefined, { numeric: true }) >= 0;
 
   if (!isCurrentVersion && !isSupportedLegacy) {
     errors.push(
-      `Invalid schemaVersion: expected '${EXPERIMENT_TRACE_SCHEMA_VERSION}' (or supported legacy '1.1.0'), received '${trace.schemaVersion}'`
+      `Invalid schemaVersion: expected '${EXPERIMENT_TRACE_SCHEMA_VERSION}' (or supported legacy ` +
+        `${SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS.filter((v) => v !== EXPERIMENT_TRACE_SCHEMA_VERSION)
+          .map((v) => `'${v}'`)
+          .join(', ')}), received '${trace.schemaVersion}'`
     );
   }
 
@@ -137,6 +277,13 @@ export function validateExperimentTrace(data: unknown): TraceValidationResult {
   validateArrayField('predictions', 'predictions');
   validateArrayField('interventions', 'interventions');
   validateArrayField('taskEvents', 'taskEvents');
+  // `policyDecisions` is required from 1.3.0 onward. Pre-1.3.0 traces never carried it, so
+  // demanding it there would reject the historical captures the verifier is meant to audit.
+  if (requiresCanonicalContract) {
+    validateArrayField('policyDecisions', 'policyDecisions');
+  } else if (trace.policyDecisions !== undefined && !Array.isArray(trace.policyDecisions)) {
+    errors.push('policyDecisions must be an array when present');
+  }
 
   // Validate MicroTensor window format
   if (Array.isArray(trace.microTensors)) {
@@ -180,6 +327,30 @@ export function validateExperimentTrace(data: unknown): TraceValidationResult {
     }
   }
 
+  // Validate policy-decision attribution (F-07). Each decision must carry the policy
+  // verdict and its reason: a decision without a reason is the defect being removed.
+  if (Array.isArray(trace.policyDecisions)) {
+    for (let i = 0; i < trace.policyDecisions.length; i++) {
+      const pd = trace.policyDecisions[i];
+      if (!pd || typeof pd !== 'object') {
+        errors.push(`policyDecisions[${i}] must be an object`);
+        break;
+      }
+      if (typeof pd.policyDecision !== 'string') {
+        errors.push(`policyDecisions[${i}] is missing the policyDecision verdict`);
+        break;
+      }
+      if (typeof pd.policyReason !== 'string' || pd.policyReason.trim() === '') {
+        errors.push(`policyDecisions[${i}] is missing a non-empty policyReason`);
+        break;
+      }
+      if (typeof pd.timestamp !== 'number') {
+        errors.push(`policyDecisions[${i}] must carry a numeric timestamp`);
+        break;
+      }
+    }
+  }
+
   // Validate metadata
   if (!trace.metadata || typeof trace.metadata !== 'object') {
     errors.push('Missing or invalid metadata object');
@@ -192,6 +363,20 @@ export function validateExperimentTrace(data: unknown): TraceValidationResult {
     }
     if (typeof trace.metadata.conditionId !== 'string') {
       errors.push('metadata.conditionId must be a string for baseline/adaptive separation');
+    }
+    if (requiresCanonicalContract) {
+      if (trace.metadata.clock !== TRACE_CLOCK_MODE) {
+        errors.push(`metadata.clock must be '${TRACE_CLOCK_MODE}' for schema ${EXPERIMENT_TRACE_SCHEMA_VERSION}`);
+      }
+      if (trace.metadata.provenance !== 'scripted' && trace.metadata.provenance !== 'participant') {
+        errors.push("metadata.provenance must be 'scripted' or 'participant'");
+      }
+      if (typeof trace.metadata.applicationVersion !== 'string' || trace.metadata.applicationVersion === '') {
+        errors.push('metadata.applicationVersion must be a non-empty string');
+      }
+      if (typeof trace.metadata.policyVersion !== 'string' || trace.metadata.policyVersion === '') {
+        errors.push('metadata.policyVersion must be a non-empty string');
+      }
     }
   }
 
@@ -207,6 +392,7 @@ export type ReplayEventCategory =
   | 'macro'
   | 'outcome'
   | 'prediction'
+  | 'policy'
   | 'intervention'
   | 'task';
 
@@ -218,6 +404,7 @@ export interface ReplayStreamItem {
     | MacroInteraction
     | OutcomeEvent
     | PredictionEvent
+    | PolicyDecisionEvent
     | InterventionEvent
     | TaskEvent;
 }
@@ -225,6 +412,10 @@ export interface ReplayStreamItem {
 /**
  * Reconstructs a flat, strictly chronological stream of interactions and decisions
  * for offline simulation and model evaluation replay (Section 34).
+ *
+ * Every category is on the same epoch clock as of schema 1.3.0, so the sort below produces a
+ * genuine causal order. For a legacy 1.2.0/1.1.0 trace the sort is still performed, but the
+ * ordering is not meaningful because those records mix two clocks (F-01).
  */
 export function reconstructReplayStream(trace: SerializableExperimentTrace): ReplayStreamItem[] {
   const stream: ReplayStreamItem[] = [];
@@ -240,6 +431,9 @@ export function reconstructReplayStream(trace: SerializableExperimentTrace): Rep
   }
   for (const ev of trace.predictions ?? []) {
     stream.push({ timestamp: ev.timestamp, category: 'prediction', event: ev });
+  }
+  for (const ev of trace.policyDecisions ?? []) {
+    stream.push({ timestamp: ev.timestamp, category: 'policy', event: ev });
   }
   for (const ev of trace.interventions) {
     stream.push({ timestamp: ev.timestamp, category: 'intervention', event: ev });

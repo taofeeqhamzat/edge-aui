@@ -47,14 +47,17 @@ import { experimentRecorder } from '../telemetry/recorder';
 import { sessionManager } from '../telemetry/session';
 import { UiAdapter, DefaultUiAdapter, DEFAULT_TASK_ACTION_BY_EVENT } from '../integration/index';
 import { getActiveUIContext } from '../telemetry/contextProvider';
-import { getMonotonicTimestamp } from '../telemetry/normalizer';
+import { getMonotonicTimestamp, getWallClockTimestamp } from '../telemetry/normalizer';
 import { debugBus } from '../debug/debugBus';
 import {
   BehaviourEvent,
   MicroTensorWindow,
   ExperimentalCondition,
-  InterventionEvent
+  InterventionEvent,
+  PolicyDecisionEvent,
+  PolicyRejectionCategory
 } from '../telemetry/events';
+import type { MiningCounters } from '../telemetry/traceSchema';
 import { InferenceResult } from '../gates/arbitration';
 import { InterventionCommand, InterventionType } from '../intervention/types';
 import { UIContext } from '../types/uiContext.js';
@@ -162,15 +165,41 @@ export class AdaptiveRuntime {
   private pendingOutcomeWindows: MicroTensorWindow[] = [];
   private lastGateDecision: unknown;
 
+  /**
+   * Window ids pushed into the worker's sequence, oldest first.
+   *
+   * The prediction's windowId used to be read from `latestWindowId`, a mutable field that
+   * every emitted window overwrites, so consecutive predictions could name the same window
+   * while evaluating different sequences (F-18). Recording the sequence explicitly is what
+   * makes "which window produced this decision" answerable.
+   */
+  private evaluatedWindowIds: number[] = [];
+  private predictionCounter = 0;
+
+  /**
+   * Bounded Fast Gate execution counters (F-02). Surfaced in the trace so a dropped or
+   * superseded evaluation is visible rather than silently missing.
+   */
+  private miningCounters: MiningCounters = {
+    executed: 0,
+    skipped: 0,
+    superseded: 0,
+    timedOut: 0,
+    droppedWindows: 0
+  };
+
   private slowGateMode: 'mock' | 'onnx' | undefined;
   private executionProvider = 'unknown';
   private modelLoaded = false;
+  /** Model provenance reported by the worker, used for the trace's modelVersion (F-19). */
+  private reportedModelVersion: string | null = null;
 
   private counters = {
     windowsEmitted: 0,
     macroInteractions: 0,
     outcomesDerived: 0,
     predictionsRecorded: 0,
+    policyDecisionsRecorded: 0,
     interventionsApplied: 0
   };
 
@@ -232,7 +261,10 @@ export class AdaptiveRuntime {
     this.outcomeDeriver = new OutcomeDeriver();
 
     this.workerClient = new RuntimeWorkerClient({
-      useFallback: options.forceInProcessWorker ?? false
+      useFallback: options.forceInProcessWorker ?? false,
+      // The transport budget must accommodate the bounded mining deadline, otherwise the
+      // RPC gives up before the Fast Gate can report why it stopped (F-02).
+      requestTimeoutMs: this.config.fastGate.rpcTimeoutMs
     });
 
     this.policy = new InterventionPolicy({
@@ -240,7 +272,10 @@ export class AdaptiveRuntime {
       requiredConsecutiveWindows: this.config.policy.requiredConsecutiveWindows,
       enforceContextEligibility: this.config.policy.enforceContextEligibility,
       cooldownMs: this.config.policy.cooldownMs,
-      dismissalCooldownMs: this.config.policy.dismissalCooldownMs
+      dismissalCooldownMs: this.config.policy.dismissalCooldownMs,
+      // The adaptation lifetime is a research-methodology parameter; it is now wired rather
+      // than merely declared, so an accepted adaptation actually expires (F-03).
+      ttlMs: this.config.actuation.defaultTtlMs
     });
     this.actuator = new UIActuator({
       defaultAssistanceText: this.config.actuation.defaultAssistanceText
@@ -306,12 +341,26 @@ export class AdaptiveRuntime {
         modelUrl: this.options.modelUrl,
         interventionModelUrl: this.options.interventionModelUrl,
         useDeterministicMapping: this.options.useDeterministicMapping,
-        minOutcomeConfidence: this.options.minOutcomeConfidence
+        minOutcomeConfidence: this.options.minOutcomeConfidence,
+        // Send the resolved execution bounds so the miner's protection is configurable
+        // rather than hardcoded in the worker (ADR-012 / F-02).
+        fastGateBounds: {
+          maxPatterns: this.config.fastGate.maxPatterns,
+          maxPatternLength: this.config.fastGate.maxPatternLength,
+          maxCorpusSequences: this.config.fastGate.maxCorpusSequences,
+          miningTimeoutMs: this.config.fastGate.miningTimeoutMs
+        }
       });
 
       this.executionProvider = initResult?.executionProvider ?? 'mock';
       this.modelLoaded = Boolean(initResult?.modelLoaded);
       this.slowGateMode = (initResult?.slowGateMode ?? desiredSlowGate) as 'mock' | 'onnx';
+
+      // Record the model identity the worker actually loaded. Without this the trace
+      // reported a hardcoded literal regardless of which graph ran (F-19).
+      this.reportedModelVersion = initResult?.modelVersion ?? null;
+      experimentRecorder.setModelProvenance(this.reportedModelVersion, this.executionProvider);
+      experimentRecorder.setMiningCounters(this.miningCounters);
 
       if (desiredSlowGate === 'onnx' && !this.modelLoaded) {
         console.warn(
@@ -323,7 +372,9 @@ export class AdaptiveRuntime {
       debugBus.update({
         workerStatus: 'ready',
         executionProvider: this.executionProvider,
-        modelLoaded: this.modelLoaded
+        modelLoaded: this.modelLoaded,
+        slowGateMode: this.slowGateMode,
+        modelVersion: this.reportedModelVersion ?? undefined
       });
     } catch (err) {
       console.error('[AdaptiveRuntime] Worker initialisation failed:', err);
@@ -432,21 +483,30 @@ export class AdaptiveRuntime {
 
     this.observer.stop();
 
+    // Close any live adaptation *before* unsubscribing, so its terminal event still reaches
+    // the recorder. Previously the reset ran after the subscriptions were torn down, which
+    // meant an adaptation still visible at teardown was never recorded as reverted (F-03).
+    this.actuator.reset('session_end');
+    this.windowBuffer.clear();
+
     for (const unsubscribe of this.unsubscribers) {
       unsubscribe();
     }
     this.unsubscribers = [];
 
-    this.actuator.reset();
+    // Settle the outcome windows the observed activity already supports, so a stopped trial
+    // does not lose labels it could have derived.
+    this.streamEnded = true;
+    this.flushPendingOutcomes();
+    experimentRecorder.setMiningCounters(this.miningCounters);
+
     this.workerClient.terminate();
-    this.windowBuffer.clear();
     this.macroStream.clear();
     this.outcomeDeriver.clear();
     this.latestWindowId = undefined;
     this.latestWindow = undefined;
     this.pendingOutcomeWindows = [];
     this.coveredThroughMs = 0;
-    this.streamEnded = false;
     this.processedWindowCount = 0;
     debugBus.update({ workerStatus: 'uninitialized' });
 
@@ -476,13 +536,27 @@ export class AdaptiveRuntime {
     this.streamEnded = false;
     this.outcomeDeriver.clear();
     this.processedWindowCount = 0;
+    this.evaluatedWindowIds = [];
+    this.currentPredictionId = undefined;
+    this.miningCounters = {
+      executed: 0,
+      skipped: 0,
+      superseded: 0,
+      timedOut: 0,
+      droppedWindows: 0
+    };
     this.counters = {
       windowsEmitted: 0,
       macroInteractions: 0,
       outcomesDerived: 0,
       predictionsRecorded: 0,
+      policyDecisionsRecorded: 0,
       interventionsApplied: 0
     };
+    // Close any episode still visible before the trial boundary, so a reset cannot leave an
+    // adaptation applied with no terminal event in the record (F-03).
+    this.actuator.clear(undefined, 'session_end');
+    experimentRecorder.setMiningCounters(this.miningCounters);
     debugBus.reset();
     try {
       await this.workerClient.reset();
@@ -503,7 +577,10 @@ export class AdaptiveRuntime {
   private startTickLoop(): void {
     const intervalMs = Math.max(50, Math.floor(PREPROCESSING_CONFIG.stride_ms / 2));
     this.tickTimer = setInterval(() => {
-      this.windowBuffer.tick(getMonotonicTimestamp());
+      // The window grid is expressed on the canonical trace clock, so a window's
+      // windowStart/windowEnd are epoch milliseconds and comparable with every other
+      // trace record (schema 1.3.0 / F-01).
+      this.windowBuffer.tick(getWallClockTimestamp());
       // Settle any window whose horizon has been covered or whose grace period expired.
       this.flushPendingOutcomes();
     }, intervalMs);
@@ -532,8 +609,19 @@ export class AdaptiveRuntime {
     this.latestWindow = window;
     this.counters.windowsEmitted++;
 
+    // Track the sequence the worker is building, capped at the Slow Gate's tensor length.
+    // This is the record of what was actually evaluated, not what happened to be newest.
+    this.evaluatedWindowIds.push(window.windowId);
+    const sequenceLength = Math.max(1, this.config.slowGate.sequenceLength);
+    if (this.evaluatedWindowIds.length > sequenceLength) {
+      this.evaluatedWindowIds.splice(0, this.evaluatedWindowIds.length - sequenceLength);
+    }
+
     debugBus.update({
-      latestMicroTensor: Array.from(window.values)
+      latestMicroTensor: Array.from(window.values),
+      latestWindowId: window.windowId,
+      latestWindowInactive: Boolean(window.inactive),
+      latestWindowEventCount: window.eventCount ?? 0
     });
 
     // 1. Queue the window for outcome derivation once its lookahead horizon is covered.
@@ -555,15 +643,27 @@ export class AdaptiveRuntime {
       await this.workerClient.pushWindow({ ...window, values: copy }, true);
       this.processedWindowCount++;
     } catch (err) {
+      // A window that never reached the worker is a hole in the evaluated sequence, so it
+      // is counted rather than only logged. Silent loss was F-02's worst symptom.
+      this.miningCounters.droppedWindows++;
       console.error('[AdaptiveRuntime] Window dispatch failed:', err);
     }
   }
 
   private maybeEvaluate(): void {
-    if (this.evaluating) return;
+    if (this.evaluating) {
+      // A newer window arrived while an evaluation was in flight. The in-flight evaluation
+      // is still recorded, but this window's evaluation is deliberately skipped and the
+      // decision is counted, so backpressure is observable instead of invisible (F-02).
+      this.miningCounters.superseded++;
+      return;
+    }
     // The Slow Gate consumes a sequence of T=sequenceLength windows; evaluating before the
     // sequence exists would feed it a zero-padded tensor.
-    if (this.processedWindowCount < this.config.slowGate.sequenceLength) return;
+    if (this.processedWindowCount < this.config.slowGate.sequenceLength) {
+      this.miningCounters.skipped++;
+      return;
+    }
 
     // Evaluating on a genuinely inactive window produces a prediction for silence,
     // which inflates the trace and wastes edge compute. Evaluate when either the
@@ -573,10 +673,54 @@ export class AdaptiveRuntime {
     const hadActivity = Boolean(window && (window.eventCount ?? 0) > 0);
     const sinceLastEvaluation = getMonotonicTimestamp() - this.lastEvaluationMs;
     if (!hadActivity && sinceLastEvaluation < this.config.windowing.inactivityThresholdMs) {
+      this.miningCounters.skipped++;
       return;
     }
 
     void this.evaluateAndAct();
+  }
+
+  /**
+   * Records one policy verdict. Called on every evaluation path — accepted, rejected,
+   * baseline decision-only, actuation failure and no-prediction — because a trace that only
+   * shows successful interventions cannot answer "why did it not intervene?" (F-07).
+   */
+  private recordPolicyDecision(
+    event: Omit<PolicyDecisionEvent, 'timestamp' | 'sessionId' | 'experimentId' | 'conditionId'>
+  ): void {
+    experimentRecorder.recordPolicyDecision({
+      timestamp: getWallClockTimestamp(),
+      sessionId: sessionManager.getActiveSession()?.sessionId,
+      experimentId: this.options.experimentId,
+      conditionId: this.conditionId,
+      ...event
+    });
+    this.counters.policyDecisionsRecorded++;
+  }
+
+  /**
+   * Folds the worker's cumulative Fast Gate outcome counters into the trace counters.
+   *
+   * These are monotonic counts for the worker's lifetime, so they are merged by taking the
+   * maximum rather than summed: the same totals are re-reported on every evaluation, and
+   * summing them would multiply the counts by the number of evaluations (F-02).
+   */
+  private mergeWorkerMiningOutcomes(diagnostics: unknown): void {
+    const outcomes = (diagnostics as { miningOutcomes?: Record<string, number> } | undefined)
+      ?.miningOutcomes;
+    if (!outcomes) return;
+
+    const take = (key: string, target: keyof MiningCounters): void => {
+      const value = outcomes[key];
+      if (typeof value !== 'number') return;
+      const current = (this.miningCounters[target] as number | undefined) ?? 0;
+      if (value > current) {
+        (this.miningCounters[target] as number) = value;
+      }
+    };
+
+    take('executed', 'executed');
+    take('timed_out', 'timedOut');
   }
 
   private async evaluateAndAct(): Promise<void> {
@@ -586,6 +730,11 @@ export class AdaptiveRuntime {
 
     try {
       const uiContext: UIContext = this.resolveUIContext();
+      // Snapshot the evaluated window set *before* awaiting, and pass it through the whole
+      // decision chain. Reading a mutable "latest" value after the await is what let
+      // predictions name a window they never evaluated (F-18).
+      const evaluatedWindowIds = [...this.evaluatedWindowIds];
+      const evaluatedWindowId = evaluatedWindowIds[evaluatedWindowIds.length - 1] ?? this.latestWindowId;
       // Pass the fresh macro sequence explicitly. Relying on the worker's own macro
       // history made the Fast Gate evaluate a corpus that lagged the just-closed
       // window, so patterns that had only just become frequent were never matched.
@@ -600,16 +749,31 @@ export class AdaptiveRuntime {
             ? (result.slowResult?.mappingSource ?? (this.options.useDeterministicMapping ? 'deterministic_mapping' : 'learned_head'))
             : undefined);
 
+      // Model provenance is taken from what the worker reported it loaded, falling back to
+      // a hardcoded literal only when nothing was reported. The literal alone could not
+      // distinguish two different exported graphs (F-19).
       const modelVersion =
+        this.reportedModelVersion ??
         this.options.interventionModelUrl ??
         (this.modelLoaded ? 'TargetInterventionHead-v1.0.0-int8' : undefined);
 
+      this.predictionCounter++;
+      const predictionId = `pred_${this.predictionCounter}`;
+
+      // Fold the worker's bounded-execution counters in before the prediction is recorded.
+      const workerDiagnostics = (result as InferenceResult & {
+        diagnostics?: unknown;
+      }).diagnostics;
+      this.mergeWorkerMiningOutcomes(workerDiagnostics);
+
       experimentRecorder.recordPrediction({
         timestamp: result.timestamp,
+        predictionId,
         sessionId: sessionManager.getActiveSession()?.sessionId,
         experimentId: this.options.experimentId,
         conditionId: this.conditionId,
-        windowId: this.latestWindowId,
+        windowId: evaluatedWindowId,
+        evaluatedWindowIds,
         matchedGate: result.matchedGate,
         outcome: result.slowResult?.outcome,
         interventionType: result.intervention?.type,
@@ -626,9 +790,6 @@ export class AdaptiveRuntime {
 
       // Surface the Fast Gate corpus size so a silent mining path is visible.
       const macroCorpus = this.getMacroSequences();
-      const workerDiagnostics = (result as InferenceResult & {
-        diagnostics?: unknown;
-      }).diagnostics;
 
       this.lastGateDecision = {
         matchedGate: result.matchedGate,
@@ -653,58 +814,174 @@ export class AdaptiveRuntime {
           outcome: result.slowResult?.outcome,
           confidence: result.slowResult?.confidence
         },
-        inferenceLatencyMs: result.latencyMs
+        inferenceLatencyMs: result.latencyMs,
+        latestPredictionId: predictionId,
+        matchedGate: result.matchedGate,
+        mappingSource: resolvedMappingSource,
+        modelVersion,
+        executionProvider: this.executionProvider,
+        modelLoaded: this.modelLoaded,
+        slowGateMode: this.slowGateMode
       });
 
+      // ---------------------------------------------------------------------
+      // No candidate at all: record the absence explicitly so "no prediction" is
+      // distinguishable from "prediction rejected" in the exported trace (F-07).
+      // ---------------------------------------------------------------------
       if (!result.intervention) {
+        this.recordPolicyDecision({
+          windowId: evaluatedWindowId,
+          predictionId,
+          accepted: false,
+          policyDecision: 'no_prediction',
+          policyReason:
+            result.matchedGate === 'none'
+              ? 'No intervention: both gates evaluated and returned no candidate'
+              : `No intervention: ${result.matchedGate} gate produced no candidate`,
+          candidateCount: 0,
+          cooldownRemainingMs: this.policy.cooldownRemainingMs(),
+          phase: 'no_prediction'
+        });
         debugBus.update({
-          interventionStatus: { type: 'no_op', source: 'rule', state: 'no decision' }
+          interventionStatus: { type: 'no_op', source: 'rule', state: 'no decision' },
+          policyState: 'NO PREDICTION',
+          policyReason: 'No candidate produced by either gate'
         });
         return;
       }
 
       const decision = this.policy.accept(result.intervention, uiContext);
-      experimentRecorder.recordIntervention({
-        timestamp: Date.now(),
-        type: decision.accepted ? 'accepted' : 'issued',
-        intervention: decision.command.type,
-        componentId: decision.command.targetComponentId,
-        source: decision.command.source,
-        mappingSource: decision.command.mappingSource ?? resolvedMappingSource,
-        confidence: decision.command.confidence,
-        interventionEpisodeId: this.currentEpisode,
-        sessionId: sessionManager.getActiveSession()?.sessionId,
-        experimentId: this.options.experimentId,
-        conditionId: this.conditionId,
-        windowId: this.latestWindowId
-      });
 
+      // ---------------------------------------------------------------------
+      // Rejected: the reason is a research result and is persisted, not just logged.
+      // ---------------------------------------------------------------------
       if (!decision.accepted) {
+        this.recordPolicyDecision({
+          windowId: evaluatedWindowId,
+          predictionId,
+          candidate: decision.command.type,
+          confidence: result.intervention.confidence ?? result.slowResult?.confidence,
+          accepted: false,
+          policyDecision: 'rejected',
+          policyReason: decision.reason,
+          rejectionCategory: decision.rejectionCategory as PolicyRejectionCategory,
+          candidateCount: decision.candidateCount,
+          cooldownRemainingMs: decision.cooldownRemainingMs,
+          phase: 'policy'
+        });
         debugBus.update({
           interventionStatus: {
             type: 'no_op',
             source: decision.command.source,
             state: decision.reason
-          }
+          },
+          policyState: 'POLICY REJECTED',
+          policyReason: decision.reason,
+          policyCooldownRemainingMs: decision.cooldownRemainingMs,
+          candidateCount: decision.candidateCount
         });
         return;
       }
 
-      // Baseline condition: decide, log, but never mutate the DOM (§17).
+      // ---------------------------------------------------------------------
+      // Baseline: permitted, recorded, but never applied. The verdict is persisted so a
+      // baseline session evidences "decided but not applied" from the trace alone (§17).
+      // ---------------------------------------------------------------------
       if (this.conditionId !== 'adaptive') {
+        this.recordPolicyDecision({
+          windowId: evaluatedWindowId,
+          predictionId,
+          candidate: decision.command.type,
+          confidence: decision.command.confidence,
+          accepted: true,
+          policyDecision: 'decision_only',
+          policyReason: `${decision.reason} — not applied: baseline condition`,
+          rejectionCategory: 'baseline_condition',
+          candidateCount: decision.candidateCount,
+          cooldownRemainingMs: decision.cooldownRemainingMs,
+          phase: 'policy'
+        });
         debugBus.update({
           interventionStatus: {
             type: decision.command.type,
             source: decision.command.source,
             confidence: decision.command.confidence,
             state: 'decision only (baseline condition)'
-          }
+          },
+          policyState: 'POLICY ACCEPTED (BASELINE — NOT APPLIED)',
+          policyReason: decision.reason,
+          candidateCount: decision.candidateCount
         });
         return;
       }
 
-      this.beginEpisode();
-      this.actuator.apply(decision.command);
+      // ---------------------------------------------------------------------
+      // Adaptive: open the episode, then apply. The episode id is created *before* any
+      // record is written so the issued and applied events share one id (F-05).
+      // ---------------------------------------------------------------------
+      const episodeId = this.beginEpisode(predictionId);
+
+      experimentRecorder.recordIntervention({
+        timestamp: getWallClockTimestamp(),
+        type: 'accepted',
+        intervention: decision.command.type,
+        componentId: decision.command.targetComponentId,
+        source: decision.command.source,
+        mappingSource: decision.command.mappingSource ?? resolvedMappingSource,
+        confidence: decision.command.confidence,
+        interventionEpisodeId: episodeId,
+        predictionId,
+        sessionId: sessionManager.getActiveSession()?.sessionId,
+        experimentId: this.options.experimentId,
+        conditionId: this.conditionId,
+        windowId: evaluatedWindowId
+      });
+
+      this.recordPolicyDecision({
+        windowId: evaluatedWindowId,
+        predictionId,
+        candidate: decision.command.type,
+        confidence: decision.command.confidence,
+        accepted: true,
+        policyDecision: 'accepted',
+        policyReason: decision.reason,
+        candidateCount: decision.candidateCount,
+        cooldownRemainingMs: decision.cooldownRemainingMs,
+        ttlMs: decision.ttlMs,
+        phase: 'policy'
+      });
+
+      // The episode id reaches the DOM through the command, so the trace's episode and the
+      // visible adaptation can be correlated by an automated check (F-05).
+      const applied = this.actuator.apply({ ...decision.command, episodeId } as InterventionCommand);
+
+      if (!applied) {
+        this.recordPolicyDecision({
+          windowId: evaluatedWindowId,
+          predictionId,
+          candidate: decision.command.type,
+          accepted: false,
+          policyDecision: 'rejected',
+          policyReason: `Actuation failed: the actuator could not resolve a target element for '${decision.command.type}'`,
+          rejectionCategory: 'actuation_failed',
+          candidateCount: decision.candidateCount,
+          cooldownRemainingMs: decision.cooldownRemainingMs,
+          ttlMs: decision.ttlMs,
+          phase: 'actuation_failed'
+        });
+        debugBus.update({
+          interventionStatus: {
+            type: decision.command.type,
+            source: decision.command.source,
+            confidence: decision.command.confidence,
+            state: 'ACTUATION FAILED'
+          },
+          policyState: 'ACTUATION FAILED',
+          policyReason: 'Actuator could not resolve a target element'
+        });
+        return;
+      }
+
       this.counters.interventionsApplied++;
       debugBus.update({
         interventionStatus: {
@@ -712,12 +989,21 @@ export class AdaptiveRuntime {
           source: decision.command.source,
           confidence: decision.command.confidence,
           state: decision.reason
-        }
+        },
+        policyState: 'ACTUATED',
+        policyReason: decision.reason,
+        candidateCount: decision.candidateCount,
+        activeEpisodeId: episodeId,
+        activeIntervention: decision.command.type,
+        activeInterventionTtlMs: decision.ttlMs,
+        activeInterventionExpiresInMs: decision.ttlMs
       });
     } catch (err) {
       console.error('[AdaptiveRuntime] Evaluation failed:', err);
     } finally {
-      debugBus.update({ featureLatencyMs: getMonotonicTimestamp() - start });
+      // This is the duration of the whole evalu-and-act cycle, not feature-extraction
+      // latency. The label now matches what is measured (F-08).
+      debugBus.update({ evaluationCycleLatencyMs: getMonotonicTimestamp() - start });
       this.evaluating = false;
     }
   }
@@ -731,25 +1017,45 @@ export class AdaptiveRuntime {
     experimentRecorder.recordIntervention({
       ...event,
       interventionEpisodeId: event.interventionEpisodeId ?? this.currentEpisode,
+      predictionId: event.predictionId ?? this.currentPredictionId,
       sessionId: sessionManager.getActiveSession()?.sessionId,
       experimentId: this.options.experimentId,
       conditionId: this.conditionId,
-      windowId: this.latestWindowId
+      windowId: event.windowId ?? this.latestWindowId
     });
+
+    // Reflect the terminal state in the live panel so an expired episode is visible without
+    // reading the trace (F-03 / F-08).
+    if (event.type === 'reverted' || event.type === 'dismissed') {
+      debugBus.update({
+        policyState: event.type === 'dismissed' ? 'DISMISSED' : 'EXPIRED',
+        activeEpisodeId: undefined,
+        activeIntervention: undefined,
+        activeInterventionExpiresInMs: undefined,
+        policyReason:
+          event.reason === 'ttl'
+            ? 'Adaptation expired after its TTL'
+            : event.type === 'dismissed'
+              ? 'Adaptation dismissed by the user'
+              : 'Adaptation reverted'
+      });
+    }
   }
 
   /**
    * Starts a new intervention episode. An episode groups the
    * issued → accepted → applied → dismissed/reverted lifecycle of one adaptation.
    */
-  private beginEpisode(): string {
+  private beginEpisode(predictionId?: string): string {
     this.episodeCounter++;
     this.currentEpisode = `ep_${this.episodeCounter}`;
+    this.currentPredictionId = predictionId ?? this.currentPredictionId;
     return this.currentEpisode;
   }
 
   private episodeCounter = 0;
   private currentEpisode = 'ep_0';
+  private currentPredictionId: string | undefined;
 
   /**
    * Settles outcome labels whose lookahead span is now covered by observed activity.
@@ -762,7 +1068,8 @@ export class AdaptiveRuntime {
     if (this.pendingOutcomeWindows.length === 0) return;
 
     const lookaheadMax = PIPELINE_CONFIG.target_generation.lookahead_horizon_ms[1];
-    const now = getMonotonicTimestamp();
+    // Epoch clock: `window.windowEnd` and `coveredThroughMs` are trace timestamps.
+    const now = getWallClockTimestamp();
     const stillPending: MicroTensorWindow[] = [];
 
     for (const window of this.pendingOutcomeWindows) {
@@ -874,6 +1181,23 @@ export class AdaptiveRuntime {
 
   public getTimingSummary(): Record<string, StageTimingStats> {
     return this.collector.getSummary();
+  }
+
+  /**
+   * Bounded Fast Gate execution counters.
+   *
+   * Exposed so a researcher can tell a quiet session (nothing to mine) from a broken one
+   * (evaluations being superseded or timing out). Silence was previously indistinguishable
+   * from lost work (F-02).
+   */
+  public getMiningCounters(): MiningCounters {
+    return { ...this.miningCounters };
+  }
+
+  /** Records the current mining counters into the trace before it is exported. */
+  public syncMiningCountersToRecorder(): void {
+    experimentRecorder.setMiningCounters(this.miningCounters);
+    experimentRecorder.setModelProvenance(this.reportedModelVersion, this.executionProvider);
   }
 
   /** Clears stored timing records and statistics in the collector. */

@@ -6,6 +6,7 @@ import {
 import {
   ExperimentRecorder,
   ExperimentTrace,
+  EXPERIMENT_TRACE_SCHEMA_VERSION,
   validateExperimentTrace
 } from '../src/telemetry/recorder';
 import type {
@@ -185,7 +186,7 @@ describe('telemetry/recorder', () => {
 
     expect(validation.valid).toBe(true);
     expect(validation.errors).toHaveLength(0);
-    expect(serializable.schemaVersion).toBe('1.2.0');
+    expect(serializable.schemaVersion).toBe(EXPERIMENT_TRACE_SCHEMA_VERSION);
     expect(serializable.metadata.totalEvents).toBe(2);
     expect(serializable.metadata.conditionId).toBeDefined();
     expect(serializable.microTensors[0].windowId).toBe(0);

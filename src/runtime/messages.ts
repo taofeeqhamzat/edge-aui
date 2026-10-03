@@ -69,6 +69,17 @@ export interface RuntimeInitRequest {
     contextDim?: number;
     enableFastGate?: boolean;
     enableSlowGate?: boolean;
+    /**
+     * Fast Gate execution bounds. Sent from the resolved runtime configuration so an
+     * experiment can change them without a code change. Omitting them leaves the worker's
+     * safe defaults in place (assessment F-02).
+     */
+    fastGateBounds?: {
+      maxPatterns?: number;
+      maxPatternLength?: number;
+      maxCorpusSequences?: number;
+      miningTimeoutMs?: number;
+    };
   };
 }
 
@@ -157,6 +168,13 @@ export interface RuntimeInitOkResponse {
     executionProvider?: string;
     modelLoaded?: boolean;
     interventionModelLoaded?: boolean;
+    /**
+     * Identity of the model graph that was actually loaded, as reported by the gate.
+     *
+     * This exists so the trace records the deployed model rather than a hardcoded literal
+     * that could not distinguish two different exported graphs (F-19).
+     */
+    modelVersion?: string;
     executionProviders?: {
       foundation?: string;
       intervention?: string;
@@ -192,6 +210,18 @@ export interface WorkerEvaluationDiagnostics {
   workerMacroHistory: number;
   workerCorpusSize: number;
   evaluatedSequenceLength: number;
+  /** Bounds the Fast Gate was actually constructed with inside the worker. */
+  fastGateBounds?: {
+    maxPatterns: number;
+    maxPatternLength: number;
+    maxCorpusSequences: number;
+    miningTimeoutMs: number;
+  };
+  /**
+   * Cumulative Fast Gate evaluation outcomes for the worker's lifetime. Cumulative rather
+   * than per-call so a superseded or timed-out evaluation cannot disappear (F-02).
+   */
+  miningOutcomes?: Record<string, number>;
 }
 
 export interface RuntimeEvaluationResponse {

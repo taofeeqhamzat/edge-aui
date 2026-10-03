@@ -14,12 +14,59 @@ export function clamp(value: number, min = 0, max = 1): number {
 /**
  * Returns a monotonic millisecond timestamp (relative to navigation start).
  * Uses performance.now() where available, falling back to Date.now().
+ *
+ * This clock must NOT be written into a persisted trace record: it resets to zero on
+ * every navigation, so two records from different page loads are not comparable.
+ * Use `getWallClockTimestamp()` for anything that is exported or stored.
  */
 export function getMonotonicTimestamp(): number {
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
     return performance.now();
   }
   return Date.now();
+}
+
+/** Wall-clock (epoch) anchor for the active session, in milliseconds. */
+let sessionEpochAnchorMs: number | null = null;
+
+/** Monotonic reading captured at the moment the anchor was established. */
+let sessionMonotonicAnchorMs: number | null = null;
+
+/**
+ * Anchors the canonical trace clock to a session.
+ *
+ * Called by `sessionManager.startSession`. The anchor pairs an epoch timestamp with the
+ * monotonic reading taken at the same instant, so every later record can be expressed on
+ * the epoch timeline while still advancing monotonically.
+ */
+export function setSessionEpochAnchor(epochMs: number, monotonicMs: number): void {
+  sessionEpochAnchorMs = epochMs;
+  sessionMonotonicAnchorMs = monotonicMs;
+}
+
+/** Clears the canonical-clock anchor when no session is active. */
+export function clearSessionEpochAnchor(): void {
+  sessionEpochAnchorMs = null;
+  sessionMonotonicAnchorMs = null;
+}
+
+/**
+ * Returns the canonical trace timestamp in epoch milliseconds.
+ *
+ * The trace has exactly one clock (schema 1.3.0): epoch milliseconds. `performance.now()`
+ * is not durable — it restarts at zero on every navigation — so it is not a legal trace
+ * timestamp. Anchoring to the session epoch gives the accuracy of a monotonic clock
+ * (immune to wall-clock steps and NTP adjustments) with the durability of an epoch clock.
+ *
+ * Falls back to `Date.now()` when no session anchor exists, which keeps the returned value
+ * on the same epoch timeline as an anchored session.
+ */
+export function getWallClockTimestamp(): number {
+  const now = getMonotonicTimestamp();
+  if (sessionEpochAnchorMs === null || sessionMonotonicAnchorMs === null) {
+    return Date.now();
+  }
+  return sessionEpochAnchorMs + (now - sessionMonotonicAnchorMs);
 }
 
 /**

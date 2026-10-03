@@ -10,6 +10,7 @@ import {
 } from './events';
 import {
   getMonotonicTimestamp,
+  getWallClockTimestamp,
   normalizeCoordinates,
   normalizeScroll,
   getViewportDimensions,
@@ -241,6 +242,7 @@ export class TelemetryObserver {
     componentRole?: string;
     action?: string;
     targetTag?: string;
+    ariaExpanded?: boolean;
   } {
     if (!target || !(target instanceof Element)) {
       return {};
@@ -249,12 +251,34 @@ export class TelemetryObserver {
     const targetTag = target.tagName.toLowerCase();
     const annotatedEl = target.closest ? target.closest('[data-aui-component]') : null;
 
+    /**
+     * Reads the post-action disclosure state.
+     *
+     * The observer listens in the bubble phase, so by the time a click is handled React has
+     * already committed the state change: `aria-expanded` reflects what the element became,
+     * not what it was. That is why a click can be classified as opening or closing an
+     * accordion without the interface having to declare it.
+     */
+    const readAriaExpanded = (el: Element | null): boolean | undefined => {
+      const raw = el?.getAttribute('aria-expanded');
+      if (raw === 'true') return true;
+      if (raw === 'false') return false;
+      // An accordion's triggering control may not carry the attribute itself; look at the
+      // nearest control inside the same section before giving up.
+      const nested = el?.querySelector?.('[aria-expanded]');
+      const nestedRaw = nested?.getAttribute('aria-expanded');
+      if (nestedRaw === 'true') return true;
+      if (nestedRaw === 'false') return false;
+      return undefined;
+    };
+
     if (annotatedEl) {
       return {
         componentId: annotatedEl.getAttribute('data-aui-component') || undefined,
         componentRole: annotatedEl.getAttribute('data-aui-role') || undefined,
         action: annotatedEl.getAttribute('data-aui-action') || undefined,
-        targetTag
+        targetTag,
+        ariaExpanded: readAriaExpanded(target) ?? readAriaExpanded(annotatedEl)
       };
     }
 
@@ -263,7 +287,8 @@ export class TelemetryObserver {
       componentId: target.getAttribute?.('data-aui-component') || undefined,
       componentRole: target.getAttribute?.('data-aui-role') || undefined,
       action: target.getAttribute?.('data-aui-action') || undefined,
-      targetTag
+      targetTag,
+      ariaExpanded: readAriaExpanded(target)
     };
   }
 
@@ -293,13 +318,14 @@ export class TelemetryObserver {
       const geometry = this.captureGeometry();
 
       const event: BehaviourEvent = {
-        timestamp: getMonotonicTimestamp(),
+        timestamp: getWallClockTimestamp(),
         type,
         x: coords.x,
         y: coords.y,
         componentId: elemMeta.componentId ?? uiContext.activeComponentId,
         componentRole: elemMeta.componentRole ?? uiContext.componentRole,
         action: elemMeta.action ?? (type === 'click' ? 'click' : type === 'mouseover' ? 'hover' : undefined),
+        ariaExpanded: elemMeta.ariaExpanded,
         route: uiContext.route,
         taskId: uiContext.taskId,
         taskStepId: uiContext.taskStepId,
@@ -326,7 +352,7 @@ export class TelemetryObserver {
       const geometry = this.captureGeometry();
 
       const event: BehaviourEvent = {
-        timestamp: getMonotonicTimestamp(),
+        timestamp: getWallClockTimestamp(),
         type: sourceType,
         scrollX: normScroll.scrollX,
         scrollY: normScroll.scrollY,
@@ -350,11 +376,12 @@ export class TelemetryObserver {
       const geometry = this.captureGeometry();
 
       const event: BehaviourEvent = {
-        timestamp: getMonotonicTimestamp(),
+        timestamp: getWallClockTimestamp(),
         type,
         componentId: elemMeta.componentId ?? uiContext.activeComponentId,
         componentRole: elemMeta.componentRole ?? uiContext.componentRole,
         action: elemMeta.action ?? type,
+        ariaExpanded: elemMeta.ariaExpanded,
         route: uiContext.route,
         taskId: uiContext.taskId,
         taskStepId: uiContext.taskStepId,
@@ -373,11 +400,12 @@ export class TelemetryObserver {
       const uiContext = getActiveUIContext({ targetElement: e.target as Element });
 
       const event: BehaviourEvent = {
-        timestamp: getMonotonicTimestamp(),
+        timestamp: getWallClockTimestamp(),
         type,
         componentId: elemMeta.componentId ?? uiContext.activeComponentId,
         componentRole: elemMeta.componentRole ?? uiContext.componentRole,
         action: type,
+        ariaExpanded: elemMeta.ariaExpanded,
         route: uiContext.route,
         taskId: uiContext.taskId,
         taskStepId: uiContext.taskStepId,
@@ -404,7 +432,7 @@ export class TelemetryObserver {
           : 'navigation';
 
       const event: BehaviourEvent = {
-        timestamp: getMonotonicTimestamp(),
+        timestamp: getWallClockTimestamp(),
         type: resolvedType,
         route: customRoute ?? uiContext.route,
         taskId: uiContext.taskId,

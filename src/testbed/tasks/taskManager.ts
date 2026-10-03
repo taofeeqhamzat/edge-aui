@@ -1,4 +1,5 @@
 import { EXPERIMENTAL_TASKS, TaskId, TaskState, TaskStatus } from './taskModel';
+import { getWallClockTimestamp } from '../../telemetry/normalizer';
 
 type StateChangeListener = (state: TaskState) => void;
 
@@ -77,11 +78,11 @@ export class TaskManager {
       ...this.getInitialState(),
       currentTaskId: taskId,
       status: 'In Progress',
-      startTime: Date.now()
+      startTime: getWallClockTimestamp()
     };
     this.notify();
     this.emitLifecycle({
-      timestamp: Date.now(),
+      timestamp: getWallClockTimestamp(),
       type: 'task_start',
       taskId,
       status: this.state.status,
@@ -99,7 +100,7 @@ export class TaskManager {
 
     if (wasInProgress) {
       this.emitLifecycle({
-        timestamp: Date.now(),
+        timestamp: getWallClockTimestamp(),
         type: 'task_abandon',
         taskId: previous.currentTaskId,
         status: 'Abandoned',
@@ -111,7 +112,7 @@ export class TaskManager {
     this.state = this.getInitialState();
     this.notify();
     this.emitLifecycle({
-      timestamp: Date.now(),
+      timestamp: getWallClockTimestamp(),
       type: 'task_reset',
       taskId: null,
       status: this.state.status,
@@ -145,7 +146,7 @@ export class TaskManager {
       this.state.errors++;
       this.notify();
       this.emitLifecycle({
-        timestamp: Date.now(),
+        timestamp: getWallClockTimestamp(),
         type: 'task_error',
         taskId: this.state.currentTaskId,
         taskStepId: currentStep?.stepId,
@@ -161,12 +162,12 @@ export class TaskManager {
 
     if (this.state.currentStepIndex >= totalSteps) {
       this.state.status = 'Completed';
-      this.state.endTime = Date.now();
+      this.state.endTime = getWallClockTimestamp();
     }
 
     this.notify();
     this.emitLifecycle({
-      timestamp: Date.now(),
+      timestamp: getWallClockTimestamp(),
       type: 'task_step',
       taskId: this.state.currentTaskId,
       taskStepId: stepId,
@@ -180,7 +181,7 @@ export class TaskManager {
           ? this.state.endTime - this.state.startTime
           : undefined;
       this.emitLifecycle({
-        timestamp: Date.now(),
+        timestamp: getWallClockTimestamp(),
         type: 'task_complete',
         taskId: this.state.currentTaskId,
         taskStepId: stepId,
@@ -198,12 +199,12 @@ export class TaskManager {
     this.state = {
       ...this.state,
       status: 'Abandoned',
-      endTime: Date.now(),
+      endTime: getWallClockTimestamp(),
       abandonmentReason: reason
     };
     this.notify();
     this.emitLifecycle({
-      timestamp: Date.now(),
+      timestamp: getWallClockTimestamp(),
       type: 'task_abandon',
       taskId: this.state.currentTaskId,
       status: this.state.status,

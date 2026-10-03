@@ -11,6 +11,7 @@
 import { MacroInteraction } from '../telemetry/events';
 import { UIContext } from '../types/uiContext.js';
 import { InterventionCommand } from '../intervention/types';
+import { getWallClockTimestamp } from '../telemetry/normalizer';
 import { FastGate, GateDecision } from './fast/types';
 import { SlowGate, SlowGateResult } from './slow/types';
 
@@ -31,6 +32,7 @@ export interface InferenceResult {
   fastGateLatencyMs?: number;
   /** Independent latency of Slow Gate evaluation (ADR-003). Undefined when short-circuited. */
   slowGateLatencyMs?: number;
+  /** Canonical trace clock: epoch milliseconds (`getWallClockTimestamp()`). */
   timestamp: number;
 }
 
@@ -59,7 +61,9 @@ export class AdaptiveInferenceEngine {
    */
   public async evaluate(context: InferenceContext): Promise<InferenceResult> {
     const startTime = performance.now();
-    const timestamp = Date.now();
+    // Epoch, not `Date.now()`-as-a-shortcut: the prediction is a persisted trace record, so
+    // it must share the canonical clock with behaviour events and task events (F-01).
+    const timestamp = getWallClockTimestamp();
 
     let fastDecision: GateDecision = {
       matched: false,

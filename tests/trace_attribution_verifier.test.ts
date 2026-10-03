@@ -212,12 +212,17 @@ describe('Trace Attribution and Completeness Verifier', () => {
     expect(check?.message).toContain('T2-2');
   });
 
-  it('fails when microTensor window has no corresponding outcome record', () => {
+  it('fails when a microTensor window outlives its settlement allowance with no outcome record', () => {
     const trace = createValidBaseTrace();
+    // Window 1 ends at 600 and is labelled. This window is 5 s further back, which is past the
+    // verifier's settlement allowance for a window to be labelled — `lookahead (1500) + grace
+    // (2000) + tolerance (500)` = 4000 ms, measured from the newest window in the trace.
+    // Windows still inside that allowance are in flight, not missing; counting them as
+    // failures is what made the verifier reject every real capture (F-13).
     trace.microTensors.push({
-      windowId: 2,
-      windowStart: 600,
-      windowEnd: 1100,
+      windowId: 0,
+      windowStart: -5000,
+      windowEnd: -4400,
       values: new Array(18).fill(0.2)
     });
     // outcomes only has windowId 1
@@ -226,6 +231,23 @@ describe('Trace Attribution and Completeness Verifier', () => {
     const check = result.checks.find((c) => c.check === 'window_outcome_completeness');
     expect(check?.passed).toBe(false);
     expect(check?.message).toContain('windowId');
+  });
+
+  it('accepts a window still inside its settlement allowance as in flight, not orphaned', () => {
+    const trace = createValidBaseTrace();
+    // 500 ms behind the newest window: within the allowance, so it is legitimately awaiting
+    // its outcome rather than missing. Every live session has windows in this state.
+    trace.microTensors.push({
+      windowId: 2,
+      windowStart: 600,
+      windowEnd: 1100,
+      values: new Array(18).fill(0.2)
+    });
+
+    const result = verifyTraceCompleteness(trace);
+    const check = result.checks.find((c) => c.check === 'window_outcome_completeness');
+    expect(check?.passed).toBe(true);
+    expect(check?.message).toContain('settlement allowance');
   });
 
   it('fails when intervention episode is applied without terminal state', () => {

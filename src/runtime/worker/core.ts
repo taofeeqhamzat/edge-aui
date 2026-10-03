@@ -50,6 +50,21 @@ export class RuntimeWorkerCore {
   private executionProvider = 'none';
   private modelLoaded = false;
 
+  /**
+   * Fast Gate execution bounds. Defaults mirror the runtime configuration so a worker used
+   * without an explicit INIT still behaves safely; the runtime always sends the resolved
+   * configuration, which is what an experiment would actually change.
+   */
+  private fastGateBounds = {
+    maxPatterns: 32,
+    maxPatternLength: 4,
+    maxCorpusSequences: 40,
+    miningTimeoutMs: 1500
+  };
+
+  /** How many Fast Gate evaluations ran, timed out, or failed inside this worker. */
+  private miningOutcomes: Record<string, number> = {};
+
   constructor() {
     this.sequenceBuilder = new SequenceBuilder();
     this.inferenceEngine = createAdaptiveInferenceEngine({
@@ -71,6 +86,7 @@ export class RuntimeWorkerCore {
     modelLoaded: boolean;
     foundationLoaded?: boolean;
     interventionLoaded?: boolean;
+    modelVersion?: string;
     providers?: { foundation?: string; intervention?: string };
   }> {
     if (this.slowGateMode !== 'onnx') {
@@ -92,6 +108,7 @@ export class RuntimeWorkerCore {
         modelLoaded: warm.modelLoaded,
         foundationLoaded: warm.foundationLoaded,
         interventionLoaded: warm.interventionLoaded,
+        modelVersion: warm.modelVersion,
         providers: warm.providers
       };
     } catch (err) {
@@ -113,7 +130,18 @@ export class RuntimeWorkerCore {
         getSequences: () => this.getMacroSequences(),
         minSupport: this.minPatternSupport,
         minConfidence: this.minPatternConfidence,
+        // Bounds from configuration rather than from the gate's own defaults, so an
+        // experiment can tighten or relax them without a code change (ADR-012).
+        maxPatterns: this.fastGateBounds.maxPatterns,
+        maxPatternLength: this.fastGateBounds.maxPatternLength,
+        maxCorpusSequences: this.fastGateBounds.maxCorpusSequences,
+        miningTimeoutMs: this.fastGateBounds.miningTimeoutMs,
         resolveIntervention: (patternKey) => this.fastGatePatterns[patternKey] ?? null,
+        onEvaluationOutcome: (outcome) => {
+          // Bounded-execution counters live in this scope so a timed-out or failed
+          // evaluation is reported to the main thread instead of vanishing (F-02).
+          this.miningOutcomes[outcome] = (this.miningOutcomes[outcome] ?? 0) + 1;
+        },
         mine: async (sequences, minSupport) => (await this.minePatterns(sequences, minSupport)) ?? []
       });
     }
@@ -185,6 +213,18 @@ export class RuntimeWorkerCore {
           this.slowGateMode = request.payload?.slowGateMode ?? 'mock';
           this.fastGatePatterns = request.payload?.fastGatePatterns ?? {};
           this.minPatternSupport = request.payload?.minPatternSupport ?? 2;
+          if (request.payload?.fastGateBounds) {
+            this.fastGateBounds = {
+              maxPatterns: request.payload.fastGateBounds.maxPatterns ?? this.fastGateBounds.maxPatterns,
+              maxPatternLength:
+                request.payload.fastGateBounds.maxPatternLength ?? this.fastGateBounds.maxPatternLength,
+              maxCorpusSequences:
+                request.payload.fastGateBounds.maxCorpusSequences ?? this.fastGateBounds.maxCorpusSequences,
+              miningTimeoutMs:
+                request.payload.fastGateBounds.miningTimeoutMs ?? this.fastGateBounds.miningTimeoutMs
+            };
+          }
+          this.miningOutcomes = {};
           this.minPatternConfidence = request.payload?.minPatternConfidence ?? 0;
           this.options = {
             modelUrl: request.payload?.modelUrl,
@@ -218,6 +258,7 @@ export class RuntimeWorkerCore {
               executionProvider: this.executionProvider,
               modelLoaded: this.modelLoaded,
               interventionModelLoaded: slow.interventionLoaded,
+              modelVersion: slow.modelVersion,
               executionProviders: slow.providers
             }
           };
@@ -295,7 +336,9 @@ export class RuntimeWorkerCore {
                 minPatternSupport: this.minPatternSupport,
                 workerMacroHistory: this.macroHistory.length,
                 workerCorpusSize: this.getMacroSequences().length,
-                evaluatedSequenceLength: macroSequence.length
+                evaluatedSequenceLength: macroSequence.length,
+                fastGateBounds: { ...this.fastGateBounds },
+                miningOutcomes: { ...this.miningOutcomes }
               }
             }
           };

@@ -49,6 +49,12 @@ export interface InterventionCommand {
   issuedAt: number;
   ttlMs?: number;
   reason?: string;
+  /**
+   * The intervention episode this command belongs to. Carried on the command so the
+   * actuator can stamp it onto the DOM, which is what lets a verifier prove that the
+   * adaptation recorded in the trace is the one actually visible (F-05).
+   */
+  episodeId?: string;
 }
 
 export interface CreateInterventionOptions {
@@ -60,6 +66,7 @@ export interface CreateInterventionOptions {
   issuedAt?: number;
   ttlMs?: number;
   reason?: string;
+  episodeId?: string;
 }
 
 /**
@@ -80,7 +87,8 @@ export function createInterventionCommand(
     mappingSource: options.mappingSource,
     issuedAt: options.issuedAt ?? Date.now(),
     ttlMs: options.ttlMs,
-    reason: options.reason
+    reason: options.reason,
+    episodeId: options.episodeId
   };
 }
 

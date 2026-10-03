@@ -4,30 +4,55 @@
  * Manages privacy-preserving session IDs without collecting PII.
  */
 
-import { getMonotonicTimestamp } from './normalizer';
+import {
+  getMonotonicTimestamp,
+  setSessionEpochAnchor,
+  clearSessionEpochAnchor
+} from './normalizer';
 import type { ExperimentalCondition } from './events';
+
+/**
+ * Machine-readable provenance of a session's telemetry.
+ *
+ * This is not a label of convenience: it is the switch that decides whether a trace may
+ * leave the client. `'scripted'` traces are synthetic, produced by automated/scripted
+ * browser sessions, and never represent a human participant. `'participant'` traces
+ * require an approved protocol and a consent workflow (ADR-018, ADR-023) and must never be
+ * inferred or defaulted into.
+ */
+export type SessionProvenance = 'scripted' | 'participant';
 
 export interface SessionContext {
   sessionId: string;
   /**
-   * Monotonic start time (performance.now()). Retained for within-session deltas.
+   * Monotonic start time (performance.now()). Retained for within-session deltas only;
+   * it is not a legal trace timestamp because it resets on navigation.
    */
   startedAt: number;
   /**
-   * Epoch start time (Date.now()). Required because `startedAt` is monotonic and
-   * cannot be subtracted from `Date.now()` — mixing the two clocks produced a
-   * meaningless `metadata.durationMs` (assessment §16.4).
+   * Epoch start time (Date.now()). This is the anchor for the canonical trace clock
+   * (schema 1.3.0): every trace record timestamp is epoch milliseconds derived from it.
    */
   startedAtEpochMs?: number;
   experimentId?: string;
   conditionId?: ExperimentalCondition;
   taskId?: string;
+  /** Whether this telemetry is scripted/synthetic or participant-derived. */
+  provenance?: SessionProvenance;
+  /**
+   * Opaque participant reference. Deliberately optional and never auto-populated: no
+   * participant identifier scheme has been approved (ADR-023), and inventing one would
+   * create a re-identification surface nobody agreed to.
+   */
+  participantId?: string | null;
 }
 
 export interface StartSessionOptions {
   taskId?: string;
   experimentId?: string;
   conditionId?: ExperimentalCondition;
+  provenance?: SessionProvenance;
+  participantId?: string | null;
 }
 
 export type SessionChangeListener = (session: SessionContext | null) => void;
@@ -62,16 +87,37 @@ export class SessionManager {
         ? { taskId: taskOrOptions as string | undefined }
         : taskOrOptions;
 
+    const startedAt = getMonotonicTimestamp();
+    const startedAtEpochMs = Date.now();
+    // Establish the canonical trace clock for this session before any record is written.
+    setSessionEpochAnchor(startedAtEpochMs, startedAt);
+
     this.currentSession = {
       sessionId: generateAnonymousSessionId(),
-      startedAt: getMonotonicTimestamp(),
-      startedAtEpochMs: Date.now(),
+      startedAt,
+      startedAtEpochMs,
       experimentId: options.experimentId,
       conditionId: options.conditionId,
-      taskId: options.taskId
+      taskId: options.taskId,
+      // Default to the safe provenance. A caller must opt in explicitly to anything else.
+      provenance: options.provenance ?? 'scripted',
+      participantId: options.participantId ?? null
     };
     this.notify();
     return { ...this.currentSession };
+  }
+
+  /**
+   * Sets the provenance of the active session. Used when a session is recovered from
+   * local storage and its provenance must be restored exactly as recorded.
+   */
+  public setProvenance(provenance: SessionProvenance, participantId?: string | null): void {
+    if (!this.currentSession) return;
+    this.currentSession.provenance = provenance;
+    if (participantId !== undefined) {
+      this.currentSession.participantId = participantId;
+    }
+    this.notify();
   }
 
   /**
@@ -94,7 +140,30 @@ export class SessionManager {
    */
   public resetSession(): void {
     this.currentSession = null;
+    clearSessionEpochAnchor();
     this.notify();
+  }
+
+  /**
+   * Restores a previously persisted session verbatim, including its identity, epoch
+   * anchor and provenance, so a recovered trace is attributable to the session that
+   * actually produced it rather than a freshly generated id.
+   */
+  public restoreSession(session: SessionContext): SessionContext {
+    const restored: SessionContext = {
+      ...session,
+      provenance: session.provenance ?? 'scripted',
+      participantId: session.participantId ?? null
+    };
+    if (typeof restored.startedAtEpochMs === 'number' && restored.startedAtEpochMs > 0) {
+      // Re-anchor against this page's monotonic origin. `restored.startedAt` came from a
+      // previous page load, whose monotonic origin no longer applies, so the current
+      // monotonic reading is the correct companion value for the preserved epoch start.
+      setSessionEpochAnchor(restored.startedAtEpochMs, getMonotonicTimestamp());
+    }
+    this.currentSession = restored;
+    this.notify();
+    return { ...restored };
   }
 
   /**

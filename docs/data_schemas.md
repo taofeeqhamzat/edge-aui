@@ -10,7 +10,7 @@ The table below indexes every versioned schema and interface in the framework, a
 
 | Index | Schema / Contract | Version | Declaring File | Primary TypeScript Interface | Purpose |
 |---|---|---|---|---|---|
-| **1** | **Experiment Trace Schema** | `1.2.0` | `src/telemetry/traceSchema.ts` | `SerializableExperimentTrace` | Chronological session replay containing telemetry, MicroTensors, outcomes, predictions (with model attribution), interventions (with mapping source), and effective config. (Legacy `1.1.0` backward-compatible). |
+| **1** | **Experiment Trace Schema** | `1.3.0` | `src/telemetry/traceSchema.ts` | `SerializableExperimentTrace` | Chronological session replay on a single canonical clock, containing telemetry, MicroTensors, outcomes, predictions, policy decisions, interventions (with episode attribution) and provenance. (Legacy `1.2.0` / `1.1.0` readable.) |
 | **2** | **MicroTensor Feature Schema** | `1.0.0` | `src/microtensor/window.ts` | `MicroTensorWindow` | 18-D feature vector representation (`[X ⊙ M, M]`: 9 kinematic features + 9 binary modality masks) over 500 ms windows. |
 | **3** | **Runtime Configuration Schema**| `1.0.0` | `src/config/runtimeConfig.ts` | `RuntimeConfig` | Layer 2 configuration spanning 9 parameter groups with default initialization and invariant validation. |
 | **4** | **Synced Pipeline Configuration**| `1.0.0` | `src/config/pipelineConfig.ts` | `PipelineConfig` | Layer 1 cross-repo hyperparameters synchronized from `model-preparation/src/config.yaml`. |
@@ -21,17 +21,18 @@ The table below indexes every versioned schema and interface in the framework, a
 
 ## 2. Detailed Schema Specifications
 
-### Schema 1: Experiment Trace Schema (`v1.2.0`)
+### Schema 1: Experiment Trace Schema (`v1.3.0`)
 - **Owning File:** [`src/telemetry/traceSchema.ts`](../src/telemetry/traceSchema.ts)
-- **Constant:** `EXPERIMENT_TRACE_SCHEMA_VERSION = '1.2.0'`
-- **Supported Versions:** `SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.2.0', '1.1.0']`
+- **Constant:** `EXPERIMENT_TRACE_SCHEMA_VERSION = '1.3.0'`
+- **Supported Versions:** `SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.3.0', '1.2.0', '1.1.0']`
+- **Clock:** `TRACE_CLOCK_MODE = 'epoch_ms'` — every record `timestamp` is epoch milliseconds
 - **Validation:** `validateExperimentTrace(trace: unknown): TraceValidationResult`
 - **Specification:**
-  An experiment trace captures a complete evaluation session for offline replay, ablation, and statistical analysis without any network egress.
+  An experiment trace captures a complete evaluation session for offline replay, ablation, and statistical analysis. The testbed performs no telemetry egress; a completed trace may be uploaded to the research collection store **only** when its declared provenance permits it (ADR-018).
 
 ```typescript
 export interface SerializableExperimentTrace {
-  schemaVersion: '1.2.0';
+  schemaVersion: '1.3.0';
   exportedAt: string; // ISO 8601 UTC timestamp
   session: SessionContext;
   task: UiTaskStateSnapshot;
@@ -42,18 +43,27 @@ export interface SerializableExperimentTrace {
   macroInteractions: MacroInteraction[];
   outcomes: OutcomeEvent[];
   predictions: PredictionEvent[];
+  policyDecisions: PolicyDecisionEvent[];
   interventions: InterventionEvent[];
   taskEvents: TaskEvent[];
 }
 ```
 
 **Key Invariants:**
-- `microTensors.values` is serialized from native `Float32Array` to standard `number[]` for valid JSON output.
-- `metadata.durationMs` is computed strictly using epoch timestamps (`startedAtEpochMs` to `Date.now()`) to prevent monotonic clock skew.
+- **One clock (1.3.0):** every record `timestamp` is epoch milliseconds, produced by `getWallClockTimestamp()`. `performance.now()` is monotonic but resets on navigation, so it is not a legal trace timestamp. `metadata.clock = 'epoch_ms'` states this explicitly. Schema `1.2.0` mixed both clocks in one array, which made the record's internal order unreconstructable and task duration underivable (assessment F-01).
+- **Policy decisions (1.3.0):** every evaluation produces exactly one `PolicyDecisionEvent`, including refusals (`policyDecision: 'rejected'`), the baseline decision-only branch (`'decision_only'`) and the absence of a candidate (`'no_prediction'`). `policyReason` is never empty, and `rejectionCategory` allows grouping without parsing prose. A trace that only recorded successful interventions could not answer "why did it not intervene?" (assessment F-07).
+- **Window attribution (1.3.0):** `PredictionEvent.predictionId` and `evaluatedWindowIds` name the window sequence that was actually evaluated, captured before the inference call rather than read from a mutable "latest window" field after it (assessment F-18).
+- **Episode attribution (1.3.0):** an `InterventionEvent` carries both `interventionEpisodeId` and `predictionId`. Every adaptation type stamps `data-aui-active-adaptation` and `data-aui-adaptation-episode` onto the adapted element, so the trace and the live DOM share a join key (assessment F-05).
+- **Adaptation lifetime (1.3.0):** `actuation.defaultTtlMs` (default 8000 ms) is applied to every accepted command, and expiry emits a terminal `reverted` event with `reason: 'ttl'`. An `applied` episode with no terminal event is reported as an integrity warning (assessment F-03).
+- **Provenance (1.3.0):** `metadata.provenance` is `'scripted'` or `'participant'`, defaulting to `'scripted'`. It is the switch that decides whether a trace may be uploaded, and it exists so synthetic and participant data can never be pooled by accident (ADR-018).
+- **Version identity (1.3.0):** `applicationVersion`, `policyVersion`, `modelVersion` and `executionProvider` record what actually ran. `executionProvider` is the provider the ONNX session reported, not the one requested (assessment F-10, F-19).
+- **Bounded execution and truncation (1.3.0):** `metadata.mining` counts `executed` / `skipped` / `superseded` / `timedOut` / `droppedWindows`; `metadata.evictions` proves whether any buffer discarded records; `metadata.integrityWarnings` lists orphaned windows, unterminated episodes and truncation. Silence is never used to mean "nothing happened" (assessment F-02, F-16).
+- `microTensors.values` is serialized from native `Float32Array` to standard `number[]`; `windowStart`/`windowEnd` are translated to the canonical epoch clock at export.
+- `metadata.durationMs` is computed on the canonical clock only.
 - `effectiveConfig` captures the exact Layer 2 configuration active during the session, allowing reproducible evaluation runs.
 - **Intervention Attribution (Schema 1.2.0):** Every `InterventionEvent` carries `mappingSource?: 'learned_head' | 'deterministic_mapping' | 'fast_gate_pattern'` explicitly tagging the generative mechanism that caused the adaptation.
 - **Model Attribution (Schema 1.2.0):** Every `PredictionEvent` carries `modelVersion?: string`, `contextEncodingVersion?: string`, and `mappingSource?: MappingSource`.
-- **Migration & Backward Compatibility:** Traces declaring schema `1.1.0` continue to validate successfully via `validateExperimentTrace` with `isLegacyVersion: true`. Upgrading from `1.1.0` to `1.2.0` requires populating `mappingSource` on intervention records and `modelVersion` / `contextEncodingVersion` on prediction events. Unknown schema versions (e.g. `< 1.1.0`) are rejected with actionable error messages.
+- **Migration & Backward Compatibility:** traces declaring `1.2.0` or `1.1.0` still validate with `isLegacyVersion: true`, and the verifier **reports** rather than fails the checks those versions cannot satisfy (single clock, policy decisions, prediction attribution, provenance), because a legacy capture cannot be retro-fixed. Unknown versions (e.g. `1.0.0` or `0.8.0`) are rejected with an actionable error message.
 
 ---
 

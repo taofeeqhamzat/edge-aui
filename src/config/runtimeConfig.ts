@@ -91,6 +91,14 @@ export interface FastGateConfig {
   minSupport: number;
   minConfidence: number;
   maxPatternLength: number;
+  /** Maximum patterns considered actionable per evaluation. */
+  maxPatterns: number;
+  /** Maximum corpus sequences sent to the miner per evaluation. */
+  maxCorpusSequences: number;
+  /** Wall-clock deadline for one mining call, in milliseconds. */
+  miningTimeoutMs: number;
+  /** Wall-clock deadline for one worker RPC round trip, in milliseconds. */
+  rpcTimeoutMs: number;
   rankingStrategy: 'confidence' | 'length' | 'support';
   patternInterventionMap: Record<string, InterventionType>;
 }
@@ -205,6 +213,12 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
     minSupport: 1,
     minConfidence: 0.60,
     maxPatternLength: 4,
+    // Bounded execution (F-02). Mining cost is driven by corpus size and symbol repetition;
+    // these caps bound the work so one evaluation cannot stall the serial worker loop.
+    maxPatterns: 32,
+    maxCorpusSequences: 40,
+    miningTimeoutMs: 1500,
+    rpcTimeoutMs: 3000,
     rankingStrategy: 'confidence',
     patternInterventionMap: {
       'OPEN_FILTERS > APPLY_FILTER': 'highlight_primary_action',
@@ -289,6 +303,32 @@ export function validateRuntimeConfig(config: RuntimeConfig): void {
   }
   if (config.fastGate.minConfidence < 0 || config.fastGate.minConfidence > 1) {
     throw new Error(`Invalid fastGate.minConfidence: ${config.fastGate.minConfidence}. Must be between 0 and 1.`);
+  }
+  // Bounded execution invariants (F-02). A zero or negative bound would silently disable
+  // the miner's only protection against unbounded work, so they are rejected outright.
+  if (config.fastGate.maxPatternLength < 1) {
+    throw new Error(`Invalid fastGate.maxPatternLength: ${config.fastGate.maxPatternLength}. Must be >= 1.`);
+  }
+  if (config.fastGate.maxPatterns < 1) {
+    throw new Error(`Invalid fastGate.maxPatterns: ${config.fastGate.maxPatterns}. Must be >= 1.`);
+  }
+  if (config.fastGate.maxCorpusSequences < 1) {
+    throw new Error(
+      `Invalid fastGate.maxCorpusSequences: ${config.fastGate.maxCorpusSequences}. Must be >= 1.`
+    );
+  }
+  if (config.fastGate.miningTimeoutMs <= 0) {
+    throw new Error(`Invalid fastGate.miningTimeoutMs: ${config.fastGate.miningTimeoutMs}. Must be > 0.`);
+  }
+  if (config.fastGate.rpcTimeoutMs <= 0) {
+    throw new Error(`Invalid fastGate.rpcTimeoutMs: ${config.fastGate.rpcTimeoutMs}. Must be > 0.`);
+  }
+  if (config.fastGate.rpcTimeoutMs < config.fastGate.miningTimeoutMs) {
+    throw new Error(
+      `Invalid Fast Gate timeouts: fastGate.rpcTimeoutMs (${config.fastGate.rpcTimeoutMs}) must be >= ` +
+        `fastGate.miningTimeoutMs (${config.fastGate.miningTimeoutMs}), otherwise the transport gives up ` +
+        'before the bounded mining deadline can report a reason.'
+    );
   }
   if (config.macro.groupingIntervalMs <= 0) {
     throw new Error(`Invalid macro.groupingIntervalMs: ${config.macro.groupingIntervalMs}. Must be > 0.`);

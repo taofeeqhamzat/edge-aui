@@ -19,7 +19,14 @@ import {
 import type { RuntimeWorkerCore } from './worker/core';
 import { defaultCollector } from './instrumentation';
 
-/** Default round-trip timeout for worker requests. */
+/**
+ * Default round-trip timeout for worker requests.
+ *
+ * Kept below the runtime's `fastGate.miningTimeoutMs`-derived budget only as a safety net:
+ * the Fast Gate reports its own bounded outcome, and this timeout exists so a genuinely
+ * wedged worker surfaces as a transport failure instead of a permanent hang. The runtime
+ * overrides it from `fastGate.rpcTimeoutMs` (assessment F-02).
+ */
 const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
 
 /** INIT additionally loads and warms the ONNX graph, so it gets a larger budget. */
@@ -28,6 +35,13 @@ const INIT_TIMEOUT_MS = 60_000;
 export interface RuntimeWorkerClientOptions {
   workerUrl?: URL | string;
   useFallback?: boolean;
+  /**
+   * Round-trip budget for non-INIT requests, in milliseconds.
+   *
+   * Derived from the resolved runtime configuration so a configuration change to the
+   * mining deadline also moves the transport budget that must accommodate it.
+   */
+  requestTimeoutMs?: number;
 }
 
 export class RuntimeWorkerClient {
@@ -53,8 +67,10 @@ export class RuntimeWorkerClient {
     }
   >();
   private isInitialized = false;
+  private requestTimeoutMs: number;
 
   constructor(options: RuntimeWorkerClientOptions = {}) {
+    this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     if (options.useFallback || typeof Worker === 'undefined') {
       void this.ensureFallbackCore();
     } else {
@@ -220,7 +236,7 @@ export class RuntimeWorkerClient {
   private sendRequest<T>(
     request: RuntimeWorkerRequest,
     transferables: Transferable[] = [],
-    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
+    timeoutMs = this.requestTimeoutMs
   ): Promise<T> {
     const startTime = performance.now();
     return new Promise<T>((resolve, reject) => {

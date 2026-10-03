@@ -10,31 +10,40 @@ import {
   MacroInteraction,
   OutcomeEvent,
   PredictionEvent,
+  PolicyDecisionEvent,
   InterventionEvent,
   TaskEvent,
   ExperimentalCondition
 } from './events';
-import { SessionContext, sessionManager } from './session';
+import { SessionContext, SessionProvenance, sessionManager } from './session';
 import { TESTBED_UI_VERSION } from '../types/uiContext.js';
 import { UiTaskStateSnapshot, DEFAULT_TASK_STATE } from '../integration/index';
-import { PREPROCESSING_CONFIG } from '../config/pipelineConfig';
-import type { RuntimeConfig } from '../config/runtimeConfig';
+import { PREPROCESSING_CONFIG, PIPELINE_CONFIG } from '../config/pipelineConfig';
+import { DEFAULT_RUNTIME_CONFIG, type RuntimeConfig } from '../config/runtimeConfig';
 import { defaultCollector } from '../runtime/instrumentation';
+import { getWallClockTimestamp } from './normalizer';
+import { APPLICATION_VERSION, POLICY_VERSION } from './version';
 import {
   EXPERIMENT_TRACE_SCHEMA_VERSION,
+  TRACE_CLOCK_MODE,
   validateExperimentTrace,
   reconstructReplayStream,
   type SerializableMicroTensorWindow,
   type SerializableExperimentTrace,
   type TraceReplayMetadata,
   type TraceValidationResult,
-  type ReplayStreamItem
+  type ReplayStreamItem,
+  findOrphanedWindows,
+  type MiningCounters,
+  type EvictionCounters
 } from './traceSchema';
 
 export {
   EXPERIMENT_TRACE_SCHEMA_VERSION,
+  TRACE_CLOCK_MODE,
   validateExperimentTrace,
-  reconstructReplayStream
+  reconstructReplayStream,
+  findOrphanedWindows
 };
 
 export type {
@@ -42,7 +51,9 @@ export type {
   SerializableExperimentTrace,
   TraceReplayMetadata,
   TraceValidationResult,
-  ReplayStreamItem
+  ReplayStreamItem,
+  MiningCounters,
+  EvictionCounters
 };
 
 export interface ExperimentTrace {
@@ -55,9 +66,24 @@ export interface ExperimentTrace {
   macroInteractions: MacroInteraction[];
   outcomes: OutcomeEvent[];
   predictions: PredictionEvent[];
+  policyDecisions: PolicyDecisionEvent[];
   interventions: InterventionEvent[];
   taskEvents: TaskEvent[];
 }
+
+/** Buffer names used for eviction accounting, so a truncation names the buffer it hit. */
+export const TRACE_BUFFER_NAMES = [
+  'behaviourEvents',
+  'microTensors',
+  'macroInteractions',
+  'outcomes',
+  'predictions',
+  'policyDecisions',
+  'interventions',
+  'taskEvents'
+] as const;
+
+export type TraceBufferName = (typeof TRACE_BUFFER_NAMES)[number];
 
 export interface ExperimentRecorderOptions {
   maxBufferSize?: number;
@@ -69,10 +95,27 @@ export class ExperimentRecorder {
   private macroInteractions: MacroInteraction[] = [];
   private outcomes: OutcomeEvent[] = [];
   private predictions: PredictionEvent[] = [];
+  private policyDecisions: PolicyDecisionEvent[] = [];
   private interventions: InterventionEvent[] = [];
   private taskEvents: TaskEvent[] = [];
 
   private maxBufferSize: number;
+
+  /**
+   * Per-buffer eviction counts. `shift()` on overflow used to be silent, so a long session
+   * lost its beginning with no evidence in the record (F-16). Counting makes truncation
+   * visible and prevents an incomplete trace from being analysed as if whole.
+   */
+  private evictions: Record<string, number> = {
+    behaviourEvents: 0,
+    microTensors: 0,
+    macroInteractions: 0,
+    outcomes: 0,
+    predictions: 0,
+    policyDecisions: 0,
+    interventions: 0,
+    taskEvents: 0
+  };
 
   /**
    * Session snapshot captured when recording begins. Retaining the session at start
@@ -82,6 +125,10 @@ export class ExperimentRecorder {
   private sessionSnapshot: SessionContext | null = null;
   private taskStateProvider: (() => UiTaskStateSnapshot | undefined) | null = null;
   private effectiveConfig: RuntimeConfig | null = null;
+  /** Model provenance as actually reported by the runtime, not as requested (F-10, F-19). */
+  private modelVersion: string | null = null;
+  private executionProvider: string | null = null;
+  private miningCounters: MiningCounters | null = null;
 
   constructor(options: ExperimentRecorderOptions = {}) {
     // Default 10,000 events preserves memory strictly under the 20MB budget
@@ -96,6 +143,21 @@ export class ExperimentRecorder {
   /** Sets the effective runtime configuration snapshot for reproducible trace export. */
   public setEffectiveConfig(config: RuntimeConfig | null): void {
     this.effectiveConfig = config;
+  }
+
+  /**
+   * Records the model provenance the runtime actually observed, so the trace identifies the
+   * deployed model instead of a hardcoded literal (F-19) and the provider that actually
+   * served inference rather than the one requested (F-10).
+   */
+  public setModelProvenance(modelVersion: string | null, executionProvider: string | null): void {
+    if (modelVersion !== null) this.modelVersion = modelVersion;
+    if (executionProvider !== null) this.executionProvider = executionProvider;
+  }
+
+  /** Records bounded Fast Gate execution counters for the exported trace (F-02). */
+  public setMiningCounters(counters: MiningCounters | null): void {
+    this.miningCounters = counters ? { ...counters } : null;
   }
 
   /** Binds the trace to a session, called when a session starts. */
@@ -115,66 +177,68 @@ export class ExperimentRecorder {
     return this.sessionSnapshot?.conditionId;
   }
 
+  public getProvenance(): SessionProvenance {
+    return this.sessionSnapshot?.provenance ?? 'scripted';
+  }
+
+  /**
+   * Appends to a buffer, counting any eviction. Every buffer uses this so truncation is
+   * always accounted for — a silent `shift()` is indistinguishable from data that never
+   * existed (F-16).
+   */
+  private append<T>(buffer: TraceBufferName, target: T[], item: T): void {
+    if (target.length >= this.maxBufferSize) {
+      target.shift();
+      this.evictions[buffer] += 1;
+    }
+    target.push(item);
+  }
+
   public recordBehaviourEvent(event: BehaviourEvent): void {
     defaultCollector.timeSync('trace recording', 'main', () => {
-      if (this.behaviourEvents.length >= this.maxBufferSize) {
-        this.behaviourEvents.shift();
-      }
-      this.behaviourEvents.push(event);
+      this.append('behaviourEvents', this.behaviourEvents, event);
     });
   }
 
   public recordMicroTensor(window: MicroTensorWindow): void {
     defaultCollector.timeSync('trace recording', 'main', () => {
-      if (this.microTensors.length >= this.maxBufferSize) {
-        this.microTensors.shift();
-      }
-      this.microTensors.push(window);
+      this.append('microTensors', this.microTensors, window);
     }, { windowId: window.windowId });
   }
 
   public recordMacroInteraction(event: MacroInteraction): void {
     defaultCollector.timeSync('trace recording', 'main', () => {
-      if (this.macroInteractions.length >= this.maxBufferSize) {
-        this.macroInteractions.shift();
-      }
-      this.macroInteractions.push(event);
+      this.append('macroInteractions', this.macroInteractions, event);
     }, { windowId: event.windowId });
   }
 
   public recordOutcome(event: OutcomeEvent): void {
     defaultCollector.timeSync('trace recording', 'main', () => {
-      if (this.outcomes.length >= this.maxBufferSize) {
-        this.outcomes.shift();
-      }
-      this.outcomes.push(event);
+      this.append('outcomes', this.outcomes, event);
     }, { windowId: event.windowId });
   }
 
   public recordPrediction(event: PredictionEvent): void {
     defaultCollector.timeSync('trace recording', 'main', () => {
-      if (this.predictions.length >= this.maxBufferSize) {
-        this.predictions.shift();
-      }
-      this.predictions.push(event);
+      this.append('predictions', this.predictions, event);
+    }, { windowId: event.windowId });
+  }
+
+  public recordPolicyDecision(event: PolicyDecisionEvent): void {
+    defaultCollector.timeSync('trace recording', 'main', () => {
+      this.append('policyDecisions', this.policyDecisions, event);
     }, { windowId: event.windowId });
   }
 
   public recordIntervention(event: InterventionEvent): void {
     defaultCollector.timeSync('trace recording', 'main', () => {
-      if (this.interventions.length >= this.maxBufferSize) {
-        this.interventions.shift();
-      }
-      this.interventions.push(event);
+      this.append('interventions', this.interventions, event);
     });
   }
 
   public recordTaskEvent(event: TaskEvent): void {
     defaultCollector.timeSync('trace recording', 'main', () => {
-      if (this.taskEvents.length >= this.maxBufferSize) {
-        this.taskEvents.shift();
-      }
-      this.taskEvents.push(event);
+      this.append('taskEvents', this.taskEvents, event);
     });
   }
 
@@ -214,9 +278,81 @@ export class ExperimentRecorder {
       macroInteractions: [...this.macroInteractions],
       outcomes: [...this.outcomes],
       predictions: [...this.predictions],
+      policyDecisions: [...this.policyDecisions],
       interventions: [...this.interventions],
       taskEvents: [...this.taskEvents]
     };
+  }
+
+  /**
+   * Detects the integrity problems a researcher must not have to discover by accident.
+   * Returns an empty array for a clean capture.
+   */
+  private collectIntegrityWarnings(session: SessionContext): string[] {
+    const warnings: string[] = [];
+
+    const evictions = this.getEvictionCounters();
+    if (evictions.truncated) {
+      const detail = Object.entries(evictions.byBuffer)
+        .filter(([, count]) => count > 0)
+        .map(([name, count]) => `${name}=${count}`)
+        .join(', ');
+      warnings.push(
+        `Trace is truncated: ${evictions.total} record(s) were evicted by the buffer cap (${detail}). ` +
+          'The beginning of the session is missing and this trace must not be analysed as whole.'
+      );
+    }
+
+    const appliedEpisodes = new Map<string, number>();
+    const terminalEpisodes = new Set<string>();
+    for (const event of this.interventions) {
+      if (!event.interventionEpisodeId) continue;
+      if (event.type === 'applied') {
+        appliedEpisodes.set(event.interventionEpisodeId, (appliedEpisodes.get(event.interventionEpisodeId) ?? 0) + 1);
+      } else if (event.type === 'reverted' || event.type === 'dismissed') {
+        terminalEpisodes.add(event.interventionEpisodeId);
+      }
+    }
+    const unterminated = [...appliedEpisodes.keys()].filter((id) => !terminalEpisodes.has(id));
+    if (unterminated.length > 0) {
+      warnings.push(
+        `Intervention episode(s) applied with no terminal event: ${unterminated.join(', ')}. ` +
+          'An adaptation with no recorded expiry or dismissal leaves the rest of the session contaminated.'
+      );
+    }
+
+    const windowsWithOutcome = new Set(
+      this.outcomes.map((o) => o.windowId).filter((id): id is number => typeof id === 'number')
+    );
+
+    // Only a *stale* window is orphaned; windows still inside their settlement allowance are
+    // in flight, not missing. The definition is shared with the trace verifier so a live capture
+    // and the verifier cannot disagree about what "orphaned" means (F-13).
+    const lookaheadMaxMs = PIPELINE_CONFIG.target_generation.lookahead_horizon_ms[1];
+    const pendingOutcomeGraceMs =
+      this.effectiveConfig?.windowing?.pendingOutcomeGraceMs ??
+      DEFAULT_RUNTIME_CONFIG.windowing.pendingOutcomeGraceMs;
+    const orphanedWindows = findOrphanedWindows(
+      this.microTensors,
+      windowsWithOutcome,
+      lookaheadMaxMs,
+      pendingOutcomeGraceMs
+    );
+
+    if (orphanedWindows.length > 0) {
+      warnings.push(
+        `${orphanedWindows.length} MicroTensor window(s) passed their settlement allowance with no outcome record ` +
+          `(first: ${orphanedWindows.slice(0, 5).join(', ')}).`
+      );
+    }
+
+    // Provenance must never be absent: an unlabelled trace could be mistaken for
+    // participant data (ADR-018).
+    if (session.provenance !== 'scripted' && session.provenance !== 'participant') {
+      warnings.push("Session provenance is missing; the trace cannot be classified as scripted or participant.");
+    }
+
+    return warnings;
   }
 
   /**
@@ -225,9 +361,9 @@ export class ExperimentRecorder {
   public exportSerializable(): SerializableExperimentTrace {
     const activeSession = this.resolveSession();
     const taskState = this.taskStateProvider ? (this.taskStateProvider() ?? DEFAULT_TASK_STATE) : DEFAULT_TASK_STATE;
-    // durationMs is derived from epoch clocks only. Subtracting the monotonic
+    // durationMs is measured on the canonical clock. Subtracting the monotonic
     // `startedAt` from `Date.now()` produced a meaningless value (assessment §16.4).
-    const now = Date.now();
+    const now = getWallClockTimestamp();
     const startedAtEpochMs = activeSession.startedAtEpochMs ?? 0;
     const durationMs = startedAtEpochMs > 0 ? Math.max(0, now - startedAtEpochMs) : 0;
 
@@ -237,8 +373,11 @@ export class ExperimentRecorder {
       this.macroInteractions.length +
       this.outcomes.length +
       this.predictions.length +
+      this.policyDecisions.length +
       this.interventions.length +
       this.taskEvents.length;
+
+    const integrityWarnings = this.collectIntegrityWarnings(activeSession);
 
     const metadata: TraceReplayMetadata = {
       durationMs,
@@ -249,13 +388,23 @@ export class ExperimentRecorder {
       outcomeCount: this.outcomes.length,
       predictionCount: this.predictions.length,
       interventionCount: this.interventions.length,
+      policyDecisionCount: this.policyDecisions.length,
       taskEventCount: this.taskEvents.length,
       finalTaskStatus: taskState.status,
       experimentId: activeSession.experimentId,
       conditionId: activeSession.conditionId,
       uiVersion: TESTBED_UI_VERSION,
       settlementDelayMs: PREPROCESSING_CONFIG.settlement_delay_ms ?? PREPROCESSING_CONFIG.stride_ms,
-      effectiveConfig: this.effectiveConfig ?? undefined
+      effectiveConfig: this.effectiveConfig ?? undefined,
+      clock: TRACE_CLOCK_MODE,
+      provenance: activeSession.provenance ?? 'scripted',
+      applicationVersion: APPLICATION_VERSION,
+      modelVersion: this.modelVersion ?? undefined,
+      executionProvider: this.executionProvider ?? undefined,
+      policyVersion: POLICY_VERSION,
+      mining: this.miningCounters ?? undefined,
+      evictions: this.getEvictionCounters(),
+      integrityWarnings
     };
 
     return {
@@ -266,6 +415,11 @@ export class ExperimentRecorder {
       metadata,
       effectiveConfig: this.effectiveConfig ?? undefined,
       behaviourEvents: [...this.behaviourEvents],
+      // Window bounds are already on the canonical clock: the window grid is anchored to the
+      // first observed event timestamp and advanced by `getWallClockTimestamp()`, and observed
+      // event timestamps are epoch milliseconds. They are therefore written through unchanged.
+      // An earlier revision of this export applied a session epoch offset here as well, which
+      // double-counted it and produced window bounds ~2x the event timeline.
       microTensors: this.microTensors.map((m) => ({
         windowId: m.windowId,
         windowStart: m.windowStart,
@@ -277,6 +431,7 @@ export class ExperimentRecorder {
       macroInteractions: [...this.macroInteractions],
       outcomes: [...this.outcomes],
       predictions: [...this.predictions],
+      policyDecisions: [...this.policyDecisions],
       interventions: [...this.interventions],
       taskEvents: [...this.taskEvents]
     };
@@ -339,8 +494,28 @@ export class ExperimentRecorder {
     this.macroInteractions = [];
     this.outcomes = [];
     this.predictions = [];
+    this.policyDecisions = [];
     this.interventions = [];
     this.taskEvents = [];
+    for (const name of TRACE_BUFFER_NAMES) {
+      this.evictions[name] = 0;
+    }
+    this.miningCounters = null;
+  }
+
+  /**
+   * Returns the proof that telemetry was not silently truncated. `truncated` is true when
+   * any buffer evicted a record, which means the trace is missing its earliest data.
+   */
+  public getEvictionCounters(): EvictionCounters {
+    const byBuffer: Record<string, number> = {};
+    let total = 0;
+    for (const name of TRACE_BUFFER_NAMES) {
+      const count = this.evictions[name] ?? 0;
+      byBuffer[name] = count;
+      total += count;
+    }
+    return { total, byBuffer, truncated: total > 0 };
   }
 
   /**
@@ -352,6 +527,7 @@ export class ExperimentRecorder {
     macroInteractions: number;
     outcomes: number;
     predictions: number;
+    policyDecisions: number;
     interventions: number;
     taskEvents: number;
     total: number;
@@ -362,6 +538,7 @@ export class ExperimentRecorder {
       macroInteractions: this.macroInteractions.length,
       outcomes: this.outcomes.length,
       predictions: this.predictions.length,
+      policyDecisions: this.policyDecisions.length,
       interventions: this.interventions.length,
       taskEvents: this.taskEvents.length
     };
@@ -373,6 +550,7 @@ export class ExperimentRecorder {
         counts.macroInteractions +
         counts.outcomes +
         counts.predictions +
+        counts.policyDecisions +
         counts.interventions +
         counts.taskEvents
     };

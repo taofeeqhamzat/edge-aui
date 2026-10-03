@@ -16,6 +16,7 @@ import {
   InterventionType,
   createNoOpCommand
 } from './types';
+import type { PolicyRejectionCategory } from '../telemetry/events';
 import { defaultCollector } from '../runtime/instrumentation';
 
 export interface PolicyConfig {
@@ -45,6 +46,12 @@ export interface PolicyConfig {
    * immediately would be counter-productive.
    */
   dismissalCooldownMs: number;
+  /**
+   * How long an accepted adaptation stays in the interface before it is automatically
+   * reverted. Without this the adaptation persisted for the remainder of the session,
+   * which biased every later measurement in that session (F-03).
+   */
+  ttlMs: number;
 }
 
 export const DEFAULT_POLICY_CONFIG: PolicyConfig = {
@@ -52,14 +59,31 @@ export const DEFAULT_POLICY_CONFIG: PolicyConfig = {
   requiredConsecutiveWindows: 2,
   enforceContextEligibility: true,
   cooldownMs: 5000,
-  dismissalCooldownMs: 15000
+  dismissalCooldownMs: 15000,
+  ttlMs: 8000
 };
+
+/**
+ * Grouping key for a refusal. The category vocabulary lives with the trace schema
+ * (`telemetry/events.ts`) because it is persisted; the policy only chooses from it, so the
+ * runtime, the trace and the analysis all share one definition (F-07).
+ */
+export type PolicyRefusalCategory = Extract<
+  PolicyRejectionCategory,
+  'cooldown' | 'dismissed' | 'below_threshold' | 'ineligible_context' | 'pending_persistence' | 'unknown_candidate'
+> | 'none';
 
 export interface PolicyDecision {
   accepted: boolean;
   command: InterventionCommand;
   reason: string;
   candidateCount?: number;
+  /** Structured refusal cause; `'none'` when the candidate was accepted. */
+  rejectionCategory: PolicyRefusalCategory;
+  /** Cooldown remaining at decision time, in milliseconds. */
+  cooldownRemainingMs: number;
+  /** Adaptation lifetime applied when accepted; undefined when rejected. */
+  ttlMs?: number;
 }
 
 export class InterventionPolicy {
@@ -99,21 +123,23 @@ export class InterventionPolicy {
           accepted: true,
           command,
           reason: 'Safe default no_op maintained',
-          candidateCount: 0
+          candidateCount: 0,
+          rejectionCategory: 'none',
+          cooldownRemainingMs: this.cooldownRemainingMs()
         };
       }
 
       // 3. Cooldown Gate: suppress re-actuation during the refractory period
       const now = Date.now();
       if (this.cooldownUntilMs > now) {
+        const remaining = this.cooldownUntilMs - now;
         return {
           accepted: false,
-          command: createNoOpCommand(
-            command.source,
-            `Cooldown active for ${this.cooldownUntilMs - now}ms`
-          ),
-          reason: `Cooldown active (${this.cooldownUntilMs - now}ms remaining)`,
-          candidateCount: 0
+          command: createNoOpCommand(command.source, `Cooldown active for ${remaining}ms`),
+          reason: `Cooldown active (${remaining}ms remaining)`,
+          candidateCount: 0,
+          rejectionCategory: 'cooldown',
+          cooldownRemainingMs: remaining
         };
       }
 
@@ -127,7 +153,9 @@ export class InterventionPolicy {
             `Intervention '${command.type}' was recently dismissed`
           ),
           reason: `Suppressed after dismissal (${dismissedUntil - now}ms remaining)`,
-          candidateCount: 0
+          candidateCount: 0,
+          rejectionCategory: 'dismissed',
+          cooldownRemainingMs: 0
         };
       }
 
@@ -141,7 +169,9 @@ export class InterventionPolicy {
             `Confidence (${command.confidence.toFixed(2)}) below threshold (${this.config.confidenceThreshold})`
           ),
           reason: `Confidence ${command.confidence.toFixed(2)} below threshold ${this.config.confidenceThreshold}`,
-          candidateCount: 0
+          candidateCount: 0,
+          rejectionCategory: 'below_threshold',
+          cooldownRemainingMs: 0
         };
       }
 
@@ -154,7 +184,9 @@ export class InterventionPolicy {
             accepted: false,
             command: createNoOpCommand(command.source, eligibility.reason),
             reason: eligibility.reason,
-            candidateCount: 0
+            candidateCount: 0,
+            rejectionCategory: eligibility.category,
+            cooldownRemainingMs: 0
           };
         }
       }
@@ -178,9 +210,14 @@ export class InterventionPolicy {
         this.cooldownUntilMs = now + this.config.cooldownMs;
         return {
           accepted: true,
-          command,
+          // The adaptation lifetime is attached here, at the one place every accepted
+          // command passes through, so no producer can forget it (F-03).
+          command: { ...command, ttlMs: command.ttlMs ?? this.config.ttlMs },
           reason: `Candidate met persistence requirement (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
-          candidateCount: this.candidateCount
+          candidateCount: this.candidateCount,
+          rejectionCategory: 'none',
+          cooldownRemainingMs: this.config.cooldownMs,
+          ttlMs: command.ttlMs ?? this.config.ttlMs
         };
       }
 
@@ -192,7 +229,9 @@ export class InterventionPolicy {
           `Awaiting consecutive window persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`
         ),
         reason: `Transient recommendation pending persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
-        candidateCount: this.candidateCount
+        candidateCount: this.candidateCount,
+        rejectionCategory: 'pending_persistence',
+        cooldownRemainingMs: 0
       };
     });
   }
@@ -249,44 +288,55 @@ export class InterventionPolicy {
   private checkContextEligibility(
     command: InterventionCommand,
     context: UIContext
-  ): { eligible: boolean; reason: string } {
+  ): { eligible: boolean; reason: string; category: PolicyRefusalCategory } {
     switch (command.type) {
       case 'highlight_primary_action':
         if (!context.primaryActionAvailable) {
           return {
             eligible: false,
-            reason: 'Ineligible: No primary action available in current UI context'
+            reason: 'Ineligible: No primary action available in current UI context',
+            category: 'ineligible_context'
           };
         }
-        return { eligible: true, reason: 'Primary action is available' };
+        return { eligible: true, reason: 'Primary action is available', category: 'none' };
 
       case 'simplify_options':
         if (!context.expandable) {
           return {
             eligible: false,
-            reason: 'Ineligible: No expandable options or accordions in current UI context'
+            reason: 'Ineligible: No expandable options or accordions in current UI context',
+            category: 'ineligible_context'
           };
         }
-        return { eligible: true, reason: 'Expandable options are present' };
+        return { eligible: true, reason: 'Expandable options are present', category: 'none' };
 
       case 'expand_tooltip':
         if (!context.helpAvailable && !command.targetComponentId) {
           return {
             eligible: false,
-            reason: 'Ineligible: No contextual help or tooltip available in current UI context'
+            reason: 'Ineligible: No contextual help or tooltip available in current UI context',
+            category: 'ineligible_context'
           };
         }
-        return { eligible: true, reason: 'Contextual help or target component is available' };
+        return {
+          eligible: true,
+          reason: 'Contextual help or target component is available',
+          category: 'none'
+        };
 
       case 'offer_assistance':
         // Assistance banner can be presented in any interactive task view
-        return { eligible: true, reason: 'Assistance banner is eligible' };
+        return { eligible: true, reason: 'Assistance banner is eligible', category: 'none' };
 
       case 'no_op':
-        return { eligible: true, reason: 'no_op is always eligible' };
+        return { eligible: true, reason: 'no_op is always eligible', category: 'none' };
 
       default:
-        return { eligible: false, reason: `Unknown intervention type: ${(command as any).type}` };
+        return {
+          eligible: false,
+          reason: `Unknown intervention type: ${(command as any).type}`,
+          category: 'unknown_candidate'
+        };
     }
   }
 }
