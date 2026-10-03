@@ -47,7 +47,9 @@ describe('DebugPanel (Task 10.2)', () => {
       slowGateStatus: { called: false },
       interventionStatus: { type: 'highlight_primary_action', source: 'fast', confidence: 1.0, state: 'applied' },
       inferenceLatencyMs: 2.34,
-      featureLatencyMs: 0.85,
+      // Renamed from `featureLatencyMs`: the old label claimed feature-extraction timing
+      // but measured the whole evaluate-and-act cycle (F-08).
+      evaluationCycleLatencyMs: 0.85,
       workerStatus: 'ready'
     });
 

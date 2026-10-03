@@ -1,17 +1,23 @@
 /**
- * Development Debug Panel & Telemetry Visualizer
+ * Development / Researcher Debug Panel & Telemetry Visualiser
  * Implements Stage 10.2 specifications from docs/testbed/prd.md Section 38 & docs/plan/tasks/10.2.md.
  *
- * Prioritizes:
- * 1. Session ID, Task, Task Step, Current UI Context
- * 2. Fast Gate & Slow Gate Arbitration + Intervention Decision
- * 3. Latency benchmarks (inference, feature generation) & Worker status
- * 4. Macro Sequence (A -> B -> C -> D)
- * 5. 18-D MicroTensor values and modality mask bits
- * 6. Local trace recording stats and zero-backend JSON export trigger
+ * Prioritises, in the order a researcher needs them while watching a session:
+ * 1. Session, Task, Task Step, Current UI Context, provenance
+ * 2. The explicit decision state, so "why did nothing happen?" never requires guesswork
+ * 3. Fast Gate / Slow Gate arbitration, prediction and policy reason
+ * 4. Active intervention episode, actuator status and expiry
+ * 5. Latency, model/provider provenance and worker status
+ * 6. Macro Sequence (A -> B -> C -> D)
+ * 7. 18-D MicroTensor values and modality mask bits, labelled active or inactive
+ * 8. Trace recording, eviction and collection state, plus zero-backend JSON export
+ *
+ * Availability: shown in development, and in a production build behind `?auiDiagnostics=1`
+ * or `VITE_AUI_DIAGNOSTICS=1`. The panel used to be excluded from production entirely with
+ * no way in, which meant a packaged build had no live observability at all (F-22).
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "./DebugPanel.css";
 import { sessionManager, SessionContext } from "../telemetry/session";
 import { taskManager } from "../testbed/tasks/taskManager";
@@ -37,17 +43,40 @@ const FEATURE_LABELS = [
   "scroll_vel",
 ];
 
+/**
+ * Whether the researcher panel should be reachable in this build.
+ *
+ * Exported so it can be tested without rendering, and so the decision is in one place.
+ */
+export function isDiagnosticsVisible(
+  forceShow: boolean,
+  isDev: boolean,
+  search: string,
+  envFlag?: string
+): boolean {
+  if (forceShow) return true;
+  if (isDev) return true;
+  if (envFlag === '1' || envFlag === 'true') return true;
+  try {
+    const params = new URLSearchParams(search);
+    return params.get('auiDiagnostics') === '1' || params.get('auiDiagnostics') === 'true';
+  } catch {
+    return false;
+  }
+}
+
 export const DebugPanel: React.FC<DebugPanelProps> = ({
   forceShow = false,
 }) => {
-  // Exclude completely from production builds unless explicitly forced
   const isDev =
     typeof import.meta !== "undefined" && import.meta.env
       ? Boolean(import.meta.env.DEV)
       : true;
-  if (!isDev && !forceShow) {
-    return null;
-  }
+  const envFlag =
+    typeof import.meta !== "undefined" && import.meta.env
+      ? (import.meta.env.VITE_AUI_DIAGNOSTICS as string | undefined)
+      : undefined;
+  const search = typeof window !== "undefined" ? window.location.search : "";
 
   const [isOpen, setIsOpen] = useState(false);
   const [session, setSession] = useState<SessionContext | null>(
@@ -86,18 +115,18 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
     };
   }, []);
 
-  const handleExportTrace = () => {
+  const handleExportTrace = useCallback(() => {
     experimentRecorder.downloadTraceAsJSON();
-  };
+  }, []);
 
-  const handleClearTrace = () => {
+  const handleClearTrace = useCallback(() => {
     experimentRecorder.clear();
     setEventCounts(experimentRecorder.getEventCounts());
-  };
+  }, []);
 
-  const handleResetTask = () => {
+  const handleResetTask = useCallback(() => {
     taskManager.resetTask();
-  };
+  }, []);
 
   // Determine active task details
   const activeTask = taskState.currentTaskId
@@ -113,9 +142,21 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
     .slice(9, 18)
     .map((v) => (v > 0.5 ? "1" : "0"))
     .join("");
+  const windowIsInactive = Boolean(liveMetrics.latestWindowInactive);
 
   // Macro sequence
   const macroSequence = liveMetrics.latestMacroSequence ?? [];
+
+  const evictionCounters = useMemo(
+    () => experimentRecorder.getEvictionCounters(),
+    [eventCounts.total],
+  );
+
+  const collectionState = liveMetrics.collectionState ?? "not configured";
+
+  if (!isDiagnosticsVisible(forceShow, isDev, search, envFlag)) {
+    return null;
+  }
 
   if (!isOpen) {
     return (
@@ -179,6 +220,19 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
               </span>
             </div>
             <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Condition:</span>
+              <span className="edge-aui-debug-val highlight">
+                {session?.conditionId ?? "--"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Provenance:</span>
+              <span className="edge-aui-debug-val dim">
+                {session?.provenance ?? "scripted"}
+                {session?.participantId ? ` (${session.participantId})` : ""}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
               <span className="edge-aui-debug-label">Task:</span>
               <span className="edge-aui-debug-val highlight">
                 {activeTask
@@ -216,7 +270,113 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </div>
           </div>
 
-          {/* Priority 2: Dual-Gate Arbitration & Decisions */}
+          {/* Priority 2: Decision State — the answer to "did it intervene, and why?" */}
+          <div className="edge-aui-debug-section">
+            <div className="edge-aui-debug-section-title">
+              Decision State
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">State:</span>
+              <span
+                className={`edge-aui-debug-val ${
+                  liveMetrics.policyState === "POLICY REJECTED" ||
+                  liveMetrics.policyState === "ACTUATION FAILED"
+                    ? "warning"
+                    : liveMetrics.policyState === "ACTUATED"
+                      ? "success"
+                      : "dim"
+                }`}
+                data-testid="aui-policy-state"
+              >
+                {liveMetrics.policyState ?? "NO PREDICTION"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Policy Reason:</span>
+              <span className="edge-aui-debug-val">
+                {liveMetrics.policyReason ??
+                  liveMetrics.interventionStatus?.state ??
+                  "idle"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Current Window:</span>
+              <span className="edge-aui-debug-val">
+                {liveMetrics.latestWindowId !== undefined
+                  ? `#${liveMetrics.latestWindowId}`
+                  : "--"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Prediction ID:</span>
+              <span className="edge-aui-debug-val dim">
+                {liveMetrics.latestPredictionId ?? "--"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Matched Gate:</span>
+              <span className="edge-aui-debug-val">
+                {liveMetrics.matchedGate ?? "--"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Mapping Source:</span>
+              <span className="edge-aui-debug-val dim">
+                {liveMetrics.mappingSource ?? "--"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Candidate Lines:</span>
+              <span className="edge-aui-debug-val dim">
+                {liveMetrics.candidateCount !== undefined
+                  ? liveMetrics.candidateCount
+                  : "--"}
+                {" | cooldown: "}
+                {liveMetrics.policyCooldownRemainingMs !== undefined
+                  ? `${liveMetrics.policyCooldownRemainingMs} ms`
+                  : "--"}
+              </span>
+            </div>
+          </div>
+
+          {/* Priority 3: Active Intervention Episode */}
+          <div className="edge-aui-debug-section">
+            <div className="edge-aui-debug-section-title">
+              Active Intervention Episode
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Episode:</span>
+              <span className="edge-aui-debug-val" data-testid="aui-active-episode">
+                {liveMetrics.activeEpisodeId ?? "none"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Actuator Status:</span>
+              <span
+                className={`edge-aui-debug-val ${
+                  liveMetrics.activeEpisodeId ? "success" : "dim"
+                }`}
+              >
+                {liveMetrics.activeEpisodeId
+                  ? `ACTIVE (${liveMetrics.activeIntervention ?? "unknown"})`
+                  : liveMetrics.policyState === "EXPIRED"
+                    ? "EXPIRED"
+                    : liveMetrics.policyState === "DISMISSED"
+                      ? "DISMISSED"
+                      : "idle"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">TTL:</span>
+              <span className="edge-aui-debug-val dim">
+                {liveMetrics.activeInterventionTtlMs !== undefined
+                  ? `${liveMetrics.activeInterventionTtlMs} ms`
+                  : "--"}
+              </span>
+            </div>
+          </div>
+
+          {/* Priority 4: Dual-Gate Arbitration */}
           <div className="edge-aui-debug-section">
             <div className="edge-aui-debug-section-title">
               Gate Arbitration & Decisions
@@ -233,6 +393,12 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
                   : "no match"}
               </span>
             </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Fast Corpus:</span>
+              <span className="edge-aui-debug-val dim">
+                {liveMetrics.fastGateCorpusSize ?? "--"}
+              </span>
+            </div>
 
             {/* Slow Gate */}
             <div className="edge-aui-debug-row">
@@ -243,6 +409,22 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
                 {liveMetrics.slowGateStatus?.called
                   ? `${liveMetrics.slowGateStatus.outcome ?? "CALLED"} (conf: ${(liveMetrics.slowGateStatus.confidence ?? 0).toFixed(2)})`
                   : "skipped"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Slow Gate Mode:</span>
+              <span className="edge-aui-debug-val dim">
+                {liveMetrics.slowGateMode ?? "--"}
+              </span>
+            </div>
+
+            {/* Prediction confidence */}
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Confidence:</span>
+              <span className="edge-aui-debug-val">
+                {liveMetrics.interventionStatus?.confidence !== undefined
+                  ? liveMetrics.interventionStatus.confidence.toFixed(3)
+                  : "--"}
               </span>
             </div>
 
@@ -267,10 +449,10 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </div>
           </div>
 
-          {/* Priority 3: Latency & Worker Runtime Status */}
+          {/* Priority 5: Latency, Model & Worker Runtime Status */}
           <div className="edge-aui-debug-section">
             <div className="edge-aui-debug-section-title">
-              Latency & Worker Status
+              Latency, Model & Worker Status
             </div>
             <div className="edge-aui-debug-row">
               <span className="edge-aui-debug-label">Inference Latency:</span>
@@ -282,12 +464,27 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </div>
             <div className="edge-aui-debug-row">
               <span className="edge-aui-debug-label">
-                Feature Extr. Latency:
+                Evaluate+Act Cycle:
               </span>
               <span className="edge-aui-debug-val">
-                {liveMetrics.featureLatencyMs !== undefined
-                  ? `${liveMetrics.featureLatencyMs.toFixed(2)} ms`
+                {liveMetrics.evaluationCycleLatencyMs !== undefined
+                  ? `${liveMetrics.evaluationCycleLatencyMs.toFixed(2)} ms`
                   : "--"}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Model:</span>
+              <span className="edge-aui-debug-val dim">
+                {liveMetrics.modelLoaded ? "loaded" : "not loaded"}
+                {liveMetrics.executionProvider
+                  ? ` [${liveMetrics.executionProvider}]`
+                  : ""}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Model Version:</span>
+              <span className="edge-aui-debug-val dim">
+                {liveMetrics.modelVersion ?? "--"}
               </span>
             </div>
             <div className="edge-aui-debug-row">
@@ -298,6 +495,18 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
                 {liveMetrics.workerStatus ?? "uninitialized"}
               </span>
             </div>
+            {liveMetrics.miningCounters && (
+              <div className="edge-aui-debug-row">
+                <span className="edge-aui-debug-label">Mining:</span>
+                <span className="edge-aui-debug-val dim">
+                  executed:{liveMetrics.miningCounters.executed} skipped:
+                  {liveMetrics.miningCounters.skipped} superseded:
+                  {liveMetrics.miningCounters.superseded} timedOut:
+                  {liveMetrics.miningCounters.timedOut} dropped:
+                  {liveMetrics.miningCounters.droppedWindows}
+                </span>
+              </div>
+            )}
             {liveMetrics.stageTimings && Object.keys(liveMetrics.stageTimings).length > 0 && (
               <div style={{ marginTop: '8px', borderTop: '1px solid #334155', paddingTop: '6px' }}>
                 <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>
@@ -317,7 +526,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             )}
           </div>
 
-          {/* Priority 4: Macro Interaction Sequence */}
+          {/* Priority 6: Macro Interaction Sequence */}
           <div className="edge-aui-debug-section">
             <div className="edge-aui-debug-section-title">Macro Sequence</div>
             <div className="edge-aui-debug-sequence">
@@ -338,10 +547,16 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </div>
           </div>
 
-          {/* Priority 5: Latest 18-D MicroTensor */}
+          {/* Priority 7: Latest 18-D MicroTensor */}
           <div className="edge-aui-debug-section">
             <div className="edge-aui-debug-section-title">
               Latest MicroTensor (18-D)
+              {windowIsInactive && (
+                <span className="edge-aui-debug-val dim" data-testid="aui-window-inactive">
+                  {" "}
+                  — INACTIVITY WINDOW (zero values are expected)
+                </span>
+              )}
             </div>
             <div className="edge-aui-debug-tensor-grid">
               {featureValues.map((val, idx) => (
@@ -362,9 +577,15 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
               <span>Modality Mask:</span>
               <span className="edge-aui-debug-mask-bits">[{maskBits}]</span>
             </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Window Events:</span>
+              <span className="edge-aui-debug-val dim">
+                {liveMetrics.latestWindowEventCount ?? "--"}
+              </span>
+            </div>
           </div>
 
-          {/* Buffer Event Counts */}
+          {/* Trace Recording, Truncation and Collection State */}
           <div className="edge-aui-debug-section">
             <div className="edge-aui-debug-section-title">Recorder Buffers</div>
             <div className="edge-aui-debug-row">
@@ -372,7 +593,35 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
               <span className="edge-aui-debug-val">
                 {eventCounts.total} (B:{eventCounts.behaviourEvents} M:
                 {eventCounts.macroInteractions} T:{eventCounts.microTensors} O:
-                {eventCounts.outcomes} I:{eventCounts.interventions})
+                {eventCounts.outcomes} I:{eventCounts.interventions} P:
+                {eventCounts.policyDecisions} K:{eventCounts.taskEvents})
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Evicted Records:</span>
+              <span
+                className={`edge-aui-debug-val ${
+                  evictionCounters.truncated ? "warning" : "dim"
+                }`}
+                data-testid="aui-evictions"
+              >
+                {evictionCounters.total}
+                {evictionCounters.truncated ? " (TRACE TRUNCATED)" : ""}
+              </span>
+            </div>
+            <div className="edge-aui-debug-row">
+              <span className="edge-aui-debug-label">Collection:</span>
+              <span
+                className={`edge-aui-debug-val ${
+                  collectionState === "uploaded"
+                    ? "success"
+                    : collectionState === "failed"
+                      ? "warning"
+                      : "dim"
+                }`}
+                data-testid="aui-collection-state"
+              >
+                {collectionState}
               </span>
             </div>
           </div>
