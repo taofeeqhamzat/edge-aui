@@ -21,6 +21,7 @@ import {
 } from '../../intervention/types';
 import { FastGate, GateDecision } from './types';
 import { defaultCollector } from '../../runtime/instrumentation';
+import { getWallClockTimestamp } from '../../telemetry/normalizer';
 
 /** Shape of a mined frequent pattern, mirroring the Rust `PrefixSpanPattern`. */
 export interface MinedPattern {
@@ -58,8 +59,38 @@ export interface PrefixSpanFastGateOptions {
   minConfidence?: number;
   /** Maximum number of patterns considered per evaluation. Default 32. */
   maxPatterns?: number;
+  /**
+   * Longest pattern considered actionable, in symbols.
+   *
+   * The miner's cost grows with sequence length and alphabet repetition, so an unbounded
+   * pattern length is a runtime hazard, not just a ranking preference. Patterns longer than
+   * this are discarded before matching. Default 4.
+   */
+  maxPatternLength?: number;
+  /**
+   * Maximum number of sequences sent to the miner per evaluation.
+   *
+   * The mining corpus is the dominant cost input: mining cost measured at multi-second
+   * p95 on a corpus of nine sequences with an unbounded repeated-symbol alphabet. The
+   * corpus is therefore truncated to its most recent `maxCorpusSequences` entries, which
+   * bounds the work without discarding the current session. Default 40.
+   */
+  maxCorpusSequences?: number;
+  /**
+   * Wall-clock deadline for one mining call, in milliseconds.
+   *
+   * The miner runs inside the runtime worker, which handles messages strictly serially, so
+   * an over-running mine blocks every queued window. This deadline converts that into a
+   * recorded, bounded failure rather than an unbounded stall. Default 1500 ms.
+   */
+  miningTimeoutMs?: number;
   /** Confidence reported on emitted decisions. Default 1.0. */
   defaultConfidence?: number;
+  /**
+   * Invoked once per evaluation with the outcome, so bounded-execution counters can be
+   * published without this gate depending on the diagnostics layer.
+   */
+  onEvaluationOutcome?: (outcome: FastGateEvaluationOutcome) => void;
   /**
    * When true, the observed sequence must end with the pattern exactly (suffix match).
    *
@@ -72,6 +103,9 @@ export interface PrefixSpanFastGateOptions {
   suffixMatchOnly?: boolean;
 }
 
+/** How one Fast Gate evaluation ended, for bounded-execution accounting. */
+export type FastGateEvaluationOutcome = 'executed' | 'no_corpus' | 'timed_out' | 'failed';
+
 /**
  * Deterministic Fast Gate driven by frequent-sequence mining (PrefixSpan).
  */
@@ -79,7 +113,14 @@ export class PrefixSpanFastGate implements FastGate {
   private readonly options: Required<
     Pick<
       PrefixSpanFastGateOptions,
-      'minSupport' | 'minConfidence' | 'maxPatterns' | 'defaultConfidence' | 'suffixMatchOnly'
+      | 'minSupport'
+      | 'minConfidence'
+      | 'maxPatterns'
+      | 'maxPatternLength'
+      | 'maxCorpusSequences'
+      | 'miningTimeoutMs'
+      | 'defaultConfidence'
+      | 'suffixMatchOnly'
     >
   > & PrefixSpanFastGateOptions;
 
@@ -89,6 +130,9 @@ export class PrefixSpanFastGate implements FastGate {
       minSupport: options.minSupport ?? 2,
       minConfidence: options.minConfidence ?? 0,
       maxPatterns: options.maxPatterns ?? 32,
+      maxPatternLength: options.maxPatternLength ?? 4,
+      maxCorpusSequences: options.maxCorpusSequences ?? 40,
+      miningTimeoutMs: options.miningTimeoutMs ?? 1500,
       defaultConfidence: options.defaultConfidence ?? 1.0,
       suffixMatchOnly: options.suffixMatchOnly ?? false
     };
@@ -108,29 +152,45 @@ export class PrefixSpanFastGate implements FastGate {
         '[PrefixSpanFastGate] No pattern miner available in this environment; ' +
           'the Fast Gate will always report a miss. Inject `mine` or run in a browser.'
       );
+      this.reportOutcome('no_corpus');
       return { matched: false, source: 'fast' };
     }
 
-    const corpus = [...this.options.getSequences()];
     const currentSymbols = sequence.map((interaction) => interaction.symbol);
 
-    // The current session must participate in mining, otherwise a pattern that only
-    // this session exhibits could never reach support.
+    // Bound the corpus before mining. Mining cost is driven by corpus size and symbol
+    // repetition, and the corpus was previously the entire macro history; truncating to the
+    // most recent entries bounds the work while keeping the current session, which is
+    // appended below and therefore always participates in mining.
+    const history = this.options.getSequences();
+    const boundedHistory =
+      history.length > this.options.maxCorpusSequences
+        ? history.slice(history.length - this.options.maxCorpusSequences)
+        : history;
+
+    const corpus = [...boundedHistory];
     corpus.push(currentSymbols);
 
     let patterns: MinedPattern[];
+    let timedOut = false;
     try {
-      patterns = await defaultCollector.timeAsync(
-        'PrefixSpan mining',
-        'wasm',
-        () => miner(corpus, this.options.minSupport)
-      );
+      const outcome = await this.runBounded(() => miner(corpus, this.options.minSupport));
+      patterns = outcome.patterns;
+      timedOut = outcome.timedOut;
+      // A deadline can expire and the mine still finish afterwards; either way the caller
+      // must not treat a late result as a fresh evaluation.
+      if (timedOut) {
+        this.reportOutcome('timed_out');
+        return { matched: false, source: 'fast' };
+      }
     } catch (err) {
       console.error('[PrefixSpanFastGate] Pattern mining failed:', err);
+      this.reportOutcome(timedOut ? 'timed_out' : 'failed');
       return { matched: false, source: 'fast' };
     }
 
     if (!patterns || patterns.length === 0) {
+      this.reportOutcome('executed');
       return { matched: false, source: 'fast' };
     }
 
@@ -140,9 +200,15 @@ export class PrefixSpanFastGate implements FastGate {
       return a.pattern.join(' > ').localeCompare(b.pattern.join(' > '));
     });
 
-    for (const pattern of ranked.slice(0, this.options.maxPatterns)) {
-      if (!pattern.pattern || pattern.pattern.length === 0) continue;
-      if (pattern.confidence < this.options.minConfidence) continue;
+    const candidates = ranked
+      // Discard over-long patterns before matching rather than after: an over-long pattern
+      // is never actionable, and considering it wastes the bounded budget.
+      .filter((pattern) => pattern.pattern && pattern.pattern.length > 0)
+      .filter((pattern) => pattern.pattern.length <= this.options.maxPatternLength)
+      .filter((pattern) => pattern.confidence >= this.options.minConfidence)
+      .slice(0, this.options.maxPatterns);
+
+    for (const pattern of candidates) {
       if (!this.matches(currentSymbols, pattern.pattern)) continue;
 
       const patternKey = pattern.pattern.join(' > ');
@@ -156,6 +222,7 @@ export class PrefixSpanFastGate implements FastGate {
 
       const intervention = this.createIntervention(resolvedIntervention, patternKey, pattern);
 
+      this.reportOutcome('executed');
       return {
         matched: true,
         source: 'fast',
@@ -165,7 +232,59 @@ export class PrefixSpanFastGate implements FastGate {
       };
     }
 
+    this.reportOutcome('executed');
     return { matched: false, source: 'fast' };
+  }
+
+  /** Reports how one evaluation ended, without letting a listener break the gate. */
+  private reportOutcome(outcome: FastGateEvaluationOutcome): void {
+    try {
+      this.options.onEvaluationOutcome?.(outcome);
+    } catch (err) {
+      console.error('[PrefixSpanFastGate] Evaluation-outcome listener error:', err);
+    }
+  }
+
+  /**
+   * Runs the miner under a wall-clock deadline.
+   *
+   * The underlying WASM call cannot be cancelled — it runs to completion inside the worker —
+   * so the deadline bounds when the *caller* stops waiting and records the outcome, which is
+   * what keeps a queued evaluation from blocking the pipeline behind it.
+   */
+  private async runBounded(
+    mine: () => Promise<MinedPattern[]>
+  ): Promise<{ patterns: MinedPattern[]; timedOut: boolean }> {
+    const work = defaultCollector.timeAsync('PrefixSpan mining', 'wasm', mine);
+
+    let expired = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        expired = true;
+        reject(new Error(`Mining deadline exceeded (${this.options.miningTimeoutMs} ms)`));
+      }, this.options.miningTimeoutMs);
+    });
+
+    try {
+      const patterns = await Promise.race([work, deadline]);
+      return { patterns, timedOut: false };
+    } catch (err) {
+      // Swallow the eventual completion/rejection so an unattended promise cannot surface as
+      // an unhandled rejection after the deadline has already been reported.
+      void work.catch(() => undefined);
+      if (expired) {
+        console.warn(
+          `[PrefixSpanFastGate] Mining exceeded its ${this.options.miningTimeoutMs} ms deadline; ` +
+            'evaluation recorded as timed out. Bounded failure replaces the previous silent ' +
+            'window drop (F-02).'
+        );
+        return { patterns: [], timedOut: true };
+      }
+      throw err;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 
   private matches(sequenceSymbols: string[], patternTokens: string[]): boolean {
@@ -195,7 +314,7 @@ export class PrefixSpanFastGate implements FastGate {
     patternKey: string,
     pattern: MinedPattern
   ): InterventionCommand {
-    const now = Date.now();
+    const now = getWallClockTimestamp();
     const reason = `PrefixSpan match (support=${pattern.support}, confidence=${pattern.confidence.toFixed(2)}): ${patternKey}`;
 
     if (typeof target === 'string' && isInterventionType(target)) {

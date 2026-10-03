@@ -55,6 +55,19 @@ export function isMacroSymbol(val: string): val is MacroSymbol {
 /**
  * Derives a semantic MacroSymbol from an observed canonical BehaviourEvent.
  * Returns null if the event is a micro-interaction (e.g. raw mousemove) without semantic intent.
+ *
+ * Two rules here exist specifically to stop the macro stream from being dominated by
+ * repetition artefacts rather than interaction episodes (assessment F-06):
+ *
+ * 1. Navigation symbols require a *deliberate* navigation act (a click on a navigation
+ *    control, or a real navigation event). They used to also be derived from
+ *    `event.route` alone, and because every event on a page carries the page's route, a
+ *    `mouseover` on the page root produced one `NAV_OVERVIEW` per hover — 18 per short trial
+ *    in the audit — which the Fast Gate then "recognised" as a pattern.
+ * 2. Accordion open/close is derived from the observed `aria-expanded` state, not from an
+ *    `action` substring. No producer ever emitted an action containing "close", so
+ *    `CLOSE_FILTERS` was unreachable while every accordion interaction became
+ *    `OPEN_FILTERS`.
  */
 export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
   const componentId = event.componentId?.toLowerCase() ?? '';
@@ -62,14 +75,31 @@ export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
   const action = event.action?.toLowerCase() ?? '';
   const type = event.type;
 
-  // 1. Navigation Actions
-  if (componentRole === 'navigation' || type === 'navigation' || componentId.startsWith('nav-')) {
-    if (componentId.includes('overview') || event.route?.toLowerCase().includes('overview')) return 'NAV_OVERVIEW';
-    if (componentId.includes('analytics') || event.route?.toLowerCase().includes('analytics')) return 'NAV_ANALYTICS';
-    if (componentId.includes('reports') || event.route?.toLowerCase().includes('reports')) return 'NAV_REPORTS';
-    if (componentId.includes('customers') || event.route?.toLowerCase().includes('customers')) return 'NAV_CUSTOMERS';
-    if (componentId.includes('settings') || event.route?.toLowerCase().includes('settings')) return 'NAV_SETTINGS';
-    return 'NAV_GENERAL';
+  // 1. Navigation Actions — only deliberate navigation.
+  const isNavigationControl =
+    componentRole === 'navigation' || componentId.startsWith('nav-') || type === 'navigation';
+  const isDeliberateNavigationAct =
+    type === 'click' || type === 'navigation' || type === 'popstate' || type === 'hashchange';
+
+  if (isNavigationControl && isDeliberateNavigationAct) {
+    if (componentId.includes('overview')) return 'NAV_OVERVIEW';
+    if (componentId.includes('analytics')) return 'NAV_ANALYTICS';
+    if (componentId.includes('reports')) return 'NAV_REPORTS';
+    if (componentId.includes('customers')) return 'NAV_CUSTOMERS';
+    if (componentId.includes('settings')) return 'NAV_SETTINGS';
+    // A navigation control whose destination the annotation does not name, plus real
+    // navigation events, are attributed from the route. The route fallback is confined to
+    // this deliberate-act branch so it cannot fire on incidental pointer traffic.
+    const route = event.route?.toLowerCase() ?? '';
+    if (route.includes('overview')) return 'NAV_OVERVIEW';
+    if (route.includes('analytics')) return 'NAV_ANALYTICS';
+    if (route.includes('reports')) return 'NAV_REPORTS';
+    if (route.includes('customers')) return 'NAV_CUSTOMERS';
+    if (route.includes('settings')) return 'NAV_SETTINGS';
+    // An unnamed destination on a real navigation event is not a navigation episode: it is
+    // the current page reporting itself. Returning NAV_GENERAL there produced one generic
+    // symbol per navigation event, which is the noise this rule removes.
+    return type === 'click' ? 'NAV_GENERAL' : null;
   }
 
   // 2. Primary Button Actions
@@ -87,10 +117,16 @@ export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
   }
 
   // 3. Filter Drawer Accordions & Form Controls
-  if (componentRole === 'accordion' || componentId === 'filter-drawer') {
-    if (action === 'click' || type === 'click') {
-      return action.includes('close') ? 'CLOSE_FILTERS' : 'OPEN_FILTERS';
-    }
+  //
+  // Open vs close comes from the observed disclosure state. When the state is unavailable
+  // the event is *not* guessed into `OPEN_FILTERS`: an unclassifiable accordion interaction
+  // produces no symbol rather than a wrong one, because a wrong symbol is mined as a
+  // behavioural pattern.
+  const isAccordionInteraction = componentRole === 'accordion' || componentId === 'filter-drawer';
+  if (isAccordionInteraction && (action === 'click' || type === 'click')) {
+    if (event.ariaExpanded === true) return 'OPEN_FILTERS';
+    if (event.ariaExpanded === false) return 'CLOSE_FILTERS';
+    return null;
   }
 
   // Generic filter-control actions fire on change/input rather than on pointer events.
@@ -125,7 +161,7 @@ export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
   // 4b. Tooltip expansion is an explicit user action on a tooltip affordance.
   if (
     (componentRole === 'tooltip' || componentId.includes('tooltip')) &&
-    (type === 'click' || action === 'expand' || action === 'EXPAND_TOOLTIP')
+    (type === 'click' || action === 'expand' || action === 'expand_tooltip')
   ) {
     return 'EXPAND_TOOLTIP';
   }

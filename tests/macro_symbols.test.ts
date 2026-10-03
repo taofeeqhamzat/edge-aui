@@ -85,9 +85,64 @@ describe('Macro Symbol Vocabulary & Derivation (Task 6.1)', () => {
       type: 'click',
       componentId: 'filter-Region',
       componentRole: 'accordion',
-      action: 'click'
+      action: 'click',
+      // Disclosure state is observed directly, so open and close are distinguishable.
+      ariaExpanded: true
     };
     expect(deriveMacroSymbol(accordionOpenEv)).toBe('OPEN_FILTERS');
+
+    const accordionCloseEv: BehaviourEvent = {
+      timestamp: 850,
+      type: 'click',
+      componentId: 'filter-Region',
+      componentRole: 'accordion',
+      action: 'click',
+      ariaExpanded: false
+    };
+    expect(deriveMacroSymbol(accordionCloseEv)).toBe('CLOSE_FILTERS');
+  });
+
+  it('does not derive navigation symbols from incidental pointer traffic (F-06)', () => {
+    // Every event on a page carries that page's route. Deriving NAV_* from the route alone
+    // meant a hover on the page root became NAV_OVERVIEW, which dominated the macro corpus
+    // and was then mined as a "frequent behavioural pattern".
+    const hoverOnPageRoot: BehaviourEvent = {
+      timestamp: 1100,
+      type: 'mouseover',
+      route: 'Overview',
+      componentId: 'page-root'
+    };
+    expect(deriveMacroSymbol(hoverOnPageRoot)).toBeNull();
+
+    const mouseMoveOnAnalytics: BehaviourEvent = {
+      timestamp: 1200,
+      type: 'mousemove',
+      route: 'Analytics',
+      componentId: 'filter-drawer'
+    };
+    expect(deriveMacroSymbol(mouseMoveOnAnalytics)).toBeNull();
+
+    // A genuine click on a navigation control still produces a navigation symbol.
+    const navClick: BehaviourEvent = {
+      timestamp: 1300,
+      type: 'click',
+      route: 'Analytics',
+      componentId: 'nav-Analytics',
+      componentRole: 'navigation'
+    };
+    expect(deriveMacroSymbol(navClick)).toBe('NAV_ANALYTICS');
+  });
+
+  it('returns no symbol for an accordion click whose disclosure state is unknown', () => {
+    // Guessing here would fabricate a behavioural pattern out of an unclassifiable event.
+    const unknownState: BehaviourEvent = {
+      timestamp: 1400,
+      type: 'click',
+      componentId: 'filter-Region',
+      componentRole: 'accordion',
+      action: 'click'
+    };
+    expect(deriveMacroSymbol(unknownState)).toBeNull();
   });
 
   it('maps table interactions including pagination and sorting', () => {
