@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { REPORT_CATEGORIES, REPORT_REGIONS } from '../mock-data/tableData';
+import { useMemo, useState } from "react";
+import { REPORT_CATEGORIES, REPORT_REGIONS } from "../mock-data/tableData";
 
 export interface FilterState {
   dateFrom: string;
@@ -9,10 +9,10 @@ export interface FilterState {
 }
 
 export const EMPTY_FILTER_STATE: FilterState = {
-  dateFrom: '',
-  region: 'All',
+  dateFrom: "",
+  region: "All",
   categories: [],
-  segment: 'All'
+  segment: "All",
 };
 
 export interface FilterDrawerProps {
@@ -24,17 +24,21 @@ export interface FilterDrawerProps {
   onFiltersChange?: (filters: FilterState) => void;
 }
 
-export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDrawerProps) {
+export function FilterDrawer({
+  initialOpen,
+  onApply,
+  onFiltersChange,
+}: FilterDrawerProps) {
   // All sections start collapsed. Progressive disclosure is part of the task design: T1 step
   // 2 and T3 step 2 ask the participant to open a specific section, so those sections must
   // not already be open, and their controls must not be in the DOM before that action.
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(
     initialOpen ?? {
-      'Date Range': false,
+      "Date Range": false,
       Region: false,
-      'Product Category': false,
-      'Advanced Options': false
-    }
+      "Product Category": false,
+      "Advanced Options": false,
+    },
   );
 
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTER_STATE);
@@ -66,7 +70,7 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
   const sections = useMemo(
     () => [
       {
-        name: 'Date Range',
+        name: "Date Range",
         content: (
           <input
             type="date"
@@ -75,12 +79,12 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
             data-aui-component="filter-date-input"
             data-aui-role="form-field"
             data-aui-action="change"
-            style={{ width: '100%', padding: '4px' }}
+            style={{ width: "100%", padding: "4px" }}
           />
-        )
+        ),
       },
       {
-        name: 'Region',
+        name: "Region",
         content: (
           <select
             value={filters.region}
@@ -89,7 +93,7 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
             data-aui-role="filter"
             data-aui-action="change"
             data-aui-task-role="required"
-            style={{ width: '100%', padding: '4px' }}
+            style={{ width: "100%", padding: "4px" }}
           >
             <option value="All">All regions</option>
             {REPORT_REGIONS.map((region) => (
@@ -98,14 +102,14 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
               </option>
             ))}
           </select>
-        )
+        ),
       },
       {
-        name: 'Product Category',
+        name: "Product Category",
         content: (
           <div>
             {REPORT_CATEGORIES.map((category) => (
-              <label key={category} style={{ display: 'block' }}>
+              <label key={category} style={{ display: "block" }}>
                 <input
                   type="checkbox"
                   checked={filters.categories.includes(category)}
@@ -113,18 +117,18 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
                   data-aui-component={`filter-category-${category.toLowerCase()}`}
                   data-aui-role="filter"
                   data-aui-action="change"
-                />{' '}
+                />{" "}
                 {category}
               </label>
             ))}
           </div>
-        )
+        ),
       },
       {
-        name: 'Advanced Options',
+        name: "Advanced Options",
         content: (
           <div>
-            <label style={{ display: 'block', marginBottom: '8px' }}>
+            <label style={{ display: "block", marginBottom: "8px" }}>
               Customer Segment
               <select
                 value={filters.segment}
@@ -133,7 +137,7 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
                 data-aui-role="filter"
                 data-aui-action="change"
                 data-aui-task-role="required"
-                style={{ width: '100%', padding: '4px', marginTop: '4px' }}
+                style={{ width: "100%", padding: "4px", marginTop: "4px" }}
               >
                 <option value="All">All</option>
                 <option value="New">New</option>
@@ -141,10 +145,10 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
               </select>
             </label>
           </div>
-        )
-      }
+        ),
+      },
     ],
-    [filters]
+    [filters],
   );
 
   return (
@@ -153,13 +157,23 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
       data-aui-component="filter-drawer"
       data-aui-role="filter"
       aria-label="Filters"
-      style={{ width: '250px', borderRight: '1px solid #ccc', padding: '16px', background: '#fafafa' }}
+      style={{
+        width: "250px",
+        borderRight: "1px solid #ccc",
+        padding: "16px",
+        background: "transparent",
+      }}
     >
-      <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Filters</h3>
+      <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Filters</h3>
       {sections.map((section) => (
         <div
           key={section.name}
-          style={{ marginBottom: '8px', border: '1px solid #ddd', borderRadius: '4px', background: '#fff' }}
+          style={{
+            marginBottom: "8px",
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            background: "#fffa",
+          }}
         >
           <button
             type="button"
@@ -168,12 +182,22 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
             data-aui-role="accordion"
             data-aui-action="click"
             aria-expanded={openSections[section.name]}
-            style={{ width: '100%', padding: '8px', textAlign: 'left', background: 'none', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+            style={{
+              width: "100%",
+              padding: "8px",
+              textAlign: "left",
+              background: "none",
+              border: "none",
+              fontWeight: "bold",
+              cursor: "pointer",
+            }}
           >
-            {openSections[section.name] ? '▼' : '▶'} {section.name}
+            {openSections[section.name] ? "▼" : "▶"} {section.name}
           </button>
           {openSections[section.name] && (
-            <div style={{ padding: '8px', borderTop: '1px solid #ddd' }}>{section.content}</div>
+            <div style={{ padding: "8px", borderTop: "1px solid #ddd" }}>
+              {section.content}
+            </div>
           )}
         </div>
       ))}
@@ -183,7 +207,16 @@ export function FilterDrawer({ initialOpen, onApply, onFiltersChange }: FilterDr
         data-aui-role="submit-action"
         data-aui-action="click"
         data-aui-task-role="required"
-        style={{ width: '100%', padding: '8px', background: '#006064', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '16px' }}
+        style={{
+          width: "100%",
+          padding: "8px",
+          background: "#006064",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+          marginTop: "16px",
+        }}
       >
         Apply Filters
       </button>
