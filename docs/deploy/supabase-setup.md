@@ -119,6 +119,55 @@ and see one row, the write path works.
    `Completed`. A task that is still `In Progress`, or one that was reset before its final step, has
    not reached a terminal state.
 
+### If Collection reads `failed` with `42501`
+
+Observed on this deployment, and worth reading before changing anything:
+
+```
+Collection:
+failed
+Collection Detail:
+scripted | uploads: 0 (Session record rejected: 401 : {"code":"42501",
+  "message":"new row violates row-level security policy for table \"research_sessions\""})
+```
+
+`42501` on `INSERT` means the row was refused by Row Level Security — not by a missing key, a
+missing table, or the network. That message has two causes, and they need different fixes:
+
+| Cause | How to tell | Fix |
+|---|---|---|
+| The row violates the policy's `WITH CHECK` | A probe row with an empty `session_id` or `upload_token` gives the same error; the app's real payload does not | The payload is wrong — but the testbed always sends a non-empty `session_id`, a non-empty `upload_token` and `provenance: 'scripted'`, so this is unlikely |
+| No `INSERT` policy applies to the request's role | A probe row that **satisfies** every documented condition and violates a table constraint still returns `42501` instead of a constraint error | The policy is absent or is granted to a different role. Re-apply `supabase/migrations/0002_rls_policies.sql` (see below) |
+
+**Do not assume an applied migration means the policy exists.** `supabase migration list` reports
+what has been *recorded*, not what is currently in the database; a policy dropped after the
+migration ran leaves no trace in that list. Verify with step 3's policy query, extended to show the
+expression itself:
+
+```sql
+select tablename, policyname, cmd, roles, with_check
+from pg_policies where schemaname = 'public' order by tablename, policyname;
+```
+
+Expected: one row per table, `cmd = INSERT`, `roles = {anon}`, and a `with_check` of
+`((provenance = ANY (ARRAY['scripted'::text, 'participant'::text])) AND (session_id <> ''::text) AND (upload_token <> ''::text))`.
+
+**To repair it**, either re-apply the file (it is idempotent — `drop policy if exists` then
+`create policy`):
+
+```bash
+supabase db push          # only if the migration is not recorded; it will not re-run a recorded one
+```
+
+or paste the contents of `supabase/migrations/0002_rls_policies.sql` into the dashboard SQL editor.
+Re-running it when the policy is already correct changes nothing.
+
+**If the policies are already correct**, the request is not running as `anon`. Confirm which key the
+build is using: the legacy **anon JWT** sets `role: anon` directly, whereas the newer
+`sb_publishable_…` key is resolved to a role by Supabase's gateway. Switch the build to the legacy
+anon key (Project Settings → API → legacy API keys) and rebuild — the key is inlined at build time,
+so a redeployment is required either way.
+
 ## 6. Export collected traces
 
 **Why this is a shell command and not a browser action.** The browser can only `INSERT`; the `anon`
