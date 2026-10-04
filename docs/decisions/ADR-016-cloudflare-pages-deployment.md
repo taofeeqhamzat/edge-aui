@@ -3,6 +3,7 @@
 - **Status:** Accepted — the ORT entry switch is accepted as a deployment unblocker, subject to the validation below
 - **Date:** 2026-10-02
 - **Related:** ADR-007, ADR-008, ADR-015, ADR-018
+- **Amended by:** ADR-024 — the Cloudflare project is a Worker with static assets rather than a classic Pages project. The ONNX Runtime entry point, the committed WASM package, `build:ci` and the asset gate decided below are unchanged.
 
 ## 1. Context
 
