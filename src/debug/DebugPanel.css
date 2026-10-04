@@ -1,12 +1,31 @@
 /**
  * Development Debug Panel Styling (Persistent Light Theme)
- * Implements Stage 10.2 specifications from docs/testbed/prd.md Section 38.
+ * Implements Stage 10.2 specifications from docs/testbed/prd.md Section 38 & DESIGN.md.
+ *
  * Adheres strictly to design constraints:
  * - Persistent Light Theme with high-contrast text and crisp boundaries
- * - Zero border radius (strict square corners)
+ * - Strict zero border radius (border-radius: 0)
  * - Lightweight footprint, no heavy blurs or glowing animations
- * - Accessible, WCAG AA compliant typography and controls
+ * - Accessible, WCAG AA compliant typography and controls (contrast >= 4.5:1)
+ * - Hardware-accelerated specific transitions & reduced-motion support
  */
+
+:root {
+  --edge-aui-bg-base: #f8f9fa;
+  --edge-aui-bg-surface: #ffffff;
+  --edge-aui-bg-elevated: #f1f5f9;
+  --edge-aui-border: #cbd5e1;
+  --edge-aui-border-subtle: #e2e8f0;
+  --edge-aui-border-dark: #94a3b8;
+  --edge-aui-ink-main: #0f172a;
+  --edge-aui-ink-muted: #475569;
+  --edge-aui-ink-dim: #94a3b8;
+  --edge-aui-cyan: #0284c7;
+  --edge-aui-cyan-hover: #0369a1;
+  --edge-aui-emerald: #059669;
+  --edge-aui-amber: #d97706;
+  --edge-aui-rose: #dc2626;
+}
 
 .edge-aui-debug-container {
   position: fixed;
@@ -15,14 +34,14 @@
   z-index: 99999;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
-  color: #0f172a;
+  color: var(--edge-aui-ink-main);
 }
 
 /* Collapsed Toggle Button */
 .edge-aui-debug-toggle {
-  background-color: #ffffff;
-  color: #0284c7;
-  border: 1px solid #cbd5e1;
+  background-color: var(--edge-aui-bg-surface);
+  color: var(--edge-aui-cyan);
+  border: 1px solid var(--edge-aui-border);
   border-radius: 0;
   padding: 8px 12px;
   font-family: inherit;
@@ -33,17 +52,25 @@
   align-items: center;
   gap: 8px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .edge-aui-debug-toggle:hover {
-  background-color: #f1f5f9;
-  border-color: #0284c7;
+  background-color: var(--edge-aui-bg-elevated);
+  border-color: var(--edge-aui-cyan);
 }
 
 .edge-aui-debug-toggle:focus-visible {
-  outline: 2px solid #0284c7;
+  outline: 2px solid var(--edge-aui-cyan);
   outline-offset: 2px;
+}
+
+.edge-aui-debug-toggle-status.status-in-progress {
+  color: var(--edge-aui-emerald);
+}
+
+.edge-aui-debug-toggle-status.status-idle {
+  color: var(--edge-aui-ink-muted);
 }
 
 /* Expanded Panel Window */
@@ -51,14 +78,15 @@
   width: 440px;
   max-width: calc(100vw - 32px);
   max-height: 80vh;
-  background-color: #ffffff;
-  border: 1px solid #94a3b8;
+  background-color: var(--edge-aui-bg-surface);
+  border: 1px solid var(--edge-aui-border-dark);
   border-radius: 0;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  color: #0f172a;
+  color: var(--edge-aui-ink-main);
+  contain: layout paint;
 }
 
 /* Header */
@@ -67,15 +95,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background-color: #f1f5f9;
-  border-bottom: 1px solid #cbd5e1;
+  background-color: var(--edge-aui-bg-elevated);
+  border-bottom: 1px solid var(--edge-aui-border);
   border-radius: 0;
 }
 
 .edge-aui-debug-title {
   font-weight: 700;
   font-size: 13px;
-  color: #0284c7;
+  color: var(--edge-aui-cyan);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -84,20 +112,21 @@
 .edge-aui-debug-close {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: var(--edge-aui-ink-muted);
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
   padding: 0 4px;
   border-radius: 0;
+  transition: color 0.15s ease;
 }
 
 .edge-aui-debug-close:hover {
-  color: #0f172a;
+  color: var(--edge-aui-ink-main);
 }
 
 .edge-aui-debug-close:focus-visible {
-  outline: 2px solid #0284c7;
+  outline: 2px solid var(--edge-aui-cyan);
 }
 
 /* Scrollable Content Body */
@@ -107,14 +136,14 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background-color: #ffffff;
+  background-color: var(--edge-aui-bg-surface);
   scrollbar-gutter: stable;
 }
 
 /* Section Containers */
 .edge-aui-debug-section {
   background-color: #f8fafc;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--edge-aui-border);
   border-radius: 0;
   padding: 8px 10px;
 }
@@ -124,9 +153,9 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #475569;
+  color: var(--edge-aui-ink-muted);
   margin-bottom: 6px;
-  border-bottom: 1px solid #cbd5e1;
+  border-bottom: 1px solid var(--edge-aui-border);
   padding-bottom: 4px;
 }
 
@@ -139,31 +168,53 @@
 }
 
 .edge-aui-debug-label {
-  color: #64748b;
+  color: var(--edge-aui-ink-muted);
   flex-shrink: 0;
 }
 
 .edge-aui-debug-val {
-  color: #0f172a;
+  color: var(--edge-aui-ink-main);
   font-weight: 600;
   text-align: right;
   word-break: break-all;
 }
 
 .edge-aui-debug-val.highlight {
-  color: #0284c7;
+  color: var(--edge-aui-cyan);
 }
 
 .edge-aui-debug-val.success {
-  color: #059669;
+  color: var(--edge-aui-emerald);
 }
 
 .edge-aui-debug-val.warning {
-  color: #d97706;
+  color: var(--edge-aui-amber);
 }
 
 .edge-aui-debug-val.dim {
-  color: #94a3b8;
+  color: var(--edge-aui-ink-dim);
+}
+
+/* Stage Timings Breakdown */
+.edge-aui-debug-timings-container {
+  margin-top: 8px;
+  border-top: 1px solid var(--edge-aui-border);
+  padding-top: 6px;
+}
+
+.edge-aui-debug-timings-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--edge-aui-ink-muted);
+  margin-bottom: 4px;
+}
+
+.edge-aui-debug-timing-row {
+  font-size: 11px;
+}
+
+.edge-aui-debug-stage-label {
+  min-width: 160px;
 }
 
 /* MicroTensor Grid */
@@ -179,32 +230,32 @@
   justify-content: space-between;
   font-size: 10px;
   padding: 2px 4px;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
+  background-color: var(--edge-aui-bg-surface);
+  border: 1px solid var(--edge-aui-border-subtle);
   border-radius: 0;
 }
 
 .edge-aui-debug-tensor-name {
-  color: #475569;
+  color: var(--edge-aui-ink-muted);
 }
 
 .edge-aui-debug-tensor-val {
-  color: #0284c7;
+  color: var(--edge-aui-cyan);
   font-weight: 700;
 }
 
 .edge-aui-debug-mask-row {
   margin-top: 6px;
   font-size: 10px;
-  color: #64748b;
+  color: var(--edge-aui-ink-muted);
   display: flex;
   gap: 4px;
   align-items: center;
 }
 
 .edge-aui-debug-mask-bits {
-  font-family: monospace;
-  color: #059669;
+  font-family: inherit;
+  color: var(--edge-aui-emerald);
   letter-spacing: 0.1em;
 }
 
@@ -218,17 +269,31 @@
 }
 
 .edge-aui-debug-symbol {
-  background-color: #ffffff;
-  border: 1px solid #cbd5e1;
+  background-color: var(--edge-aui-bg-surface);
+  border: 1px solid var(--edge-aui-border);
   border-radius: 0;
   padding: 2px 6px;
   font-size: 10px;
-  color: #0f172a;
+  color: var(--edge-aui-ink-main);
 }
 
 .edge-aui-debug-arrow {
-  color: #94a3b8;
+  color: var(--edge-aui-ink-dim);
   font-weight: bold;
+}
+
+/* Recorder Legend */
+.edge-aui-debug-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 4px 0 6px;
+  padding: 4px 6px;
+  background-color: var(--edge-aui-bg-surface);
+  border: 1px solid var(--edge-aui-border-subtle);
+  border-radius: 0;
+  font-size: 9.5px;
+  color: var(--edge-aui-ink-muted);
 }
 
 /* Footer / Action Buttons */
@@ -236,41 +301,56 @@
   display: flex;
   gap: 8px;
   padding: 10px 14px;
-  background-color: #f1f5f9;
-  border-top: 1px solid #cbd5e1;
+  background-color: var(--edge-aui-bg-elevated);
+  border-top: 1px solid var(--edge-aui-border);
   border-radius: 0;
 }
 
 .edge-aui-debug-btn {
   flex: 1;
   padding: 6px 10px;
-  background-color: #ffffff;
-  color: #0f172a;
-  border: 1px solid #cbd5e1;
+  background-color: var(--edge-aui-bg-surface);
+  color: var(--edge-aui-ink-main);
+  border: 1px solid var(--edge-aui-border);
   border-radius: 0;
   font-family: inherit;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
 .edge-aui-debug-btn:hover {
   background-color: #e2e8f0;
-  border-color: #94a3b8;
+  border-color: var(--edge-aui-border-dark);
+}
+
+.edge-aui-debug-btn:active {
+  transform: scale(0.98);
 }
 
 .edge-aui-debug-btn.primary {
-  background-color: #0284c7;
-  border-color: #0369a1;
+  background-color: var(--edge-aui-cyan);
+  border-color: var(--edge-aui-cyan-hover);
   color: #ffffff;
 }
 
 .edge-aui-debug-btn.primary:hover {
-  background-color: #0369a1;
+  background-color: var(--edge-aui-cyan-hover);
 }
 
 .edge-aui-debug-btn:focus-visible {
-  outline: 2px solid #0284c7;
+  outline: 2px solid var(--edge-aui-cyan);
   outline-offset: 1px;
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  .edge-aui-debug-toggle,
+  .edge-aui-debug-btn,
+  .edge-aui-debug-close {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
 }
