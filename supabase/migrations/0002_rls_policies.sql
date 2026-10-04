@@ -12,8 +12,17 @@
 --
 -- 1. The browser cannot read back what it wrote. That is the intended posture: an anonymous
 --    writer that can also read the table can enumerate every other session.
--- 2. Duplicate protection therefore cannot use `upsert`, which requires SELECT. It uses a
---    client-generated `upload_token` plus `on conflict do nothing`, which is a pure insert.
+-- 2. Duplicate protection therefore cannot use `upsert`, which requires SELECT. An earlier
+--    revision of this comment claimed the same of `on conflict do nothing`; that was wrong, and
+--    it cost real debugging time. PostgreSQL applies the table's SELECT policies while it looks
+--    for a conflicting row, so `INSERT ... ON CONFLICT DO NOTHING` is refused here with
+--    `42501 new row violates row-level security policy` — before it can insert anything, and
+--    even when there is no conflict at all. PostgREST emits that clause for
+--    `Prefer: resolution=ignore-duplicates`, so the client must not send it. The collection
+--    client instead presents the same primary key on a retry and treats the resulting `409`
+--    as success, which is the required end state and needs no SELECT grant.
+--    Measurement: the identical insert reaches the table CHECK (`23514`) with
+--    `Prefer: return=minimal` and stops at RLS (`42501`) with the ignore-duplicates preference.
 -- 3. A malformed or hostile insert cannot corrupt an existing row, because no UPDATE or
 --    DELETE grant exists.
 -- 4. Retrieval and export are researcher actions performed with a service-role key, which

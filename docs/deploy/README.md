@@ -164,7 +164,11 @@ deploying front-end code. See [`supabase-setup.md`](./supabase-setup.md).
   browser cannot read back what it wrote, and neither can anyone holding only the anon key.
   Export is a researcher action performed outside the browser.
 - **Duplicate uploads are prevented by an `upload_token`, not by an upsert.** An upsert needs
-  `SELECT`, which is exactly the grant withheld from `anon`.
+  `SELECT`, which is exactly the grant withheld from `anon`. The same grant also rules out
+  `Prefer: resolution=ignore-duplicates`: PostgREST renders it as `INSERT ... ON CONFLICT DO
+  NOTHING`, and PostgreSQL reads the table's SELECT policies while looking for a conflicting row, so
+  the insert is refused with `42501` before it can happen. The client sends `Prefer: return=minimal`
+  and treats a `409` on a retry as success instead.
 - **The developer panel is absent from a production build by default.** Add
   `?auiDiagnostics=1` to the URL or set `VITE_AUI_DIAGNOSTICS=1` for a researcher build.
 - **Deployment branch:** `main` is production. Advisory only — Cloudflare Pages controls the

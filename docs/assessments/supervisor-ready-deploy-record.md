@@ -51,7 +51,7 @@
 |---|---|
 | `src/config/supabaseConfig.ts` | Reads `VITE_SUPABASE_URL` / `_ANON_KEY` / `VITE_AUI_COLLECTION_MODE`. A malformed URL or unknown mode degrades to the safe configuration. `mayUploadProvenance()` is the egress decision point. |
 | `src/telemetry/localStore.ts` | IndexedDB write-ahead: one snapshot per session, replaced on flush. Session state machine (`in_progress` → `completed` → `uploaded` / `upload_failed`; `incomplete`). Injectable backend so it is testable and degrades without throwing. |
-| `src/telemetry/collectionClient.ts` | Thin `fetch` client, INSERT-only, idempotent via `upload_token` + `Prefer: resolution=ignore-duplicates`. No SDK dependency. |
+| `src/telemetry/collectionClient.ts` | Thin `fetch` client, INSERT-only, idempotent via `upload_token` + a `409` treated as success. Sends `Prefer: return=minimal` — **not** `resolution=ignore-duplicates`, which requires the `SELECT` grant the anon role does not have. No SDK dependency. |
 | `src/telemetry/collection.ts` | Ordering (session then trace), provenance gating, visible failure with retry count, explicit retry, incomplete-session detection. |
 | `src/telemetry/version.ts` | Application/policy version constants so provenance metadata is not a literal typed into a report. |
 | `supabase/migrations/0001–0003` | Two tables, RLS policies, researcher export view. |
@@ -192,7 +192,12 @@ inserted. Session first, trace second, so a partial failure leaves a session who
 rather than an orphaned trace.
 
 **Idempotency without SELECT.** The anon role has `INSERT` and no `SELECT`, so an `upsert` is
-impossible. A client-generated `upload_token` plus `ON CONFLICT DO NOTHING` makes a retry a no-op.
+impossible. A client-generated `upload_token` makes the retry present the same primary key, and the
+resulting `409` is treated as success — the row already exists, which is the required end state.
+`ON CONFLICT DO NOTHING` was the original mechanism and does **not** work here: PostgreSQL applies
+the table's SELECT policies while looking for a conflicting row, so `Prefer:
+resolution=ignore-duplicates` is refused with `42501` before the insert can happen. That defect made
+every upload impossible until it was found and fixed on 2026-10-04.
 
 **Failure is visible and retryable.** `CollectionState` is one of `not_configured`, `pending`,
 `uploading`, `uploaded`, `failed`, `local_only`, shown in the research panel. A failure records the

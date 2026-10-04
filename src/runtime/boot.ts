@@ -200,10 +200,9 @@ export function getCollection(): ResearchCollection | null {
  *
  * Two facts force this shape:
  *
- * 1. `research_sessions.session_id` is the primary key and the client inserts with
- *    `resolution=ignore-duplicates` — the anon role holds no `SELECT`, so an upsert is not
- *    available. Two trials sharing a session id therefore cannot both be stored: the second
- *    insert is discarded as a duplicate while the panel still reports `uploaded`. Rotation is
+ * 1. `research_sessions.session_id` is the primary key, so two trials sharing a session id cannot
+ *    both be stored: the second insert fails and is treated as an already-stored duplicate. The
+ *    panel would go on reporting `uploaded` while the newer trial was never sent. Rotation is
  *    what makes "one stored row per trial" true rather than merely reported.
  * 2. `experimentRecorder.clear()` runs at every condition switch, so a trace already covers
  *    exactly one trial. Rotation matches the store to the trace instead of aggregating across

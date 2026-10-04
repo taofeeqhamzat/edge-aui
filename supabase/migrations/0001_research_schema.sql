@@ -10,9 +10,11 @@
 
 create table if not exists public.research_sessions (
   session_id            text primary key,
-  -- Idempotency key for retries. A retried upload presents the same token, so
-  -- `on conflict do nothing` makes the retry a no-op instead of a duplicate. This is the only
-  -- duplicate protection available to a role that cannot SELECT.
+  -- Idempotency key for retries. A retried upload presents the same token and therefore the
+  -- same primary key; the duplicate insert fails and the client treats that as success, which
+  -- is the required end state. Note that this is NOT achieved with `on conflict do nothing`:
+  -- PostgreSQL applies the table's SELECT policies while looking for a conflicting row, and the
+  -- anon role has no SELECT grant here. See the header of 0002_rls_policies.sql.
   upload_token          text not null,
   experiment_id         text,
   condition_id          text check (condition_id in ('baseline', 'adaptive')),

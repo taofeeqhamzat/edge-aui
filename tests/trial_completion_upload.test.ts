@@ -10,11 +10,10 @@
  * present:
  *
  * 1. completing a task uploads that trial's trace, and the panel reports `uploaded`;
- * 2. the session is rotated afterwards. `research_sessions.session_id` is the primary key and
- *    the client inserts with `resolution=ignore-duplicates` (the anon role holds no `SELECT`, so
- *    an upsert is unavailable), so a second trial under the same id would be silently discarded
- *    as a duplicate while still reporting `uploaded`. Rotation is what makes "one stored row per
- *    trial" true rather than merely reported.
+ * 2. the session is rotated afterwards. `research_sessions.session_id` is the primary key, so a
+ *    second trial under the same id would be stored as an already-present duplicate while the
+ *    panel still reported `uploaded` — the newer trial would never be sent. Rotation is what makes
+ *    "one stored row per trial" true rather than merely reported.
  *
  * The task is completed through `taskManager.recordInteraction`, which is the same call the
  * observer bridge in `App.tsx` makes. The point under test is the collection wiring, not the DOM

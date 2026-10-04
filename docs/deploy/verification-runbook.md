@@ -61,7 +61,8 @@ body:    session_id, upload_token, experiment_id, condition_id: "adaptive",
 
 The task reached `Completed`; the panel read `Model: loaded [wasm]`, `Slow Gate Mode: onnx`.
 
-**The store accepts that shape.** Read-only and rejected probes against the live project:
+**The store accepts that shape — once the client stops sending one header.** The read-only and
+rejected probes against the live project:
 
 | Probe | Result | What it establishes |
 |---|---|---|
@@ -69,10 +70,25 @@ The task reached `Completed`; the panel read `Model: loaded [wasm]`, `Slow Gate 
 | `GET /rest/v1/research_traces?select=session_id&limit=1` | `200 []` | As above |
 | `GET /rest/v1/research_export?select=session_id&limit=1` | `401 42501 permission denied for view research_export` | The export view is correctly revoked from `anon` (migration 0003) |
 | `OPTIONS` preflight as the browser sends it | `200` with `access-control-allow-headers: apikey,authorization,content-type,prefer` | The browser's preflight passes; CORS is not an obstacle |
-| `POST /rest/v1/research_sessions` with an empty `session_id` | `401 42501 new row violates row-level security policy for table "research_sessions"` | `anon` **has** the INSERT grant — a missing grant would answer `permission denied for table` — and the RLS `WITH CHECK` is enforced. Nothing was written. |
-| `POST /rest/v1/research_traces` with an empty `session_id` | `401 42501 new row violates row-level security policy for table "research_traces"` | As above |
+| `POST research_sessions`, policy-satisfying row with `condition_id: 'NOT_VALID'`, `Prefer: return=minimal` | `400 23514` check-constraint violation | The row **passed** RLS and reached the constraint, so the INSERT policy applies. Nothing was written. |
+| The same row with `Prefer: resolution=ignore-duplicates,return=minimal` | `401 42501 new row violates row-level security policy` | The preference, not the policy, is the obstacle |
+| `POST research_traces`, policy-satisfying row with a non-existent parent, `Prefer: return=minimal` | `409 23503` foreign-key violation | Again the row passed RLS; the FK aborts the insert |
 
-The captured body satisfies every condition of that `WITH CHECK` (`provenance in ('scripted',
+**The defect this exposed, and its fix.** `Prefer: resolution=ignore-duplicates` is rendered by
+PostgREST as `INSERT ... ON CONFLICT DO NOTHING`, and PostgreSQL applies the table's **`SELECT`**
+policies while looking for a conflicting row. The `anon` role holds no `SELECT` grant here by
+design, so that preference made every insert impossible — including a first insert with no conflict
+— and the resulting `42501 new row violates row-level security policy` reads exactly like a broken
+policy. The comment in `0002_rls_policies.sql` asserting that `ON CONFLICT DO NOTHING` is "a pure
+insert" was wrong, and an earlier revision of the deployment notes repeated it. Both are corrected.
+
+The client now sends `Prefer: return=minimal` and treats a `409` as success, which preserves
+idempotency on a retry without needing the `SELECT` grant
+([`src/telemetry/collectionClient.ts`](../../src/telemetry/collectionClient.ts)). `npm run
+check:collection-policies` probes both shapes, so a header problem can never again be reported as a
+policy problem.
+
+The captured body satisfies every condition of the `WITH CHECK` (`provenance in ('scripted',
 'participant')`, non-empty `session_id`, non-empty `upload_token`), which both tables' policies
 require.
 

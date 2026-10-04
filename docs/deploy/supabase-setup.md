@@ -121,7 +121,7 @@ and see one row, the write path works.
 
 ### If Collection reads `failed` with `42501`
 
-Observed on this deployment, and worth reading before changing anything:
+Observed on this deployment:
 
 ```
 Collection:
@@ -132,41 +132,52 @@ scripted | uploads: 0 (Session record rejected: 401 : {"code":"42501",
 ```
 
 `42501` on `INSERT` means the row was refused by Row Level Security — not by a missing key, a
-missing table, or the network. That message has two causes, and they need different fixes:
+missing table, or the network. **On this project the cause was the client's own `Prefer` header, not
+the policy**, and that is worth knowing before changing any SQL.
 
-| Cause | How to tell | Fix |
+PostgREST renders `Prefer: resolution=ignore-duplicates` as `INSERT ... ON CONFLICT DO NOTHING`, and
+PostgreSQL applies the table's **`SELECT`** policies while it looks for a conflicting row. The `anon`
+role holds no `SELECT` grant here by design (migration 0002), so that preference makes every insert —
+including a first-time insert with no conflict — fail with the RLS message above. The measurement:
+
+| Same payload | Header | Result |
 |---|---|---|
-| The row violates the policy's `WITH CHECK` | A probe row with an empty `session_id` or `upload_token` gives the same error; the app's real payload does not | The payload is wrong — but the testbed always sends a non-empty `session_id`, a non-empty `upload_token` and `provenance: 'scripted'`, so this is unlikely |
-| No `INSERT` policy applies to the request's role | A probe row that **satisfies** every documented condition and violates a later constraint still returns `42501` instead of a constraint error | The policy is absent or is granted to a different role. Re-apply `supabase/migrations/0002_rls_policies.sql` (see below) |
+| `condition_id: 'NOT_VALID'` | `Prefer: return=minimal` | `23514` check-constraint violation — **the policy applied** |
+| `condition_id: 'NOT_VALID'` | `Prefer: resolution=ignore-duplicates,return=minimal` | `42501` — stopped at RLS |
+| non-existent parent `session_id` | `Prefer: return=minimal` | `23503` foreign-key violation — **the policy applied** |
 
-**Check which one it is with one command, without writing anything:**
+Reaching a constraint that PostgreSQL evaluates *after* RLS proves the row passed RLS. The fix is
+therefore in the client, and is already applied: `src/telemetry/collectionClient.ts` sends
+`Prefer: return=minimal` only, and treats a `409` as success so a retry stays idempotent without
+needing the `SELECT` grant that `resolution=ignore-duplicates` requires.
+
+**Check the write path with one command, without writing anything:**
 
 ```bash
 npm run check:collection-policies
 ```
 
-The verifier (`scripts/verify-collection-policies.mjs`) sends two payloads that satisfy every
-documented condition of the policy and each violate a constraint evaluated *after* Row Level
-Security — `condition_id: 'NOT_VALID'` for the session table, and a non-existent parent
-`session_id` for the trace table. Reaching the constraint proves the row passed RLS; being stopped
-at RLS proves it did not. Neither outcome can commit a row, so the check is safe to run against the
-live project at any time. Observed on 2026-10-04, before the repair:
+The verifier (`scripts/verify-collection-policies.mjs`) sends payloads that satisfy every documented
+condition of the policy and each violate a constraint evaluated *after* Row Level Security. Reaching
+the constraint proves the row passed RLS; being stopped at RLS proves it did not. It probes both the
+shape the client sends and the shape carrying `resolution=ignore-duplicates`, so a header problem is
+never mistaken for a policy problem. Neither outcome can commit a row, so the check is safe against
+the live project at any time. Output on this project:
 
 ```
-  GET research_sessions                      200 (table exists, anon key valid)
-  GET research_export                        401 (revoked from anon — correct)
-  POST research_sessions (invalid condition) 401 42501 — policy does NOT apply
-  POST research_traces (missing parent)      401 42501 — policy does NOT apply
+  GET research_sessions                                200 (table exists, anon key valid)
+  GET research_export                                  401 (revoked from anon — correct)
+  POST research_sessions (app shape)                   400 23514 — policy applies
+  POST research_traces (app shape)                     409 23503 — policy applies
+  POST research_sessions (resolution=ignore-duplicates) 401 42501 — stopped at Row Level Security
 
-[verify-collection-policies] FAILED — the anon INSERT policy does not apply.
+[verify-collection-policies] OK — the anon INSERT policy applies, and the request shape
+the testbed sends is accepted. A completed task should be stored.
 ```
 
-A pass prints `OK — the anon INSERT policy applies to both research tables.`
-
-**Do not assume an applied migration means the policy exists.** `supabase migration list` reports
-what has been *recorded*, not what is currently in the database; a policy dropped after the
-migration ran leaves no trace in that list. Verify with step 3's policy query, extended to show the
-expression itself:
+**If the app-shape probes are stopped at RLS instead**, then the policy really is the problem. Two
+possibilities, and step 3's policy query distinguishes them (`with_check` shows the expression,
+`roles` shows who it applies to):
 
 ```sql
 select tablename, policyname, cmd, roles, with_check
@@ -176,21 +187,16 @@ from pg_policies where schemaname = 'public' order by tablename, policyname;
 Expected: one row per table, `cmd = INSERT`, `roles = {anon}`, and a `with_check` of
 `((provenance = ANY (ARRAY['scripted'::text, 'participant'::text])) AND (session_id <> ''::text) AND (upload_token <> ''::text))`.
 
-**To repair it**, either re-apply the file (it is idempotent — `drop policy if exists` then
-`create policy`):
-
-```bash
-supabase db push          # only if the migration is not recorded; it will not re-run a recorded one
-```
-
-or paste the contents of `supabase/migrations/0002_rls_policies.sql` into the dashboard SQL editor.
-Re-running it when the policy is already correct changes nothing.
-
-**If the policies are already correct**, the request is not running as `anon`. Confirm which key the
-build is using: the legacy **anon JWT** sets `role: anon` directly, whereas the newer
-`sb_publishable_…` key is resolved to a role by Supabase's gateway. Switch the build to the legacy
-anon key (Project Settings → API → legacy API keys) and rebuild — the key is inlined at build time,
-so a redeployment is required either way.
+- **Policy absent.** Note that an applied migration is not proof it exists: `supabase migration list`
+  reports what was *recorded*, not the current schema. Re-apply it — the file is idempotent
+  (`drop policy if exists` then `create policy`). `supabase db push` will not re-run a recorded
+  migration, so either paste the file into the dashboard SQL editor, or mark it reverted first:
+  `supabase migration repair --status reverted 0002 --linked` followed by
+  `supabase db push --include-all`.
+- **Policy present with `roles = {anon}`, still refused.** Then the request is not running as `anon`.
+  The legacy anon JWT sets `role: anon` in the token itself, so it is the way to test that
+  hypothesis; a `sb_publishable_…` key's role is resolved by Supabase's gateway. Switching keys
+  requires a rebuild, because the key is inlined at build time.
 
 ## 6. Export collected traces
 
@@ -257,9 +263,12 @@ Consequences, stated rather than worked around:
 
 1. **The browser cannot read back its own writes.** An anonymous writer that can also read the
    table can enumerate every other session. This is the intended posture.
-2. **Duplicate protection cannot use `upsert`**, because an upsert requires `SELECT`. It uses a
-   client-generated `upload_token` plus `ON CONFLICT DO NOTHING`, which is a pure insert. A
-   retried upload therefore presents the same token and becomes a no-op.
+2. **Duplicate protection cannot use `upsert`**, because an upsert requires `SELECT`. Nor can it use
+   `ON CONFLICT DO NOTHING`: PostgreSQL applies the table's SELECT policies while looking for a
+   conflicting row, so `Prefer: resolution=ignore-duplicates` is refused with `42501` before the
+   insert happens — even when there is no conflict. The client presents the same `upload_token` on a
+   retry, and treats the resulting `409` as success: the row it wanted already exists, which is the
+   required end state. It therefore remains a pure insert that needs no `SELECT` grant.
 3. **A hostile insert cannot corrupt an existing row**, because no `UPDATE` or `DELETE` grant
    exists.
 4. **Retrieval and export require the service-role key.** That is a real operational cost: a
