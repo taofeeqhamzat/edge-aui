@@ -44,7 +44,7 @@ import {
 import { InterventionPolicy, PolicyConfig } from '../intervention/policy';
 import { UIActuator } from '../intervention/actuator';
 import { experimentRecorder } from '../telemetry/recorder';
-import { sessionManager } from '../telemetry/session';
+import { sessionManager, type SessionContext } from '../telemetry/session';
 import { UiAdapter, DefaultUiAdapter, DEFAULT_TASK_ACTION_BY_EVENT } from '../integration/index';
 import { getActiveUIContext } from '../telemetry/contextProvider';
 import { getMonotonicTimestamp, getWallClockTimestamp } from '../telemetry/normalizer';
@@ -462,6 +462,24 @@ export class AdaptiveRuntime {
     // 7. Start observation and the monotonic window driver.
     this.observer.start();
     this.startTickLoop();
+  }
+
+  /**
+   * Re-points session correlation after the session has been rotated at a trial boundary.
+   *
+   * Predictions, policy decisions and interventions read the *live* session when they are
+   * recorded, so they follow a rotation automatically. The macro-interaction context is a
+   * snapshot taken at start, so without this the next trial's macro symbols would still carry
+   * the previous trial's session id — a trace whose row says one session and whose contents
+   * say another. The recorder's bound snapshot is updated for the same reason.
+   */
+  public rebindSession(session: SessionContext): void {
+    experimentRecorder.bindSession(session);
+    this.macroStream.setContext({
+      sessionId: session.sessionId,
+      experimentId: session.experimentId,
+      conditionId: session.conditionId
+    });
   }
 
   /** Requested Slow Gate implementation for this environment. */

@@ -93,12 +93,24 @@ export class TaskManager {
   /**
    * Resets to Idle. When a task was in progress it is recorded as abandoned rather
    * than silently discarded, so incomplete trials remain visible in the trace.
+   *
+   * The abandonment is published *before* the machine returns to Idle. It previously emitted
+   * the lifecycle event while the state still read `In Progress`, so a consumer that snapshots
+   * the task state on `task_abandon` — as the research trace does — recorded an abandoned trial
+   * as still running. `abandonTask()` already behaved correctly; this makes the two paths agree.
    */
   public resetTask() {
     const previous = this.state;
     const wasInProgress = previous.status === 'In Progress' && previous.currentTaskId !== null;
 
     if (wasInProgress) {
+      this.state = {
+        ...previous,
+        status: 'Abandoned',
+        endTime: getWallClockTimestamp(),
+        abandonmentReason: 'reset'
+      };
+      this.notify();
       this.emitLifecycle({
         timestamp: getWallClockTimestamp(),
         type: 'task_abandon',

@@ -8,17 +8,33 @@ environment variable here (deployment brief §17).
 
 ## 1. Connect the repository
 
-1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
+1. Cloudflare dashboard → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**.
 2. Authorise GitHub and select this repository.
-3. Configure the build:
+3. On the **Set up builds and deployments** page, configure the build:
 
-| Setting | Value |
-|---|---|
-| Production branch | `main` |
-| Framework preset | None (do **not** pick Vite — the preset overrides the build command) |
-| Build command | `npm run build:ci` |
-| Build output directory | `dist` |
-| Root directory | *(leave blank)* |
+| Setting | Value | Where the field is |
+|---|---|---|
+| Production branch | `main` | Top of the page |
+| Framework preset | **None** | **Build settings**. Do **not** pick Vite — the preset overwrites the build command |
+| Build command | `npm run build:ci` | **Build settings** |
+| Build output directory | `dist` | **Build settings** |
+| Root directory | *(leave blank)* | **Root directory (advanced)** → **Path** |
+
+All three **Build settings** fields appear together, under the **Framework preset** dropdown. The
+build command and output directory fields are pre-filled from the preset, so they look like fixed
+text when a preset is selected; with **None** they are plain editable inputs.
+
+> **The output directory must be `dist`, not `public`.**
+>
+> This repository already contains a `public/` directory (`public/_headers` and the ONNX graphs).
+> `public/` is Vite's *source* directory for verbatim-copied assets, and `dist/` is the build
+> output. Several Pages presets and templates default the output directory to `public`, and a
+> project created with that default does not fail loudly: it publishes the raw `public/` folder,
+> so the deployment succeeds and serves a directory with no application in it.
+>
+> If you cannot see the field, or the deployed site returns a bare file listing, open
+> **Workers & Pages → your project → Settings → Build configuration → Edit configuration** and
+> set **Build output directory** to `dist`, then retry the deployment.
 
 `npm run build:ci` is `check:wasm-pkg && tsc && vite build && check:deploy-assets`. It
 deliberately does **not** run `build:wasm`, because a Pages build image has no Rust toolchain.
@@ -27,8 +43,28 @@ The compiled WASM package is committed for exactly this reason — see
 
 ## 2. Set environment variables
 
-Workers & Pages → your project → **Settings** → **Environment variables**. Add to
-**Production** (and to **Preview** if you want preview builds to collect traces too):
+**These are build-time variables, not runtime variables.** Cloudflare Pages serves static files
+and runs no code at request time, so there is nothing to read a variable at runtime. The values
+are consumed by `vite build` inside the build container:
+
+```
+Cloudflare environment variables ──► `vite build` (build time) ──► inlined literals in dist/*.js
+```
+
+Vite substitutes every `import.meta.env.VITE_*` reference with its literal value while bundling.
+The deployed JavaScript contains the value itself; it never queries the platform.
+
+Two consequences:
+
+- **Changing a variable requires a new deployment.** Editing a variable does not affect the
+  deployment already live. Re-run the deployment (or push a commit) afterwards.
+- **A variable added after the first build only affects builds that start later.** If a build was
+  already running, or if you are looking at an older deployment, the old values are still baked in.
+
+Set them at **Workers & Pages → your project → Settings → Environment variables**, for both
+**Production** and **Preview** (they are separate variable sets; a value set only for Production
+is absent from preview deployments). The same fields also appear during project creation, under
+**Environment variables (optional)**.
 
 | Variable | Value | Notes |
 |---|---|---|
@@ -40,8 +76,17 @@ Workers & Pages → your project → **Settings** → **Environment variables**.
 All four are optional. With none set, the testbed runs and records locally, exports traces from
 the research panel, and reports `collection: local_only`.
 
-Vite inlines `VITE_*` values at build time, so **changing an environment variable requires a
-new deployment.** The build does not read them at runtime.
+**Verify that the inlining actually happened** — this is the check that catches a variable set on
+the wrong environment:
+
+```bash
+# Replace with your deployment URL and project ref.
+curl -s https://<your-project>.pages.dev/assets/index-*.js | grep -c '<project-ref>'
+# expect: a non-zero count
+```
+
+A zero count means the build ran without `VITE_SUPABASE_URL`; the app will report
+`local_only` and upload nothing, without any error.
 
 ## 3. Confirm the build passed
 

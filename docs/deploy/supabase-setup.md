@@ -73,7 +73,9 @@ VITE_AUI_COLLECTION_MODE=scripted
 
 ## 5. Verify the write path
 
-Run the testbed, complete a task, then:
+Run the testbed and complete a task, then run these queries **in the Supabase SQL editor** (which
+executes with the service role) or with `psql` using the service-role connection string. They
+cannot be run from the browser: `anon` has no `SELECT` grant.
 
 ```sql
 -- Counts only; the researcher has the service role.
@@ -89,25 +91,82 @@ order by inserted_at desc
 limit 10;
 ```
 
+**When the upload happens.** A trial is uploaded when its task reaches a terminal state —
+**Completed** or **Abandoned**. At that point the trace is written to IndexedDB first and then
+inserted, the session is closed, and the next trial starts under a **new** `session_id`. One
+`research_sessions` row and one `research_traces` row are therefore written per completed trial,
+and `status` is `Completed` or `Abandoned` accordingly.
+
+**Expected result.** One row per trial you completed, most recent first. If you completed one task
+and see one row, the write path works.
+
+**If the result is `Success. No rows returned`:**
+
+1. Check the research panel's **Collection** row (`?auiDiagnostics=1`). It reports the outcome
+   directly and is the fastest diagnostic:
+   - `not configured` / `local_only` — the build had no `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`.
+     These are inlined at **build time**, so the dev server must be restarted after editing
+     `.env.local`, and a deployment must be re-built after editing a Pages variable. See
+     [`cloudflare-pages-setup.md`](./cloudflare-pages-setup.md#2-set-environment-variables).
+   - `failed` — the insert was rejected. **Collection Detail** carries the reason (an RLS
+     violation, a wrong key, or a missing table). Re-check step 2 of this document.
+   - `uploaded` — the insert succeeded; if the query still returns no rows, confirm you are
+     querying the same project the testbed was built against.
+   - `pending` — no task has reached a terminal state yet in this page load.
+2. Confirm the migrations from step 2 were applied to *this* project. The queries above succeed
+   even when the tables are empty, so "no rows" is not evidence that the schema is missing.
+3. Confirm the task was actually completed. The **Experimental Trial** panel's **Status** must read
+   `Completed`. A task that is still `In Progress`, or one that was reset before its final step, has
+   not reached a terminal state.
+
 ## 6. Export collected traces
 
-The browser cannot read back what it wrote (see below), so export is a shell action.
-`scripts/export-traces.mjs` reads through the `research_export` view:
+**Why this is a shell command and not a browser action.** The browser can only `INSERT`; the `anon`
+role holds no `SELECT`. Retrieval is therefore a researcher action, performed outside the browser
+with the **service_role** key, which bypasses Row Level Security. `scripts/export-traces.mjs` makes
+that explicit and reads only through the `research_export` view.
+
+**Get the key:** Supabase dashboard → **Project Settings → API → Project API keys** →
+`service_role` → **Reveal**. It is a secret: never commit it, never put it in `.env.local`, and
+never set it as a Cloudflare Pages variable.
+
+Run the export from `edge-aui-framework`:
 
 ```bash
+cd edge-aui-framework
+
 SUPABASE_URL=https://<project-ref>.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
 node scripts/export-traces.mjs --out ./.data/collected
 ```
 
-The service-role key is required and must not be committed, put in `.env.local`, or set as a
-Cloudflare Pages variable.
+Both variables are required; the script stops with a hint if either is missing. Note that
+`SUPABASE_URL` is deliberately **not** prefixed with `VITE_`: it is a researcher-side shell
+variable, not a build variable, and must not be set in Cloudflare Pages.
 
-Then feed the export into the dataset pipeline:
+What it does:
+
+1. `GET {SUPABASE_URL}/rest/v1/research_export` — the flattened view over both tables, ordered by
+   `created_at`.
+2. Writes one file per session, `experiment-trace-<session_id>.json`, containing the trace exactly
+   as it was uploaded.
+3. Writes `export-manifest.json` — the export time, source, filter, counts, and a per-session
+   summary (provenance, condition, task, schema version, buffer counts, integrity warnings).
+
+Useful flags: `--provenance scripted|participant`, `--experiment <id>`, `--limit <n>`. If nothing
+matches it prints `No sessions matched. Nothing to export.` and writes nothing — which means no
+trial has been uploaded yet, not that the export failed.
+
+If it warns that traces are **truncated**, those captures lost their earliest records to buffer
+eviction and must not be analysed as whole sessions; the evidence is carried in each trace's
+`metadata.evictions`.
+
+Then feed the export into the dataset pipeline. The directory passed to `--ingest-traces` is the
+same directory given to `--out` above:
 
 ```bash
 cd ../model-preparation
-python3 -m src.data --ingest-traces <export-dir>
+python3 -m src.data --ingest-traces ../edge-aui-framework/.data/collected
 ```
 
 ---

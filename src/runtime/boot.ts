@@ -32,7 +32,7 @@ export interface BootOptions extends AdaptiveRuntimeOptions {
  * The final key is also the task T1 completion path, so the task's own success sequence
  * is a pattern the Fast Gate can recognise deterministically.
  */
-import { UiAdapter, DefaultUiAdapter } from '../integration/index';
+import { UiAdapter, DefaultUiAdapter, type UiTaskLifecycleEvent } from '../integration/index';
 
 export const TESTBED_FAST_GATE_PATTERNS: Record<string, InterventionType> = {
   'OPEN_FILTERS > APPLY_FILTER': 'highlight_primary_action',
@@ -104,6 +104,12 @@ export async function bootTestbed(
     }
   }
 
+  // The resolved adapter is captured because trial completion is wired through the adapter
+  // contract, not through the testbed: `src/runtime` must not depend on `src/testbed`
+  // (ADR-011, asserted by tests/ui_adapter_contract.test.ts).
+  const adapter =
+    options.adapter ?? (defaultUiAdapterProvider ? defaultUiAdapterProvider() : new DefaultUiAdapter());
+
   const runtime = new AdaptiveRuntime({
     experimentId,
     conditionId,
@@ -115,8 +121,9 @@ export async function bootTestbed(
     policyConfig: { confidenceThreshold: 0.75, requiredConsecutiveWindows: 2 },
     enableSlowGate: true,
     enableInstrumentation,
-    adapter: options.adapter ?? (defaultUiAdapterProvider ? defaultUiAdapterProvider() : new DefaultUiAdapter()),
-    ...options
+    ...options,
+    // Last, so a spread `adapter: undefined` cannot replace the resolved adapter.
+    adapter
   });
 
   await runtime.start();
@@ -136,11 +143,14 @@ export async function bootTestbed(
   // composition root because it must outlive an individual runtime while the condition
   // switch rebuilds one.
   await startCollectionForSession();
+  wireTrialCompletion(adapter);
 
   return runtime;
 }
 
 let currentCollection: ResearchCollection | null = null;
+let trialCompletionAdapter: UiAdapter | null = null;
+let trialCompletionUnsubscribe: (() => void) | null = null;
 
 /**
  * Points collection at the active session and schedules periodic local persistence.
@@ -183,6 +193,74 @@ export function publishCollectionStatus(): void {
 
 export function getCollection(): ResearchCollection | null {
   return currentCollection;
+}
+
+/**
+ * Uploads a finished trial and rotates to a fresh session for the next one.
+ *
+ * Two facts force this shape:
+ *
+ * 1. `research_sessions.session_id` is the primary key and the client inserts with
+ *    `resolution=ignore-duplicates` — the anon role holds no `SELECT`, so an upsert is not
+ *    available. Two trials sharing a session id therefore cannot both be stored: the second
+ *    insert is discarded as a duplicate while the panel still reports `uploaded`. Rotation is
+ *    what makes "one stored row per trial" true rather than merely reported.
+ * 2. `experimentRecorder.clear()` runs at every condition switch, so a trace already covers
+ *    exactly one trial. Rotation matches the store to the trace instead of aggregating across
+ *    trials that the trace no longer contains.
+ *
+ * The finished trial is written to IndexedDB inside `completeSession()` *before* the upload is
+ * attempted, so a failed upload still leaves a retrievable local record under its own id.
+ */
+async function closeTrial(): Promise<void> {
+  if (!currentCollection) return;
+
+  await currentCollection.completeSession();
+  publishCollectionStatus();
+
+  const rotated = sessionManager.startSession({
+    experimentId,
+    conditionId: currentCondition
+  });
+  if (currentRuntime) {
+    currentRuntime.rebindSession(rotated);
+  } else {
+    experimentRecorder.bindSession(rotated);
+  }
+  experimentRecorder.clear();
+
+  // Register the rotated session in the local store so its own write-ahead has a record.
+  await currentCollection.beginSession();
+  publishCollectionStatus();
+}
+
+/**
+ * Closes the trial when its task reaches a terminal state.
+ *
+ * `task_complete` and `task_abandon` are both terminal. An abandoned trial is a real research
+ * outcome — `ABANDON` is in the outcome vocabulary — and leaving it open would fold its events
+ * into the next trial's trace.
+ *
+ * Reached through `adapter.onTaskLifecycle` rather than the testbed's task manager: `src/runtime`
+ * is forbidden from importing `src/testbed` (ADR-011), and the adapter is the contract that keeps
+ * the pipeline host-agnostic. An adapter that does not expose task lifecycle (such as
+ * `DefaultUiAdapter`) is left unwired, which is correct for a host with no task model.
+ *
+ * Ordering is significant. `AdaptiveRuntime.start()` subscribes to the same lifecycle before this
+ * runs, so the terminal task event is already inside the trace when the snapshot is taken.
+ * Subscribing earlier would upload a trace missing its own ending. The same reasoning is why the
+ * adapter is tracked: re-subscribing on a condition switch would close every trial twice.
+ */
+function wireTrialCompletion(adapter: UiAdapter): void {
+  if (trialCompletionAdapter === adapter) return;
+
+  trialCompletionUnsubscribe?.();
+  trialCompletionAdapter = adapter;
+  trialCompletionUnsubscribe =
+    adapter.onTaskLifecycle?.((event: UiTaskLifecycleEvent) => {
+      if (event.type !== 'task_complete' && event.type !== 'task_abandon') return;
+      void closeTrial();
+    }) ?? null;
 }
 
 export function getRuntime(): AdaptiveRuntime | null {
