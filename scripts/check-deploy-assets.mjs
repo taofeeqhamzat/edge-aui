@@ -20,6 +20,10 @@
  *    working locally, because the Vite dev server sets them itself.
  * 5. **The model graphs and the commited WASM vectoriser are in `dist/`.** A build that omits
  *    them produces an application that loads and then cannot infer.
+ * 6. **The research collection is configured — or the build log says plainly that it is not.**
+ *    The `VITE_*` variables are optional, so their absence is reported rather than fatal by
+ *    default; set `REQUIRE_COLLECTION=1` to make it fatal. This is the check that would have
+ *    caught the deployed Worker that served the application correctly and uploaded nothing.
  *
  * A number is only accepted when it was measured here, not when it was asserted elsewhere.
  */
@@ -29,7 +33,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const distDir = path.join(repoRoot, 'dist');
+
+// `--dist <dir>` (or DIST_DIR) lets the gate be pointed at a fixture. That is how the research
+// collection check below is tested without performing a full production build.
+const distFlagIndex = process.argv.indexOf('--dist');
+const distDir = path.resolve(
+  (distFlagIndex !== -1 ? process.argv[distFlagIndex + 1] : undefined) ||
+    process.env.DIST_DIR ||
+    path.join(repoRoot, 'dist')
+);
 
 /** Cloudflare Pages' hard limit for a single site asset. */
 const MAX_ASSET_BYTES = 25 * 1024 * 1024; // 25 MiB
@@ -145,11 +157,72 @@ if (!vectoriserBundled) {
 const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
 const largest = [...files].sort((a, b) => b.size - a.size)[0];
 
+// 6. Research collection configuration — reported, and fatal only when explicitly required.
+//
+// The four `VITE_*` variables are optional by design, so a build without them is valid and must
+// not fail. It must not be *silent* either: a research deployment whose entire purpose is trace
+// collection can ship with `collection: local_only` and look perfectly healthy until someone
+// completes a task and finds no rows. That happened — the deployed Worker served the application,
+// passed every other check here, and had no Supabase URL inlined at all, because the build trigger
+// carried no variables.
+//
+// Vite substitutes the values while bundling, so their presence in the emitted JavaScript is
+// direct evidence that the build environment supplied them. Set `REQUIRE_COLLECTION=1` (for
+// example on a production build trigger) to turn the warning into a build failure.
+const jsAssets = files.filter(
+  (file) => file.relative.startsWith('assets/') && file.relative.endsWith('.js')
+);
+
+let inlinedSupabaseUrl = null;
+let inlinedAnonKey = false;
+for (const asset of jsAssets) {
+  const source = fs.readFileSync(path.join(distDir, asset.relative), 'utf8');
+  if (!inlinedSupabaseUrl) {
+    const urlMatch = source.match(/https:\/\/[a-z0-9-]+\.supabase\.(?:co|in)\b/i);
+    if (urlMatch) inlinedSupabaseUrl = urlMatch[0];
+  }
+  // Either key format: the publishable key, or a legacy JWT anon key (`eyJ...`).
+  if (
+    !inlinedAnonKey &&
+    (/sb_publishable_[A-Za-z0-9_-]{10,}/.test(source) || /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./.test(source))
+  ) {
+    inlinedAnonKey = true;
+  }
+}
+
+const collectionConfigured = Boolean(inlinedSupabaseUrl && inlinedAnonKey);
+const collectionWarnings = [];
+if (!inlinedSupabaseUrl) {
+  collectionWarnings.push(
+    'No Supabase URL is inlined in the bundle, so this build will report `collection: local_only` ' +
+      'and upload no traces. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY on the build trigger ' +
+      'for the environment being deployed, then rebuild — a variable change only affects new builds. ' +
+      'See docs/deploy/cloudflare-pages-setup.md §2.'
+  );
+} else if (!inlinedAnonKey) {
+  collectionWarnings.push(
+    `VITE_SUPABASE_URL (${inlinedSupabaseUrl}) is inlined but no anon key was found, so collection ` +
+      'stays disabled. Set VITE_SUPABASE_ANON_KEY for the same environment and rebuild.'
+  );
+}
+
+if (collectionWarnings.length > 0 && process.env.REQUIRE_COLLECTION === '1') {
+  failures.push(...collectionWarnings.map((warning) => `Research collection is not configured: ${warning}`));
+}
+
 console.log('=== Deployment asset inventory ===');
 console.log(`  Files in dist/: ${files.length}`);
 console.log(`  Total size:     ${formatBytes(totalBytes)} (${totalBytes} B)`);
 console.log(`  Largest asset:  ${largest ? `${largest.relative} (${formatBytes(largest.size)})` : 'n/a'}`);
 console.log(`  Per-file limit: ${formatBytes(MAX_ASSET_BYTES)} (Cloudflare Pages)`);
+if (collectionConfigured) {
+  console.log(`  Collection:     uploads enabled (VITE_SUPABASE_URL ${inlinedSupabaseUrl} and an anon key inlined)`);
+} else {
+  console.log('  Collection:     NOT CONFIGURED — this build uploads no traces');
+  for (const warning of collectionWarnings) {
+    console.log(`                  ${warning}`);
+  }
+}
 for (const note of notes) {
   console.log(`  ${note}`);
 }

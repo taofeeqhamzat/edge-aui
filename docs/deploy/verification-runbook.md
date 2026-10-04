@@ -54,6 +54,29 @@ Until the four variables in [`cloudflare-pages-setup.md` §2](./cloudflare-pages
 are set on the **production build trigger** and a build runs afterwards, step 10 cannot pass on the
 deployed origin, however correct the code is.
 
+**This is now visible in the build log rather than only by grepping the deployed bundle.**
+`npm run check:deploy-assets` reports the collection state it can measure from the emitted
+JavaScript, so a build with no inlined Supabase configuration prints
+`Collection:     NOT CONFIGURED — this build uploads no traces`. Absence is a warning by default
+because the variables are optional; setting `REQUIRE_COLLECTION=1` on the trigger turns it into a
+build failure. The check and its tests are in
+[`scripts/check-deploy-assets.mjs`](../../scripts/check-deploy-assets.mjs) and
+[`tests/check_deploy_assets_collection.test.ts`](../../tests/check_deploy_assets_collection.test.ts).
+
+**The store side is verified.** Read-only probes against the live project
+(`https://bfntyqahujplvcowjdmh.supabase.co`) with the anon key, on 2026-10-04:
+
+| Probe | Result | What it establishes |
+|---|---|---|
+| `GET /rest/v1/research_sessions?select=session_id&limit=1` | `200 []` | The table exists, so the migrations are applied, and the anon key is valid |
+| `GET /rest/v1/research_traces?select=session_id&limit=1` | `200 []` | As above |
+| `GET /rest/v1/research_export?select=session_id&limit=1` | `401`, `42501 permission denied for view research_export` | The export view is correctly revoked from `anon` (migration 0003) |
+
+`[]` is what an RLS-protected table returns to a role with no `SELECT` policy whether or not rows
+exist, so these probes establish that the schema and key are correct. They do **not** establish that
+any row has been written — that is what completing a task on the configured deployment and re-running
+the step 5 query is for.
+
 **Why steps 5 and 10 are not fully verified.** Browser automation cannot run in the environment where
 this work was done: Chrome does not launch under the harness sandbox. The socket-directory failure
 (`~/.agent-browser` is not writable) is worked around by pointing `HOME` at the workspace, but the

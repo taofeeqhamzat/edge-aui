@@ -113,24 +113,48 @@ The build log must end with the asset gate reporting OK:
   Total size:     14.18 MiB (14872949 B)
   Largest asset:  assets/ort-wasm-simd-threaded-<hash>.wasm (12.86 MiB)
   Per-file limit: 25.00 MiB (Cloudflare Pages)
+  Collection:     uploads enabled (VITE_SUPABASE_URL https://<ref>.supabase.co and an anon key inlined)
   ORT WASM binary: assets/ort-wasm-simd-threaded-<hash>.wasm (13479978 B)
   Headroom:       every asset is within the per-file limit
 
 [check-deploy-assets] OK — asset inventory satisfies the deployment requirements.
 ```
 
+**Read the `Collection:` line.** It reports whether the values were actually inlined into the
+bundle, which is the one deployment property that cannot be checked from the repository — it depends
+on the build trigger's variables:
+
+```
+  Collection:     uploads enabled (...)          ← the build can collect traces
+  Collection:     NOT CONFIGURED — this build uploads no traces
+```
+
+`NOT CONFIGURED` does **not** fail the build, because the four variables are optional by design and
+a local-only build is supported. It does mean the deployed testbed will report
+`collection: local_only` and store nothing. If you are deploying for research collection, that is a
+misconfiguration, not a valid configuration: set the variables from §2 and rebuild.
+
+To make it fatal for a production trigger, set `REQUIRE_COLLECTION=1` alongside the four variables.
+The build then fails with `Research collection is not configured: ...` rather than deploying a
+testbed that silently collects nothing. The check is implemented in
+[`scripts/check-deploy-assets.mjs`](../../scripts/check-deploy-assets.mjs) and covered by
+[`tests/check_deploy_assets_collection.test.ts`](../../tests/check_deploy_assets_collection.test.ts).
+
 The script's message says "Cloudflare Pages" because that was the original target; the same 25 MiB
 per-asset ceiling applies to Workers static assets, so the gate is still the right check for either
 platform.
 
 If instead you see `FAILED`, the deployment will be broken at runtime or rejected by
-Cloudflare. The two failures worth knowing about in advance:
+Cloudflare. The failures worth knowing about in advance:
 
 - **`Asset exceeds Cloudflare Pages' 25 MiB limit`** — the WebGPU/JSEP ONNX Runtime binary has
   been pulled back in. Check that `src/gates/slow/onnxSlowGate.ts` still loads
   `onnxruntime-web/wasm` and still defaults to the `wasm`/`cpu` providers (ADR-016).
 - **`dist/_headers is missing Cross-Origin-Embedder-Policy`** — the ONNX Runtime threaded build
   will fail to construct a session in the deployed origin. Restore `public/_headers`.
+- **`Research collection is not configured`** — `REQUIRE_COLLECTION=1` is set and the variables
+  from §2 are missing, so the build refused to deploy a testbed that cannot collect. Add them, or
+  unset `REQUIRE_COLLECTION` if a local-only deployment is intended.
 
 ## 4. Confirm the deployed origin
 
