@@ -80,12 +80,12 @@ cross-repository ingestion contract test consumes.
 ### Step 4 — Deploy to Cloudflare Pages
 
 Follow [`cloudflare-pages-setup.md`](./cloudflare-pages-setup.md). Build command `npm run build:ci`,
-output `dist`. The build log must end with `[check-deploy-assets] OK`.
+deploy command `npx wrangler deploy`. The build log must end with `[check-deploy-assets] OK`.
 
 Confirm the deployed origin:
 
 ```bash
-curl -sI https://<your-project>.pages.dev/ | grep -i cross-origin
+curl -sI https://<your-worker-host>/ | grep -i cross-origin
 # expect: cross-origin-opener-policy: same-origin
 #         cross-origin-embedder-policy: require-corp
 ```
@@ -100,8 +100,9 @@ curl -sI https://<your-project>.pages.dev/ | grep -i cross-origin
 
 On a machine with a browser:
 
-1. Open `https://<your-project>.pages.dev/?auiDiagnostics=1`.
-2. Expand **AUI Debug**. Confirm:
+1. Open `https://<your-worker-host>/?auiDiagnostics=1`.
+2. Expand the debug panel with the ⚡ toggle (labelled **Open Edge-AUI Development Debug Panel**),
+   whose header now reads **Pipeline Inspector**. Confirm:
    - **Model:** `loaded [wasm]` — not `not loaded`, not `[webgpu]`;
    - **Slow Gate Mode:** `onnx`.
    If either is wrong, the learned head is not running and every subsequent observation is about

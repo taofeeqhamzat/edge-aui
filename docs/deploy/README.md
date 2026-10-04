@@ -3,7 +3,7 @@
 The deployment target is deliberately simple (v0.1):
 
 ```
-GitHub ──► Cloudflare Pages ──► React testbed (dist/)
+GitHub ──► Cloudflare Worker (static assets) ──► React testbed (dist/)
    │
    └────► Supabase ──► research traces
 ```
@@ -15,7 +15,7 @@ runtime; Supabase is a write-only research collection store.
 |---|---|
 | This file | Build, deploy, and local development procedure |
 | [`supabase-setup.md`](./supabase-setup.md) | Creating the database and applying migrations |
-| [`cloudflare-pages-setup.md`](./cloudflare-pages-setup.md) | Creating the Pages project and its variables |
+| [`cloudflare-pages-setup.md`](./cloudflare-pages-setup.md) | Creating the Worker, its build trigger and its variables |
 | [`verification-runbook.md`](./verification-runbook.md) | The acceptance sequence, and what has actually been verified |
 
 ---
@@ -25,15 +25,16 @@ runtime; Supabase is a write-only research collection store.
 | Setting | Value |
 |---|---|
 | Build command | `npm run build:ci` |
-| Output directory | `dist` |
+| Deploy command | `npx wrangler deploy` |
+| Output directory | `dist` — declared in [`wrangler.jsonc`](../../wrangler.jsonc) as `assets.directory`, not a dashboard field |
 | Root directory | repository root |
-| Node version | 18 or later (`.nvmrc`-free; Pages default is sufficient) |
+| Node version | 18 or later (no `.nvmrc`; the build image default is sufficient) |
 | Deployment branch | `main` (production); every other branch gets a preview deployment |
 
 ### Why `build:ci` rather than `build`
 
 `npm run build` runs `build:wasm` first, which needs `wasm-pack` and a Rust toolchain. A
-Cloudflare Pages build image has neither, so `build:ci` skips it and instead verifies that the
+Cloudflare build image has neither, so `build:ci` skips it and instead verifies that the
 compiled WASM package is already present:
 
 ```bash
@@ -90,8 +91,9 @@ intervention head, the intervention policy and the trace contract are unchanged 
 
 ## Required environment variables
 
-Set these in the Cloudflare Pages project (Settings → Environment variables) and in
-`.env.local` for local development. `.env.example` is the tracked template.
+Set these on the Cloudflare **build trigger** (Workers & Pages → edge-aui → Settings → Builds —
+they are build-time values) and in `.env.local` for local development. `.env.example` is the
+tracked template.
 
 | Variable | Required | Purpose |
 |---|---|---|
@@ -143,13 +145,14 @@ npm run parity:check  # microtensor parity against the Python reference
 
 ## Deploying
 
-1. Push to `main`. Cloudflare Pages builds automatically.
-2. The build runs `npm run build:ci`. If the asset gate fails, the deployment fails and the
-   reason is printed in the build log — check it before retrying.
+1. Push to `main`. The Workers Build trigger runs automatically.
+2. The build runs `npm run build:ci`, then `npx wrangler deploy` publishes `dist/` from
+   `wrangler.jsonc`. If the asset gate fails, the deployment fails and the reason is printed in
+   the build log — check it before retrying.
 3. Confirm the deployment URL loads, then complete the acceptance sequence in
    [`verification-runbook.md`](./verification-runbook.md).
 
-Supabase migrations are applied separately and deliberately are **not** part of the Pages
+Supabase migrations are applied separately and deliberately are **not** part of the Cloudflare
 build: a schema change should be a reviewed, deliberate act rather than a side effect of
 deploying front-end code. See [`supabase-setup.md`](./supabase-setup.md).
 

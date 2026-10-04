@@ -1,70 +1,83 @@
-# Cloudflare Pages Setup
+# Cloudflare Deployment Setup
 
-Creates the Pages project that serves the React testbed from GitHub. The deployment is
-reproducible from the repository: everything it needs is either tracked or set as an
-environment variable here (deployment brief §17).
+Creates the Worker that serves the React testbed from GitHub. The deployment is reproducible from
+the repository: everything it needs is either tracked or set as an environment variable here
+(deployment brief §17).
+
+> **Platform note.** Cloudflare's current **Workers & Pages → Create** flow creates a **Worker with
+> static assets**, and its Git integration is **Workers Builds**. That is what this project uses.
+> A Workers Build has no "Build output directory" field: the published directory is declared in
+> [`wrangler.jsonc`](../../wrangler.jsonc) as `assets.directory`, so it is tracked rather than
+> entered by hand. Classic Pages projects use the same build command and the same `_headers` file;
+> only the configuration surface differs.
 
 ---
 
 ## 1. Connect the repository
 
-1. Cloudflare dashboard → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**.
+1. Cloudflare dashboard → **Workers & Pages** → **Create application** → **Workers** →
+   **Connect to Git** (import a repository).
 2. Authorise GitHub and select this repository.
-3. On the **Set up builds and deployments** page, configure the build:
+3. Configure the build:
 
 | Setting | Value | Where the field is |
 |---|---|---|
-| Production branch | `main` | Top of the page |
-| Framework preset | **None** | **Build settings**. Do **not** pick Vite — the preset overwrites the build command |
-| Build command | `npm run build:ci` | **Build settings** |
-| Build output directory | `dist` | **Build settings** |
-| Root directory | *(leave blank)* | **Root directory (advanced)** → **Path** |
+| Production branch | `main` | Build trigger settings |
+| Build command | `npm run build:ci` | Build trigger settings — **not** the default `npm run build` |
+| Deploy command | `npx wrangler deploy` | Build trigger settings. Wrangler reads the asset directory from `wrangler.jsonc` |
+| Build output directory | *(does not exist)* | Declared in `wrangler.jsonc` as `assets.directory: "./dist"` |
+| Root directory | *(leave blank)* | The repository root |
 
-All three **Build settings** fields appear together, under the **Framework preset** dropdown. The
-build command and output directory fields are pre-filled from the preset, so they look like fixed
-text when a preset is selected; with **None** they are plain editable inputs.
+`wrangler.jsonc` is the deploy contract. It sets `assets.directory` to `dist/` and `name` to
+`edge-aui`, so a build updates that Worker in place. There is deliberately no `main`: the testbed
+has no server-side code, so every response is a static-asset response — which is what `_headers`
+applies to.
 
-> **The output directory must be `dist`, not `public`.**
+> **The published directory is `dist`, not `public`.**
 >
-> This repository already contains a `public/` directory (`public/_headers` and the ONNX graphs).
-> `public/` is Vite's *source* directory for verbatim-copied assets, and `dist/` is the build
-> output. Several Pages presets and templates default the output directory to `public`, and a
-> project created with that default does not fail loudly: it publishes the raw `public/` folder,
-> so the deployment succeeds and serves a directory with no application in it.
->
-> If you cannot see the field, or the deployed site returns a bare file listing, open
-> **Workers & Pages → your project → Settings → Build configuration → Edit configuration** and
-> set **Build output directory** to `dist`, then retry the deployment.
+> This repository also contains a `public/` directory (`public/_headers` and the ONNX graphs).
+> `public/` is Vite's *source* directory for assets copied verbatim into the build; `dist/` is the
+> build output that contains the application. Publishing `public/` does not fail loudly — it serves
+> a directory with no application in it. Because the directory is declared in `wrangler.jsonc`,
+> that mistake cannot be made from the dashboard, and a review of the file is the whole check.
 
-`npm run build:ci` is `check:wasm-pkg && tsc && vite build && check:deploy-assets`. It
-deliberately does **not** run `build:wasm`, because a Pages build image has no Rust toolchain.
+### Why `build:ci` and not `build`
+
+`npm run build:ci` is `check:wasm-pkg && tsc && vite build && check:deploy-assets`. It deliberately
+does **not** run `build:wasm`, which `npm run build` does: that step needs `wasm-pack` and a Rust
+toolchain, and **no Cloudflare build image has either**. Leaving the build command at its default
+is the most common way this deployment fails — the build log stops inside `build:wasm`.
+
 The compiled WASM package is committed for exactly this reason — see
 [`README.md`](./README.md#the-compiled-wasm-package-is-committed).
 
 ## 2. Set environment variables
 
-**These are build-time variables, not runtime variables.** Cloudflare Pages serves static files
-and runs no code at request time, so there is nothing to read a variable at runtime. The values
-are consumed by `vite build` inside the build container:
+**For this application they must be set as build-time variables on the build trigger, not as
+runtime variables.** Workers do support runtime variables and secrets, but this app never reads
+them: Vite resolves `import.meta.env.VITE_*` while bundling, so the value is a literal inside the
+deployed JavaScript by the time the Worker exists.
 
 ```
-Cloudflare environment variables ──► `vite build` (build time) ──► inlined literals in dist/*.js
+Cloudflare build-trigger variables ──► `vite build` (build time) ──► inlined literal in dist/*.js
+Cloudflare runtime variables       ──► available to Worker code only: read by nothing here
 ```
 
-Vite substitutes every `import.meta.env.VITE_*` reference with its literal value while bundling.
-The deployed JavaScript contains the value itself; it never queries the platform.
+Cloudflare's own wording for build-trigger variables is that they are "build-time environment
+variables, available only during the build process" — which is precisely what Vite needs.
 
 Two consequences:
 
-- **Changing a variable requires a new deployment.** Editing a variable does not affect the
-  deployment already live. Re-run the deployment (or push a commit) afterwards.
-- **A variable added after the first build only affects builds that start later.** If a build was
-  already running, or if you are looking at an older deployment, the old values are still baked in.
+- **Changing a variable requires a new build.** The already-deployed version has the old value
+  compiled in. Push a commit, or trigger a build, afterwards.
+- **A variable added after a build only affects builds that start later.** A build already running,
+  or a version already deployed, keeps the values it was built with.
 
-Set them at **Workers & Pages → your project → Settings → Environment variables**, for both
-**Production** and **Preview** (they are separate variable sets; a value set only for Production
-is absent from preview deployments). The same fields also appear during project creation, under
-**Environment variables (optional)**.
+Set them on the build trigger: **Workers & Pages → edge-aui → Settings → Builds → Build
+configuration → Environment variables**, scoped to **Production** (and to **Preview** if preview
+builds should collect traces — they are separate triggers with separate variables). The same fields
+also appear during project creation, under **Environment variables**. The equivalent API is
+`PATCH /accounts/{account_id}/builds/triggers/{trigger_uuid}/environment_variables`.
 
 | Variable | Value | Notes |
 |---|---|---|
@@ -77,11 +90,13 @@ All four are optional. With none set, the testbed runs and records locally, expo
 the research panel, and reports `collection: local_only`.
 
 **Verify that the inlining actually happened** — this is the check that catches a variable set on
-the wrong environment:
+the wrong environment, or set after the build ran. Fetch the deployed bundle and look for the
+project ref inside it:
 
 ```bash
-# Replace with your deployment URL and project ref.
-curl -s https://<your-project>.pages.dev/assets/index-*.js | grep -c '<project-ref>'
+# Replace with your Worker URL and Supabase project ref.
+curl -s https://<your-worker-host>/ | grep -o 'assets/index-[^"]*\.js' | head -1
+curl -s https://<your-worker-host>/assets/index-<hash>.js | grep -c '<project-ref>'
 # expect: a non-zero count
 ```
 
@@ -95,7 +110,7 @@ The build log must end with the asset gate reporting OK:
 ```
 === Deployment asset inventory ===
   Files in dist/: 20
-  Total size:     14.17 MiB (14856477 B)
+  Total size:     14.18 MiB (14872949 B)
   Largest asset:  assets/ort-wasm-simd-threaded-<hash>.wasm (12.86 MiB)
   Per-file limit: 25.00 MiB (Cloudflare Pages)
   ORT WASM binary: assets/ort-wasm-simd-threaded-<hash>.wasm (13479978 B)
@@ -103,6 +118,10 @@ The build log must end with the asset gate reporting OK:
 
 [check-deploy-assets] OK — asset inventory satisfies the deployment requirements.
 ```
+
+The script's message says "Cloudflare Pages" because that was the original target; the same 25 MiB
+per-asset ceiling applies to Workers static assets, so the gate is still the right check for either
+platform.
 
 If instead you see `FAILED`, the deployment will be broken at runtime or rejected by
 Cloudflare. The two failures worth knowing about in advance:
@@ -141,14 +160,16 @@ curl -sI https://<your-deployment>/ | grep -i cross-origin
 
 ## 5. Custom domain (optional)
 
-Workers & Pages → your project → **Custom domains** → add. Not required for the supervisor
-walkthrough; the `*.pages.dev` URL is sufficient and shorter to read out.
+Workers & Pages → **edge-aui** → **Settings** → **Domains & Routes** → **Add** → **Custom domain**.
+Not required for the supervisor walkthrough; the `*.workers.dev` URL is sufficient and shorter to
+read out.
 
 ---
 
 ## What this deployment does not include
 
-- No Pages Functions, no server-side rendering, no API layer. The output is static assets.
+- No Worker script, no server-side rendering, no API layer. The output is static assets served
+  from a Worker that contains no code.
 - No authentication. The testbed is public by design for this milestone.
 - No secret values in the build environment beyond the anon key, which is public by design.
 
