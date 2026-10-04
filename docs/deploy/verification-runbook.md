@@ -35,54 +35,91 @@ persistent research trace
 | 3 | Asset inventory | **VERIFIED** | `npm run check:deploy-assets` → 20 files, 14.18 MiB total, largest 12.86 MiB, no JSEP asset |
 | 4 | Cloudflare deployment | **VERIFIED** | Worker `edge-aui` at `https://edge-aui.hamzattao.workers.dev/`. Commit check `Workers Builds: edge-aui` reported `success` on `fc40b79` and `7f2727d`; origin returns HTTP/2 200 and serves the first-load bundle, `/models/model_int8.onnx` (170,206 B), `/models/intervention_head_int8.onnx` (176,839 B) and the 13,479,978 B ORT WASM binary. |
 | 4a | Cross-origin isolation on the deployed origin | **VERIFIED** | `curl -sI` returns `cross-origin-opener-policy: same-origin` and `cross-origin-embedder-policy: require-corp`, so `dist/_headers` is applied by Workers static assets. This is the "works locally, degrades in production" failure the asset gate exists to prevent. |
-| 5 | Browser loads model + WASM | **PARTIAL** | Real graphs load and serve inference headlessly (`modelLoaded: true`, provider `wasm`), and the deployed origin serves the assets. Running it in a **browser from the deployed origin** is **NOT VERIFIED**. |
-| 6 | Real sequence + context inference | **VERIFIED** | 41 behaviour events → 11 MicroTensor windows → 2 predictions on a real capture |
-| 7 | `TargetInterventionHead` executes | **VERIFIED** | `slowGateMode: 'onnx'`, `modelLoaded: true`, non-mock provider |
+| 5 | Browser loads model + WASM | **VERIFIED** | Observed **in a browser on the deployed origin** (`https://edge-aui.hamzattao.workers.dev/?auiDiagnostics=1`, headless Chrome 154 over the DevTools Protocol): the panel reports `Model: loaded [wasm]`, `Model Version: TargetInterventionHead-v1.0.0-int8`, `Slow Gate Mode: onnx`. The ONNX Runtime session constructs on the deployed origin, so `_headers` isolation is working in practice and not merely present. |
+| 6 | Real sequence + context inference | **VERIFIED** | 41 behaviour events → 11 MicroTensor windows → 2 predictions on a real capture. Also observed live: completing T1 on the deployed origin produced MicroTensor windows, worker transfer timings and a Slow Gate verdict (`NO_OUTCOME (conf: 0.48)`). |
+| 7 | `TargetInterventionHead` executes | **VERIFIED** | `slowGateMode: 'onnx'`, `modelLoaded: true`, non-mock provider — including on the deployed origin (step 5) |
 | 8 | Policy decision recorded | **VERIFIED** | 2 predictions, 2 policy decisions, every prediction attributed a verdict |
 | 9 | Visible intervention | **PARTIAL** | The DOM↔trace correlation is asserted; in the recorded run the policy legitimately did not actuate (0 interventions), so a visible adaptation was not observed |
-| 10 | Persistent research trace | **PARTIAL** | A canonical 1.3.0 trace is produced, verifier-clean, and ingests into `model-preparation`. The upload now runs on trial completion (`tests/trial_completion_upload.test.ts`), but **no trace has been observed reaching a live Supabase project** — see the production blocker below. |
+| 10 | Persistent research trace | **PARTIAL** | A canonical 1.3.0 trace is produced, verifier-clean, and ingests into `model-preparation`. The upload now runs on trial completion, and the deployed origin was observed issuing the correct request — but **no row has been observed in the live store**, and the export has not been read back. See "Where step 10 stands" below. |
 
-### Production blocker for step 10 (observed 2026-10-04)
+### Where step 10 stands (verified 2026-10-04)
 
-The deployed bundle contains the collection client — `grep -c research_sessions` on
-`/assets/index-CJtcHgN2.js` returns 1 — but **no Supabase configuration**: the same bundle has zero
-occurrences of the project ref and zero occurrences of `supabase`. The Worker's build trigger has no
-`VITE_*` variables, so `vite build` inlined nothing and `resolveSupabaseCollectionConfig()` resolves
-to unconfigured. The deployed origin therefore reports `collection: local_only` and uploads nothing.
+Every link in the chain has been observed except the committed row itself. Each item below is a
+measurement, not an expectation.
 
-Until the four variables in [`cloudflare-pages-setup.md` §2](./cloudflare-pages-setup.md#2-set-environment-variables)
-are set on the **production build trigger** and a build runs afterwards, step 10 cannot pass on the
-deployed origin, however correct the code is.
+**The deployed origin performs the write correctly.** Completing T1 in a browser on the deployed
+origin, with `window.fetch` wrapped before application code ran and Supabase calls short-circuited
+so that nothing was stored, captured exactly one request:
 
-**This is now visible in the build log rather than only by grepping the deployed bundle.**
-`npm run check:deploy-assets` reports the collection state it can measure from the emitted
-JavaScript, so a build with no inlined Supabase configuration prints
-`Collection:     NOT CONFIGURED — this build uploads no traces`. Absence is a warning by default
-because the variables are optional; setting `REQUIRE_COLLECTION=1` on the trigger turns it into a
-build failure. The check and its tests are in
-[`scripts/check-deploy-assets.mjs`](../../scripts/check-deploy-assets.mjs) and
-[`tests/check_deploy_assets_collection.test.ts`](../../tests/check_deploy_assets_collection.test.ts).
+```
+POST https://bfntyqahujplvcowjdmh.supabase.co/rest/v1/research_sessions
+headers: Content-Type, apikey, Authorization, Prefer        ← apikey present, value sb_publishable…
+body:    session_id, upload_token, experiment_id, condition_id: "adaptive",
+         provenance: "scripted", task_id: "T1", trace_schema_version: "1.3.0",
+         status: "Completed", metadata.clock: "epoch_ms", metadata.evictions.truncated: false
+```
 
-**The store side is verified.** Read-only probes against the live project
-(`https://bfntyqahujplvcowjdmh.supabase.co`) with the anon key, on 2026-10-04:
+The task reached `Completed`; the panel read `Model: loaded [wasm]`, `Slow Gate Mode: onnx`.
+
+**The store accepts that shape.** Read-only and rejected probes against the live project:
 
 | Probe | Result | What it establishes |
 |---|---|---|
-| `GET /rest/v1/research_sessions?select=session_id&limit=1` | `200 []` | The table exists, so the migrations are applied, and the anon key is valid |
+| `GET /rest/v1/research_sessions?select=session_id&limit=1` with the anon key | `200 []` | Table exists (migrations applied) and the anon key is valid |
 | `GET /rest/v1/research_traces?select=session_id&limit=1` | `200 []` | As above |
-| `GET /rest/v1/research_export?select=session_id&limit=1` | `401`, `42501 permission denied for view research_export` | The export view is correctly revoked from `anon` (migration 0003) |
+| `GET /rest/v1/research_export?select=session_id&limit=1` | `401 42501 permission denied for view research_export` | The export view is correctly revoked from `anon` (migration 0003) |
+| `OPTIONS` preflight as the browser sends it | `200` with `access-control-allow-headers: apikey,authorization,content-type,prefer` | The browser's preflight passes; CORS is not an obstacle |
+| `POST /rest/v1/research_sessions` with an empty `session_id` | `401 42501 new row violates row-level security policy for table "research_sessions"` | `anon` **has** the INSERT grant — a missing grant would answer `permission denied for table` — and the RLS `WITH CHECK` is enforced. Nothing was written. |
+| `POST /rest/v1/research_traces` with an empty `session_id` | `401 42501 new row violates row-level security policy for table "research_traces"` | As above |
 
-`[]` is what an RLS-protected table returns to a role with no `SELECT` policy whether or not rows
-exist, so these probes establish that the schema and key are correct. They do **not** establish that
-any row has been written — that is what completing a task on the configured deployment and re-running
-the step 5 query is for.
+The captured body satisfies every condition of that `WITH CHECK` (`provenance in ('scripted',
+'participant')`, non-empty `session_id`, non-empty `upload_token`), which both tables' policies
+require.
 
-**Why steps 5 and 10 are not fully verified.** Browser automation cannot run in the environment where
-this work was done: Chrome does not launch under the harness sandbox. The socket-directory failure
-(`~/.agent-browser` is not writable) is worked around by pointing `HOME` at the workspace, but the
-browser process still fails to start (`CDP response channel closed`), with and without
-`--no-sandbox`. Steps that require a real browser are therefore recorded honestly rather than
-reported as passing.
+**What is still missing.** No row has been observed in the store, because writing one requires
+completing a task against the live project, and reading it back requires the `service_role` key —
+`anon` cannot `SELECT` by design. `[]` from the read probes is what an RLS-protected table returns
+whether or not rows exist, so those probes say nothing about whether a trace has been written. To
+close the step: complete a task on the deployed origin, then run the step 5 query and
+[`supabase-setup.md` §6](./supabase-setup.md#6-export-collected-traces) with the service-role key.
+
+**A reported error that does not match this path.** A `{"message":"No API key found in request"}`
+response was reported from `https://<id>.supabase.co/rest/v1/research_sessions`. That message is
+returned only when the `apikey` header is absent entirely — a present but wrong key answers
+`Invalid API key`, and the deployed origin was measured sending the header. Whatever produced that
+response, it was not the deployed testbed's upload path, and it is recorded here so the difference
+is not lost.
+
+### Earlier blocker (resolved 2026-10-04)
+
+The first successful deployment served the application with **no Supabase configuration at all**:
+the bundle contained the collection client (`grep -c research_sessions` on
+`/assets/index-CJtcHgN2.js` returned 1) but zero occurrences of the project ref, because the
+Worker's build trigger carried no `VITE_*` variables. It reported `collection: local_only` and would
+have uploaded nothing.
+
+**Resolved.** The variables were added to the production build trigger and a new build produced
+`/assets/index-CDOUxPZ2.js`, which contains the project ref, the `sb_publishable_…` anon key and the
+`scripted` mode. The deployed origin now reports `Collection: pending` and
+`Collection Detail: scripted | uploads: 0` — a state only a configured build can reach, since an
+unconfigured one reports `local_only` instead.
+
+The lesson is kept as a check rather than a note: `npm run check:deploy-assets` now reports the
+collection state it measures from the emitted JavaScript, so a build with no inlined Supabase
+configuration prints `Collection:     NOT CONFIGURED — this build uploads no traces`. Absence is a
+warning by default because the variables are optional; setting `REQUIRE_COLLECTION=1` on the trigger
+turns it into a build failure. See
+[`scripts/check-deploy-assets.mjs`](../../scripts/check-deploy-assets.mjs) and
+[`tests/check_deploy_assets_collection.test.ts`](../../tests/check_deploy_assets_collection.test.ts).
+
+**Browser verification is possible after all — with a caveat worth recording.** The earlier
+conclusion that "Chrome does not launch under the harness sandbox" was too broad. `agent-browser`
+cannot attach (`CDP response channel closed`, with and without `--no-sandbox`), and the default
+`--headless=new` invocation hangs. But Chrome itself launches with `--headless`, a
+workspace-scoped `HOME`/`TMPDIR`, and a workspace `--user-data-dir`, and the DevTools Protocol can
+be driven directly. Everything recorded above about the deployed origin was measured that way.
+Steps 5 is therefore verified; step 10 remains partial only because the write itself has not been
+observed committing a row.
 
 ---
 
