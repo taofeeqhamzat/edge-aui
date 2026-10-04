@@ -32,20 +32,34 @@ persistent research trace
 |---|---|---|---|
 | 1 | ORT WASM entry point | **VERIFIED** | `require.resolve('onnxruntime-web/wasm')` → `ort.wasm.min.js`; asserted in `tests/deployed_acceptance.test.ts` |
 | 2 | Production build | **VERIFIED** | `npm run build:ci` completes from a clean checkout (983 files, no `node_modules`, no Rust) |
-| 3 | Asset inventory | **VERIFIED** | `npm run check:deploy-assets` → 20 files, 14.17 MiB total, largest 12.86 MiB, no JSEP asset |
-| 4 | Cloudflare Pages deployment | **NOT VERIFIED** | No Cloudflare account or project exists. Manual steps below. |
-| 5 | Browser loads model + WASM | **PARTIAL** | Real graphs load and serve inference headlessly (`modelLoaded: true`, provider `wasm`). Loading from a deployed origin is **NOT VERIFIED**. |
+| 3 | Asset inventory | **VERIFIED** | `npm run check:deploy-assets` → 20 files, 14.18 MiB total, largest 12.86 MiB, no JSEP asset |
+| 4 | Cloudflare deployment | **VERIFIED** | Worker `edge-aui` at `https://edge-aui.hamzattao.workers.dev/`. Commit check `Workers Builds: edge-aui` reported `success` on `fc40b79` and `7f2727d`; origin returns HTTP/2 200 and serves the first-load bundle, `/models/model_int8.onnx` (170,206 B), `/models/intervention_head_int8.onnx` (176,839 B) and the 13,479,978 B ORT WASM binary. |
+| 4a | Cross-origin isolation on the deployed origin | **VERIFIED** | `curl -sI` returns `cross-origin-opener-policy: same-origin` and `cross-origin-embedder-policy: require-corp`, so `dist/_headers` is applied by Workers static assets. This is the "works locally, degrades in production" failure the asset gate exists to prevent. |
+| 5 | Browser loads model + WASM | **PARTIAL** | Real graphs load and serve inference headlessly (`modelLoaded: true`, provider `wasm`), and the deployed origin serves the assets. Running it in a **browser from the deployed origin** is **NOT VERIFIED**. |
 | 6 | Real sequence + context inference | **VERIFIED** | 41 behaviour events → 11 MicroTensor windows → 2 predictions on a real capture |
 | 7 | `TargetInterventionHead` executes | **VERIFIED** | `slowGateMode: 'onnx'`, `modelLoaded: true`, non-mock provider |
 | 8 | Policy decision recorded | **VERIFIED** | 2 predictions, 2 policy decisions, every prediction attributed a verdict |
 | 9 | Visible intervention | **PARTIAL** | The DOM↔trace correlation is asserted; in the recorded run the policy legitimately did not actuate (0 interventions), so a visible adaptation was not observed |
-| 10 | Persistent research trace | **PARTIAL** | A canonical 1.3.0 trace is produced, verifier-clean, and ingests into `model-preparation`. Upload to a live Supabase project is **NOT VERIFIED**. |
+| 10 | Persistent research trace | **PARTIAL** | A canonical 1.3.0 trace is produced, verifier-clean, and ingests into `model-preparation`. The upload now runs on trial completion (`tests/trial_completion_upload.test.ts`), but **no trace has been observed reaching a live Supabase project** — see the production blocker below. |
 
-**Why steps 4, 5 and 10 are not verified.** Neither Supabase nor Cloudflare Pages existed when this
-milestone was implemented. Additionally, browser automation cannot run in the environment where the
-work was done: Chrome does not launch under the harness sandbox (`~/.agent-browser` is not writable
-and the browser process fails to start). Steps that require a live deployed origin or a live
-database are therefore recorded honestly rather than reported as passing.
+### Production blocker for step 10 (observed 2026-10-04)
+
+The deployed bundle contains the collection client — `grep -c research_sessions` on
+`/assets/index-CJtcHgN2.js` returns 1 — but **no Supabase configuration**: the same bundle has zero
+occurrences of the project ref and zero occurrences of `supabase`. The Worker's build trigger has no
+`VITE_*` variables, so `vite build` inlined nothing and `resolveSupabaseCollectionConfig()` resolves
+to unconfigured. The deployed origin therefore reports `collection: local_only` and uploads nothing.
+
+Until the four variables in [`cloudflare-pages-setup.md` §2](./cloudflare-pages-setup.md#2-set-environment-variables)
+are set on the **production build trigger** and a build runs afterwards, step 10 cannot pass on the
+deployed origin, however correct the code is.
+
+**Why steps 5 and 10 are not fully verified.** Browser automation cannot run in the environment where
+this work was done: Chrome does not launch under the harness sandbox. The socket-directory failure
+(`~/.agent-browser` is not writable) is worked around by pointing `HOME` at the workspace, but the
+browser process still fails to start (`CDP response channel closed`), with and without
+`--no-sandbox`. Steps that require a real browser are therefore recorded honestly rather than
+reported as passing.
 
 ---
 
