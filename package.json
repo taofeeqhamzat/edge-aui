@@ -13,6 +13,7 @@
     "build": "npm run build:wasm && tsc && vite build && npm run check:deploy-assets",
     "build:ci": "npm run check:wasm-pkg && tsc && vite build && npm run check:deploy-assets",
     "check:deploy-assets": "node scripts/check-deploy-assets.mjs",
+    "check:collection-policies": "node scripts/verify-collection-policies.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "parity:check": "node scripts/regenerate-parity-fixture.mjs --check",

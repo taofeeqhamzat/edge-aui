@@ -137,7 +137,31 @@ missing table, or the network. That message has two causes, and they need differ
 | Cause | How to tell | Fix |
 |---|---|---|
 | The row violates the policy's `WITH CHECK` | A probe row with an empty `session_id` or `upload_token` gives the same error; the app's real payload does not | The payload is wrong — but the testbed always sends a non-empty `session_id`, a non-empty `upload_token` and `provenance: 'scripted'`, so this is unlikely |
-| No `INSERT` policy applies to the request's role | A probe row that **satisfies** every documented condition and violates a table constraint still returns `42501` instead of a constraint error | The policy is absent or is granted to a different role. Re-apply `supabase/migrations/0002_rls_policies.sql` (see below) |
+| No `INSERT` policy applies to the request's role | A probe row that **satisfies** every documented condition and violates a later constraint still returns `42501` instead of a constraint error | The policy is absent or is granted to a different role. Re-apply `supabase/migrations/0002_rls_policies.sql` (see below) |
+
+**Check which one it is with one command, without writing anything:**
+
+```bash
+npm run check:collection-policies
+```
+
+The verifier (`scripts/verify-collection-policies.mjs`) sends two payloads that satisfy every
+documented condition of the policy and each violate a constraint evaluated *after* Row Level
+Security — `condition_id: 'NOT_VALID'` for the session table, and a non-existent parent
+`session_id` for the trace table. Reaching the constraint proves the row passed RLS; being stopped
+at RLS proves it did not. Neither outcome can commit a row, so the check is safe to run against the
+live project at any time. Observed on 2026-10-04, before the repair:
+
+```
+  GET research_sessions                      200 (table exists, anon key valid)
+  GET research_export                        401 (revoked from anon — correct)
+  POST research_sessions (invalid condition) 401 42501 — policy does NOT apply
+  POST research_traces (missing parent)      401 42501 — policy does NOT apply
+
+[verify-collection-policies] FAILED — the anon INSERT policy does not apply.
+```
+
+A pass prints `OK — the anon INSERT policy applies to both research tables.`
 
 **Do not assume an applied migration means the policy exists.** `supabase migration list` reports
 what has been *recorded*, not what is currently in the database; a policy dropped after the
