@@ -40,11 +40,11 @@ persistent research trace
 | 7 | `TargetInterventionHead` executes | **VERIFIED** | `slowGateMode: 'onnx'`, `modelLoaded: true`, non-mock provider — including on the deployed origin (step 5) |
 | 8 | Policy decision recorded | **VERIFIED** | 2 predictions, 2 policy decisions, every prediction attributed a verdict |
 | 9 | Visible intervention | **PARTIAL** | The DOM↔trace correlation is asserted; in the recorded run the policy legitimately did not actuate (0 interventions), so a visible adaptation was not observed |
-| 10 | Persistent research trace | **PARTIAL** | A canonical 1.3.0 trace is produced, verifier-clean, and ingests into `model-preparation`. The upload now runs on trial completion, and the deployed origin was observed issuing the correct request — but **no row has been observed in the live store**, and the export has not been read back. See "Where step 10 stands" below. |
+| 10 | Persistent research trace | **VERIFIED (write path)** | A canonical 1.3.0 trace is produced, verifier-clean, ingests into `model-preparation`, and a completed trial on the deployed origin was **observed committing to the live Supabase project** — both `research_sessions` and `research_traces` rows proven present. The researcher *export* read-back is still manual because it needs the `service_role` key. See "Where step 10 stands" below. |
 
 ### Where step 10 stands (verified 2026-10-04)
 
-Every link in the chain has been observed except the committed row itself. Each item below is a
+Every link in the chain has now been observed, including the committed rows. Each item below is a
 measurement, not an expectation.
 
 **The deployed origin performs the write correctly.** Completing T1 in a browser on the deployed
@@ -92,12 +92,46 @@ The captured body satisfies every condition of the `WITH CHECK` (`provenance in 
 'participant')`, non-empty `session_id`, non-empty `upload_token`), which both tables' policies
 require.
 
-**What is still missing.** No row has been observed in the store, because writing one requires
-completing a task against the live project, and reading it back requires the `service_role` key —
-`anon` cannot `SELECT` by design. `[]` from the read probes is what an RLS-protected table returns
-whether or not rows exist, so those probes say nothing about whether a trace has been written. To
-close the step: complete a task on the deployed origin, then run the step 5 query and
-[`supabase-setup.md` §6](./supabase-setup.md#6-export-collected-traces) with the service-role key.
+**The write is confirmed committed (2026-10-04).** Completing T1 in a browser on the deployed origin
+produced, in the app's own panel:
+
+```
+SESSION_BEFORE_TRIAL=866e9af8-445c-4385-b7d5-eff930820e3c
+panel after:  session 866e9af8… → dee775b2-9cb1-45dd-b2c3-1b11b19ebbd2
+              collection: uploaded
+              collectionDetail: scripted | uploads: 0
+exceptions:   none            console errors: none
+```
+
+`uploaded` is set only when *both* inserts return 2xx, and the session rotation confirms
+`closeTrial()` ran to completion. The rows were then proven present **without writing anything**, by
+re-sending the same primary key and reading the conflict:
+
+```
+POST /rest/v1/research_sessions  {session_id: 866e9af8…}  -> 409 23505 duplicate key ... research_sessions_pkey
+POST /rest/v1/research_traces    {session_id: 866e9af8…}  -> 409 23505 duplicate key ... research_traces_pkey
+```
+
+A `409` on a re-insert is the cheapest existence proof available to a role that cannot `SELECT`, and
+it commits nothing. **Step 10's write path is therefore verified end to end: deployed browser →
+canonical trace → committed rows in the live store.**
+
+**What is still manual: the researcher export read-back.** `scripts/export-traces.mjs` needs the
+`service_role` key, which is deliberately not available to the browser or to CI, so the export has
+not been exercised against this deployment. Run it as in
+[`supabase-setup.md` §6](./supabase-setup.md#6-export-collected-traces) when the key is to hand; the
+rows it will read are already there.
+
+**Two probe rows were created while proving this, and should be deleted.** An existence probe was
+first run against the *rotated* session id — the panel shows the session after rotation, not the one
+that was uploaded — so the probe found nothing and inserted its payload instead. Nothing else was
+affected, and the rows are clearly identifiable. With the `service_role` key or the dashboard SQL
+editor:
+
+```sql
+delete from public.research_sessions where session_id = '56efc833-d3ab-4191-8fff-5c0b3853114c';
+-- research_traces cascades on delete, so this removes both probe rows.
+```
 
 **A reported error that does not match this path.** A `{"message":"No API key found in request"}`
 response was reported from `https://<id>.supabase.co/rest/v1/research_sessions`. That message is
