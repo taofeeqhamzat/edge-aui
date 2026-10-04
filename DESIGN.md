@@ -2,18 +2,18 @@
 name: Edge-AUI Framework
 description: Scientific testbed and analytics workbench for edge-native behavioural pattern extraction and adaptive UI recommendation
 colors:
-  bg-primary: "#0f1117"
-  bg-surface: "#181b24"
-  bg-elevated: "#222634"
-  border: "#2d3345"
-  border-active: "#4f5979"
-  text-main: "#f0f2f8"
-  text-muted: "#8e98b0"
-  accent-cyan: "#00f0ff"
-  accent-purple: "#9d4edd"
-  accent-amber: "#ffb703"
-  accent-emerald: "#10b981"
-  accent-rose: "#f43f5e"
+  bg-primary: "#f8f9fa"
+  bg-surface: "#ffffff"
+  bg-elevated: "#f1f5f9"
+  border: "#cbd5e1"
+  border-active: "#0284c7"
+  text-main: "#0f172a"
+  text-muted: "#475569"
+  accent-cyan: "#0284c7"
+  accent-purple: "#7c3aed"
+  accent-amber: "#d97706"
+  accent-emerald: "#059669"
+  accent-rose: "#dc2626"
 typography:
   display:
     fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
@@ -46,9 +46,10 @@ typography:
     lineHeight: 1.4
     letterSpacing: "0.05em"
 rounded:
-  sm: "4px"
-  md: "8px"
-  lg: "12px"
+  none: "0px"
+  sm: "0px"
+  md: "0px"
+  lg: "0px"
 spacing:
   xs: "4px"
   sm: "8px"
@@ -58,13 +59,13 @@ components:
   button-primary:
     backgroundColor: "{colors.bg-surface}"
     textColor: "{colors.text-main}"
-    rounded: "{rounded.sm}"
+    rounded: "{rounded.none}"
     padding: "8px 14px"
   button-primary-hover:
-    backgroundColor: "{colors.border-active}"
+    backgroundColor: "{colors.bg-elevated}"
   card:
     backgroundColor: "{colors.bg-surface}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.none}"
     padding: "20px"
 ---
 
@@ -72,39 +73,39 @@ components:
 
 ## 1. Overview
 
-**Creative North Star: "The Instrument Bench"**
+**Creative North Star: "The Instrument Bench" (Persistent Light Theme)**
 
-The Edge-AUI interface is an instrument-grade research testbed and analytics workbench engineered for rigorous edge-AI behavioral evaluation. It balances two parallel requirements: providing study participants with a realistic, distraction-free SERP-meets-SaaS analytics workspace (tasks T1–T3) where interaction dynamics mirror natural web usage, while offering researchers immediate, high-density visibility into edge model inference, dual-gate arbitration, and non-destructive interface adaptations.
+The Edge-AUI interface is an instrument-grade research testbed and analytics workbench engineered for rigorous edge-AI behavioral evaluation. It is rendered in a persistent, high-contrast light theme built upon an architectural blueprint foundation: pure, unrounded 0px corners, sharp 1px structural borders, and calibrated dark typography on pristine white and light-slate surfaces.
 
-The visual language rejects decorative consumer SaaS ornamentation in favor of crisp typography, disciplined monospace metrics, and restrained surface stepping. Color is treated as an active electrical signal rather than ambient decor—present only when communicating operational status, active trial conditions, or live intervention episodes.
+The visual system rejects consumer decoration, rounded pill cards, and warm-cream tropes in favor of strict technical precision. It serves two parallel audiences: study participants executing authentic SERP-meets-SaaS data workflows (tasks T1–T3) without distraction, and researchers monitoring real-time edge model latency, gate arbitration, and non-destructive interface adaptations.
 
 **Key Characteristics:**
-- **Zero-Friction Utility**: Intentionally unadorned surfaces that eliminate cognitive load and prevent participant hesitation artifacts.
-- **Monochrome Chassis**: Deep slate/charcoal foundations (`#0f1117`, `#181b24`, `#222634`) structured by crisp 1px borders (`#2d3345`).
-- **Semantic Signal Accents**: Cyan, Emerald, Amber, Rose, and Purple applied strictly as telemetry indicators and state badges.
-- **Non-Destructive Invariance**: Visual adaptations occur without cumulative layout shifts or focus displacement.
+- **Zero Border Radius**: Pure square corners (`border-radius: 0`) across all elements, communicating architectural rigor and data-sheet utility.
+- **Pristine Light Chassis**: Crisp off-white base (`#f8f9fa`) with pure white surfaces (`#ffffff`) and stepped elevation (`#f1f5f9`).
+- **High-Contrast Typography**: Deep slate-900 black ink (`#0f172a`, contrast > 15:1) paired with slate-600 metadata ink (`#475569`, contrast > 5.4:1).
+- **Calibrated Semantic Signals**: Technical cyan (`#0284c7`), emerald (`#059669`), amber (`#d97706`), rose (`#dc2626`), and purple (`#7c3aed`) tuned for full WCAG AA contrast against white surfaces.
 
 ## 2. Colors
 
-An instrument-grade dark chassis with three stepped neutral elevations and calibrated high-contrast semantic signal colors.
+An instrument-grade persistent light theme with stepped neutral elevations and high-contrast semantic signal colors.
 
 ### Primary
-- **Signal Cyan** (`#00f0ff`): Primary active telemetry highlight, interactive exploration cues, and focus indication.
-- **Verification Emerald** (`#10b981`): Healthy operational status, baseline condition badges, and successful trial completions.
+- **Signal Cyan** (`#0284c7`): Primary active telemetry highlight, interactive exploration cues, and focus indication.
+- **Verification Emerald** (`#059669`): Healthy operational status, baseline condition badges, and successful trial completions.
 
 ### Secondary
-- **Attention Amber** (`#ffb703`): Hesitation indicators, transient warnings, and TTL-bounded intervention notices.
-- **Alert Rose** (`#f43f5e`): Task abandonment, engine fallback warnings, and critical diagnostic alerts.
-- **Arbitration Purple** (`#9d4edd`): Fast/Slow gate arbitration state and model inference triggers.
+- **Attention Amber** (`#d97706`): Hesitation indicators, transient warnings, and TTL-bounded intervention notices.
+- **Alert Rose** (`#dc2626`): Task abandonment, engine fallback warnings, and critical diagnostic alerts.
+- **Arbitration Purple** (`#7c3aed`): Fast/Slow gate arbitration state and model inference triggers.
 
 ### Neutral
-- **Chassis Base** (`#0f1117`): Root application background; deepest black-slate foundation.
-- **Surface Layer** (`#181b24`): Primary card, sidebar, and container background.
-- **Elevated Workbench** (`#222634`): Interactive control panels, table header surfaces, and nested blocks.
-- **Crisp Structural Stroke** (`#2d3345`): Default 1px dividing border across panels, cards, and table rows.
-- **Active Structural Stroke** (`#4f5979`): Hovered or active control border.
-- **Main Readout Ink** (`#f0f2f8`): Primary high-contrast typography and metric labels (contrast ratio ≥ 11:1).
-- **Muted Readout Ink** (`#8e98b0`): Secondary labels, descriptive hints, and table column headers (contrast ratio ≥ 4.8:1).
+- **Chassis Base** (`#f8f9fa`): Root application background; pristine light-slate technical foundation.
+- **Surface Layer** (`#ffffff`): Primary card, sidebar, and container background.
+- **Elevated Workbench** (`#f1f5f9`): Interactive control panels, table header surfaces, and nested blocks.
+- **Crisp Structural Stroke** (`#cbd5e1`): Default 1px dividing border across panels, cards, and table rows.
+- **Active Structural Stroke** (`#0284c7`): Hovered or active control border.
+- **Main Readout Ink** (`#0f172a`): Primary high-contrast typography and metric labels (contrast ratio ≥ 15:1).
+- **Muted Readout Ink** (`#475569`): Secondary labels, descriptive hints, and table column headers (contrast ratio ≥ 5.4:1).
 
 ### Named Rules
 **The Semantic Signal Rule.** Accent colors are reserved strictly for operational status, experimental condition indicators, and live intervention episodes. Never use accent colors as decorative full-bleed backgrounds, gradients, or ambient glow washes.
@@ -128,57 +129,59 @@ An instrument-grade dark chassis with three stepped neutral elevations and calib
 
 ## 4. Elevation
 
-The system is flat by design. Depth is conveyed strictly through surface tone stepping (`#0f1117` base → `#181b24` surface → `#222634` elevated) separated by crisp 1px strokes (`#2d3345`).
+The system is strictly flat and architectural. Depth is conveyed purely through surface tone stepping (`#f8f9fa` base → `#ffffff` surface → `#f1f5f9` elevated) separated by crisp 1px strokes (`#cbd5e1`).
 
 ### Shadow Vocabulary
-- **Zero Decorative Shadows**: Cards, tables, and buttons carry `box-shadow: none` at rest and on hover.
-- **Overlay Border**: Floating panels (such as the AUI Debug Panel) rely on a solid 1px border (`#334155` / `#475569`) rather than diffuse shadows.
+- **Zero Decorative Shadows**: Cards, tables, inputs, and buttons carry `box-shadow: none` at rest and on hover.
+- **Floating Overlays**: Diagnostic panels and floating assistance banners rely on solid 1px borders (`#94a3b8` / `#cbd5e1`) and restrained technical drop-shadows (`box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1)`).
 
 ### Named Rules
-**The Zero-Blur Shadow Rule.** No diffuse, fuzzy, or glowing drop shadows (`blur >= 4px`) are permitted. Depth and focus are established through tonal contrast, border strokes, and solid 2px outline rings.
+**The Zero-Radius Blueprint Rule.** All border radii are strictly 0px (`border-radius: 0`). Sharp rectangular corners communicate architectural precision, eliminate visual softness, and maximize usable data space.
 
 ## 5. Components
 
 ### Buttons
-- **Shape:** Compact rectangular with subtle 4px radius (`border-radius: 4px`).
-- **Primary / Action:** Background `#181b24`, border `1px solid #2d3345`, text `#f0f2f8`, padding `8px 14px`.
-- **Hover / Focus:** Hover shifts background to `#4f5979` and border to `#00f0ff`. Focus-visible renders a crisp `2px solid #00f0ff` ring with 2px offset.
+- **Shape:** Pure rectangular with zero radius (`border-radius: 0`).
+- **Primary / Action:** Background `#ffffff`, border `1px solid #cbd5e1`, text `#0f172a`, padding `8px 14px`.
+- **Hover / Focus:** Hover shifts background to `#f1f5f9` and border to `#0284c7`. Focus-visible renders a crisp `2px solid #0284c7` outline with 1px offset.
 - **Active:** Transform `scale(0.98)` for immediate tactile response.
 
-### Status Pills / Chips
-- **Shape:** Rounded pill (`border-radius: 20px`), padding `4px 10px`, font size `11px`, monospace.
+### Status Badges
+- **Shape:** Crisp rectangular badge (`border-radius: 0`), padding `2px 8px`, font size `11px`, monospace.
 - **Variants:**
-  - `Baseline`: Background `rgba(16, 185, 129, 0.15)`, text `#10b981`, border `1px solid #10b981`.
-  - `Adaptive`: Background `rgba(0, 240, 255, 0.15)`, text `#00f0ff`, border `1px solid #00f0ff`.
-  - `Warning / TTL`: Background `rgba(255, 183, 3, 0.15)`, text `#ffb703`, border `1px solid #ffb703`.
+  - `Completed`: Background `#ecfdf5`, text `#047857`, border `1px solid #a7f3d0`.
+  - `Pending`: Background `#fffbeb`, text `#b45309`, border `1px solid #fde68a`.
+  - `Failed`: Background `#fef2f2`, text `#b91c1c`, border `1px solid #fecaca`.
+  - `Adaptive`: Background `#f0f9ff`, text `#0284c7`, border `1px solid #0284c7`.
 
 ### Cards & Data Containers
-- **Corner Style:** Restrained 8px–12px radius (`border-radius: 8px` for inner widgets, `12px` for major shell cards).
-- **Background:** `var(--bg-surface)` (`#181b24`).
-- **Border:** `1px solid var(--border)` (`#2d3345`).
-- **Padding:** `16px` to `20px` internal padding.
+- **Corner Style:** Strict square corners (`border-radius: 0`).
+- **Background:** `var(--bg-surface)` (`#ffffff`).
+- **Border:** `1px solid var(--border)` (`#cbd5e1`).
+- **Padding:** `14px` to `18px` internal padding.
 
 ### Data Tables & Results Grid
-- **Header:** Background `#222634`, text `#8e98b0`, 11px uppercase monospace, border-bottom `1px solid #2d3345`.
-- **Row:** Padding `10px 14px`, border-bottom `1px solid #2d3345`, hover state background `#222634`.
-- **Adaptation Highlighting:** Interventions (e.g. `highlight_primary_action`) apply a high-contrast 1px border and subtle outline, never shifting row dimensions.
+- **Header:** Background `#f1f5f9`, text `#475569`, 11px uppercase monospace, border-bottom `1px solid #cbd5e1`, `border-radius: 0`.
+- **Row:** Padding `9px 14px`, border-bottom `1px solid #cbd5e1`, hover state background `#f8fafc`.
+- **Layout:** `table-layout: fixed` with explicit proportional column widths to guarantee zero horizontal shift during filtering.
 
 ### Diagnostics & Floating Windows
-- **Structure:** Solid `#0f172a` container, 1px `#334155` border, monospace typography, fixed positioning at `bottom: 16px, right: 16px`.
+- **Structure:** Solid `#ffffff` container, 1px `#94a3b8` border, monospace typography, fixed positioning at `bottom: 16px, right: 16px`, `border-radius: 0`.
 
 ## 6. Do's and Don'ts
 
 ### Do:
-- **Do** maintain strict WCAG 2.1 AA contrast (body text ≥ 4.5:1 against dark surfaces, headers and active pills ≥ 3:1).
-- **Do** use `JetBrains Mono` for all numeric readouts, model latencies, session IDs, and status pills.
+- **Do** maintain strictly zero border radius (`border-radius: 0`) across all elements and components.
+- **Do** ensure high-contrast light theme readability (body text ≥ 4.5:1 against light surfaces, headers ≥ 3:1).
+- **Do** use `JetBrains Mono` for all numeric readouts, model latencies, session IDs, and status badges.
 - **Do** ensure all AUI adaptations (`highlight_primary_action`, `simplify_options`, `expand_tooltip`) are non-destructive, reversible, and TTL-bounded without layout shift.
 - **Do** respect `prefers-reduced-motion: reduce` by replacing all transitions with immediate state switches.
-- **Do** use solid 1px borders (`#2d3345`) and surface stepping for visual hierarchy instead of drop shadows.
+- **Do** use solid 1px borders (`#cbd5e1`) and surface stepping for visual hierarchy instead of drop shadows.
 
 ### Don't:
+- **Don't** add rounded corners (`border-radius > 0`) anywhere in the layout.
+- **Don't** use cream, beige, or parchment tones for body backgrounds (`--bg-primary` is crisp `#f8f9fa`).
+- **Don't** use low-contrast light grays for text; body ink must hit ≥ 4.5:1.
 - **Don't** use decorative multi-color gradients, neon glow halos, or `background-clip: text`.
-- **Don't** apply `border-radius: 32px+` on content cards or container panels.
-- **Don't** use `border-left` or `border-right` stripes greater than 1px as accent decorations.
-- **Don't** combine a 1px border with a soft wide drop shadow (≥ 16px blur) to create ghost cards.
 - **Don't** use decorative glassmorphism (`backdrop-filter: blur(...)`) on data containers or tables.
 - **Don't** describe system interventions as detecting frustration or cognitive affect; frame all predictions around observable interaction outcomes.

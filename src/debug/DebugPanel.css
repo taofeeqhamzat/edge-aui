@@ -1,10 +1,11 @@
 /**
- * Development Debug Panel Styling
+ * Development Debug Panel Styling (Persistent Light Theme)
  * Implements Stage 10.2 specifications from docs/testbed/prd.md Section 38.
  * Adheres strictly to design constraints:
- * - Lightweight footprint
- * - No unnecessary animations or heavy visual effects (no backdrop blurs, no glowing shadows)
- * - Accessible, high-contrast, WCAG AA compliant typography and controls
+ * - Persistent Light Theme with high-contrast text and crisp boundaries
+ * - Zero border radius (strict square corners)
+ * - Lightweight footprint, no heavy blurs or glowing animations
+ * - Accessible, WCAG AA compliant typography and controls
  */
 
 .edge-aui-debug-container {
@@ -14,15 +15,15 @@
   z-index: 99999;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
-  color: #f1f5f9;
+  color: #0f172a;
 }
 
 /* Collapsed Toggle Button */
 .edge-aui-debug-toggle {
-  background-color: #0f172a;
-  color: #38bdf8;
-  border: 1px solid #334155;
-  border-radius: 4px;
+  background-color: #ffffff;
+  color: #0284c7;
+  border: 1px solid #cbd5e1;
+  border-radius: 0;
   padding: 8px 12px;
   font-family: inherit;
   font-size: 12px;
@@ -31,29 +32,33 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: all 0.15s ease;
 }
 
 .edge-aui-debug-toggle:hover {
-  background-color: #1e293b;
-  border-color: #475569;
+  background-color: #f1f5f9;
+  border-color: #0284c7;
 }
 
 .edge-aui-debug-toggle:focus-visible {
-  outline: 2px solid #38bdf8;
+  outline: 2px solid #0284c7;
   outline-offset: 2px;
 }
 
 /* Expanded Panel Window */
 .edge-aui-debug-window {
-  width: 420px;
+  width: 440px;
   max-width: calc(100vw - 32px);
   max-height: 80vh;
-  background-color: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 6px;
+  background-color: #ffffff;
+  border: 1px solid #94a3b8;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  color: #0f172a;
 }
 
 /* Header */
@@ -62,16 +67,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background-color: #1e293b;
-  border-bottom: 1px solid #334155;
-  border-top-left-radius: 5px;
-  border-top-right-radius: 5px;
+  background-color: #f1f5f9;
+  border-bottom: 1px solid #cbd5e1;
+  border-radius: 0;
 }
 
 .edge-aui-debug-title {
   font-weight: 700;
   font-size: 13px;
-  color: #38bdf8;
+  color: #0284c7;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -80,19 +84,20 @@
 .edge-aui-debug-close {
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
   padding: 0 4px;
+  border-radius: 0;
 }
 
 .edge-aui-debug-close:hover {
-  color: #f1f5f9;
+  color: #0f172a;
 }
 
 .edge-aui-debug-close:focus-visible {
-  outline: 2px solid #38bdf8;
+  outline: 2px solid #0284c7;
 }
 
 /* Scrollable Content Body */
@@ -102,13 +107,15 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  background-color: #ffffff;
+  scrollbar-gutter: stable;
 }
 
 /* Section Containers */
 .edge-aui-debug-section {
-  background-color: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 4px;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 0;
   padding: 8px 10px;
 }
 
@@ -117,9 +124,9 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #94a3b8;
+  color: #475569;
   margin-bottom: 6px;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid #cbd5e1;
   padding-bottom: 4px;
 }
 
@@ -132,31 +139,31 @@
 }
 
 .edge-aui-debug-label {
-  color: #94a3b8;
+  color: #64748b;
   flex-shrink: 0;
 }
 
 .edge-aui-debug-val {
-  color: #f8fafc;
+  color: #0f172a;
   font-weight: 600;
   text-align: right;
   word-break: break-all;
 }
 
 .edge-aui-debug-val.highlight {
-  color: #38bdf8;
+  color: #0284c7;
 }
 
 .edge-aui-debug-val.success {
-  color: #4ade80;
+  color: #059669;
 }
 
 .edge-aui-debug-val.warning {
-  color: #facc15;
+  color: #d97706;
 }
 
 .edge-aui-debug-val.dim {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 /* MicroTensor Grid */
@@ -172,23 +179,24 @@
   justify-content: space-between;
   font-size: 10px;
   padding: 2px 4px;
-  background-color: #0f172a;
-  border-radius: 2px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0;
 }
 
 .edge-aui-debug-tensor-name {
-  color: #cbd5e1;
+  color: #475569;
 }
 
 .edge-aui-debug-tensor-val {
-  color: #38bdf8;
+  color: #0284c7;
   font-weight: 700;
 }
 
 .edge-aui-debug-mask-row {
   margin-top: 6px;
   font-size: 10px;
-  color: #94a3b8;
+  color: #64748b;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -196,7 +204,7 @@
 
 .edge-aui-debug-mask-bits {
   font-family: monospace;
-  color: #a7f3d0;
+  color: #059669;
   letter-spacing: 0.1em;
 }
 
@@ -210,16 +218,16 @@
 }
 
 .edge-aui-debug-symbol {
-  background-color: #0f172a;
-  border: 1px solid #475569;
-  border-radius: 3px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0;
   padding: 2px 6px;
   font-size: 10px;
-  color: #f8fafc;
+  color: #0f172a;
 }
 
 .edge-aui-debug-arrow {
-  color: #64748b;
+  color: #94a3b8;
   font-weight: bold;
 }
 
@@ -228,28 +236,28 @@
   display: flex;
   gap: 8px;
   padding: 10px 14px;
-  background-color: #1e293b;
-  border-top: 1px solid #334155;
-  border-bottom-left-radius: 5px;
-  border-bottom-right-radius: 5px;
+  background-color: #f1f5f9;
+  border-top: 1px solid #cbd5e1;
+  border-radius: 0;
 }
 
 .edge-aui-debug-btn {
   flex: 1;
   padding: 6px 10px;
-  background-color: #0f172a;
-  color: #f1f5f9;
-  border: 1px solid #475569;
-  border-radius: 4px;
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 0;
   font-family: inherit;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .edge-aui-debug-btn:hover {
-  background-color: #334155;
-  border-color: #64748b;
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
 }
 
 .edge-aui-debug-btn.primary {
@@ -263,6 +271,6 @@
 }
 
 .edge-aui-debug-btn:focus-visible {
-  outline: 2px solid #38bdf8;
+  outline: 2px solid #0284c7;
   outline-offset: 1px;
 }

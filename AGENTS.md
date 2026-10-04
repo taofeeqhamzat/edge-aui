@@ -102,7 +102,7 @@ The framework predicts **observable interaction outcomes**, not internal user st
 ## 7. Design Context
 
 - **Register:** `product` (Scientific research testbed & analytics dashboard).
-- **Creative North Star:** "The Instrument Bench" — Precision telemetry, high-contrast density, monochrome chassis, and zero decorative fluff.
+- **Creative North Star:** "The Instrument Bench" (Persistent Light Theme) — Zero border radius architectural blueprint, high-contrast light chassis, precision telemetry, and zero decorative fluff.
 - **Product Context:** [PRODUCT.md](PRODUCT.md) — Dual audience (study participants on tasks T1–T3, researchers monitoring live trials and telemetry).
-- **Design System & Tokens:** [DESIGN.md](DESIGN.md) — Flat tonal layering, strict semantic signal rules, and telemetry precision typography.
+- **Design System & Tokens:** [DESIGN.md](DESIGN.md) — Strict zero border radius (`border-radius: 0`), flat tonal stepping, semantic signal rules, and telemetry precision typography.
 

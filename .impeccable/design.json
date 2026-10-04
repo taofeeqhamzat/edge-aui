@@ -1,74 +1,74 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-03T20:39:15.000Z",
+  "generatedAt": "2026-10-03T21:41:50.000Z",
   "title": "Design System: Edge-AUI Framework",
   "extensions": {
     "colorMeta": {
       "bg-primary": {
         "role": "neutral",
         "displayName": "Chassis Base",
-        "canonical": "#0f1117",
-        "tonalRamp": ["#050608", "#0a0c10", "#0f1117", "#151821", "#1e222f", "#2b3042", "#3a425b", "#4e5879"]
+        "canonical": "#f8f9fa",
+        "tonalRamp": ["#ffffff", "#f8f9fa", "#f1f5f9", "#e2e8f0", "#cbd5e1", "#94a3b8", "#64748b", "#334155"]
       },
       "bg-surface": {
         "role": "neutral",
         "displayName": "Surface Layer",
-        "canonical": "#181b24",
-        "tonalRamp": ["#0c0d12", "#12141b", "#181b24", "#202430", "#2b3040", "#383f54", "#4a536e", "#616c8e"]
+        "canonical": "#ffffff",
+        "tonalRamp": ["#ffffff", "#fbfcfd", "#f8fafc", "#f1f5f9", "#e2e8f0", "#cbd5e1", "#94a3b8", "#64748b"]
       },
       "bg-elevated": {
         "role": "neutral",
         "displayName": "Elevated Workbench",
-        "canonical": "#222634",
-        "tonalRamp": ["#11131a", "#1a1d27", "#222634", "#2c3143", "#383e55", "#474f6c", "#5a6387", "#737ea7"]
+        "canonical": "#f1f5f9",
+        "tonalRamp": ["#ffffff", "#f8fafc", "#f1f5f9", "#e2e8f0", "#cbd5e1", "#94a3b8", "#64748b", "#475569"]
       },
       "border": {
         "role": "neutral",
         "displayName": "Crisp Structural Stroke",
-        "canonical": "#2d3345",
-        "tonalRamp": ["#161922", "#212533", "#2d3345", "#3a4259", "#495370", "#5c688b", "#7281aa", "#8e9ecc"]
+        "canonical": "#cbd5e1",
+        "tonalRamp": ["#f8fafc", "#f1f5f9", "#e2e8f0", "#cbd5e1", "#94a3b8", "#64748b", "#475569", "#334155"]
       },
       "text-main": {
         "role": "neutral",
         "displayName": "Main Readout Ink",
-        "canonical": "#f0f2f8",
-        "tonalRamp": ["#777b87", "#989da9", "#b9bdc9", "#d6d9e3", "#f0f2f8", "#f6f7fa", "#fafbfe", "#ffffff"]
+        "canonical": "#0f172a",
+        "tonalRamp": ["#64748b", "#475569", "#334155", "#1e293b", "#0f172a", "#090d16", "#04060b", "#000000"]
       },
       "text-muted": {
         "role": "neutral",
         "displayName": "Muted Readout Ink",
-        "canonical": "#8e98b0",
-        "tonalRamp": ["#3f4452", "#555c6e", "#6f778d", "#8e98b0", "#a9b1c5", "#c3c9d8", "#dde1eb", "#f3f5f8"]
+        "canonical": "#475569",
+        "tonalRamp": ["#94a3b8", "#64748b", "#475569", "#334155", "#1e293b", "#0f172a", "#090d16", "#000000"]
       },
       "accent-cyan": {
         "role": "primary",
         "displayName": "Signal Cyan",
-        "canonical": "#00f0ff",
-        "tonalRamp": ["#00595e", "#00838b", "#00b2bd", "#00dfee", "#00f0ff", "#46f4ff", "#8cf8ff", "#d3fdff"]
+        "canonical": "#0284c7",
+        "tonalRamp": ["#f0f9ff", "#e0f2fe", "#bae6fd", "#7dd3fc", "#38bdf8", "#0ea5e9", "#0284c7", "#0369a1"]
       },
       "accent-emerald": {
         "role": "secondary",
         "displayName": "Verification Emerald",
-        "canonical": "#10b981",
-        "tonalRamp": ["#05412d", "#086043", "#0c845c", "#0fa573", "#10b981", "#36c898", "#6be6bd", "#b8f7e2"]
+        "canonical": "#059669",
+        "tonalRamp": ["#ecfdf5", "#d1fae5", "#a7f3d0", "#6ee7b7", "#34d399", "#10b981", "#059669", "#047857"]
       },
       "accent-amber": {
         "role": "tertiary",
         "displayName": "Attention Amber",
-        "canonical": "#ffb703",
-        "tonalRamp": ["#614500", "#8c6400", "#be8700", "#e6a400", "#ffb703", "#ffc738", "#ffda75", "#ffefbd"]
+        "canonical": "#d97706",
+        "tonalRamp": ["#fffbeb", "#fef3c7", "#fde68a", "#fcd34d", "#fbbf24", "#f59e0b", "#d97706", "#b45309"]
       },
       "accent-rose": {
         "role": "tertiary",
         "displayName": "Alert Rose",
-        "canonical": "#f43f5e",
-        "tonalRamp": ["#630a1b", "#90112a", "#c41a3c", "#e7284f", "#f43f5e", "#f76982", "#fa9cb0", "#fdd8e1"]
+        "canonical": "#dc2626",
+        "tonalRamp": ["#fef2f2", "#fee2e2", "#fecaca", "#fca5a5", "#f87171", "#ef4444", "#dc2626", "#b91c1c"]
       },
       "accent-purple": {
         "role": "tertiary",
         "displayName": "Arbitration Purple",
-        "canonical": "#9d4edd",
-        "tonalRamp": ["#39135a", "#561a87", "#7624b9", "#8d36d4", "#9d4edd", "#b373e5", "#cc9eef", "#ecd8fa"]
+        "canonical": "#7c3aed",
+        "tonalRamp": ["#faf5ff", "#f3e8ff", "#e9d5ff", "#d8b4fe", "#c084fc", "#a855f7", "#7c3aed", "#6d28d9"]
       }
     },
     "typographyMeta": {
@@ -79,8 +79,8 @@
       "label": { "displayName": "Label / Mono", "purpose": "Quantitative metrics, model latencies, timestamps, and status codes." }
     },
     "shadows": [
-      { "name": "none", "value": "none", "purpose": "Flat surfaces by design across all resting states." },
-      { "name": "panel-border", "value": "0 0 0 1px #334155", "purpose": "Crisp non-diffuse bounding line for floating diagnostic panels." }
+      { "name": "none", "value": "none", "purpose": "Strict flat surfaces across all resting workbench elements." },
+      { "name": "overlay", "value": "0 4px 12px rgba(0, 0, 0, 0.1)", "purpose": "Subtle boundary definition for floating diagnostics and tooltips." }
     ],
     "motion": [
       { "name": "ease-standard", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Fast exponential ease out for interactive controls." },
@@ -89,7 +89,7 @@
     "breakpoints": [
       { "name": "tablet", "value": "768px" },
       { "name": "desktop", "value": "1024px" },
-      { "name": "wide", "value": "1280px" }
+      { "name": "wide", "value": "1360px" }
     ]
   },
   "components": [
@@ -97,37 +97,42 @@
       "name": "Track Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Interactive workbench action button with high-contrast tactile response.",
+      "description": "Interactive workbench action button with zero border radius and light theme tactile response.",
       "html": "<button class=\"ds-track-btn\">Start Task T1</button>",
-      "css": ".ds-track-btn { background: #181b24; color: #f0f2f8; border: 1px solid #2d3345; border-radius: 4px; padding: 8px 14px; font-size: 13px; font-weight: 500; font-family: 'Inter', system-ui, sans-serif; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; } .ds-track-btn:hover { background: #222634; border-color: #00f0ff; } .ds-track-btn:active { transform: scale(0.98); } .ds-track-btn:focus-visible { outline: 2px solid #00f0ff; outline-offset: 2px; }"
+      "css": ".ds-track-btn { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 0; padding: 8px 14px; font-size: 13px; font-weight: 500; font-family: 'Inter', system-ui, sans-serif; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; } .ds-track-btn:hover { background: #f1f5f9; border-color: #0284c7; } .ds-track-btn:active { transform: scale(0.98); } .ds-track-btn:focus-visible { outline: 2px solid #0284c7; outline-offset: 1px; }"
     },
     {
-      "name": "Status Pill",
+      "name": "Status Badge",
       "kind": "chip",
       "refersTo": "chip",
-      "description": "Monospace operational status badge indicating condition or gateway state.",
-      "html": "<span class=\"ds-status-pill\"><span class=\"ds-dot\"></span>ADAPTIVE RUNTIME</span>",
-      "css": ".ds-status-pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 240, 255, 0.1); border: 1px solid #00f0ff; border-radius: 20px; padding: 4px 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #00f0ff; letter-spacing: 0.05em; } .ds-dot { width: 6px; height: 6px; border-radius: 50%; background: #00f0ff; }"
+      "description": "Sharp rectangular monospace operational status badge indicating condition or gateway state.",
+      "html": "<span class=\"ds-status-badge\"><span class=\"ds-dot\"></span>ADAPTIVE RUNTIME</span>",
+      "css": ".ds-status-badge { display: inline-flex; align-items: center; gap: 8px; background: #f0f9ff; border: 1px solid #0284c7; border-radius: 0; padding: 3px 8px; font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #0284c7; letter-spacing: 0.05em; } .ds-dot { width: 6px; height: 6px; border-radius: 0; background: #0284c7; }"
     },
     {
       "name": "Telemetry Tile",
       "kind": "card",
       "refersTo": "card",
-      "description": "High-density metric tile displaying continuous telemetry statistics.",
+      "description": "High-density metric tile displaying continuous telemetry statistics with zero border radius.",
       "html": "<div class=\"ds-metric-tile\"><span class=\"ds-metric-label\">INFERENCE LATENCY</span><span class=\"ds-metric-val\">14.2 ms</span><span class=\"ds-metric-sub\">Target &le; 50ms</span></div>",
-      "css": ".ds-metric-tile { background: #222634; border: 1px solid #2d3345; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; } .ds-metric-label { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #8e98b0; text-transform: uppercase; letter-spacing: 0.05em; } .ds-metric-val { font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #f0f2f8; } .ds-metric-sub { font-size: 11px; color: #8e98b0; }"
+      "css": ".ds-metric-tile { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; } .ds-metric-label { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; } .ds-metric-val { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #0f172a; } .ds-metric-sub { font-size: 11px; color: #475569; }"
     }
   ],
   "narrative": {
-    "northStar": "The Instrument Bench",
-    "overview": "The Edge-AUI interface is an instrument-grade research testbed and analytics workbench engineered for rigorous edge-AI behavioral evaluation. It balances two parallel requirements: providing study participants with a realistic, distraction-free SERP-meets-SaaS analytics workspace where interaction dynamics mirror natural web usage, while offering researchers immediate, high-density visibility into edge model inference, dual-gate arbitration, and non-destructive interface adaptations.",
+    "northStar": "The Instrument Bench (Persistent Light Theme)",
+    "overview": "The Edge-AUI interface is an instrument-grade research testbed and analytics workbench engineered for rigorous edge-AI behavioral evaluation. Rendered in a persistent, high-contrast light theme with strict zero border radius corners, sharp 1px borders, and high-contrast typography, it provides distraction-free utility for both study participants and researchers.",
     "keyCharacteristics": [
-      "Zero-Friction Utility: Intentionally unadorned surfaces that eliminate cognitive load and prevent participant hesitation artifacts.",
-      "Monochrome Chassis: Deep slate/charcoal foundations (#0f1117, #181b24, #222634) structured by crisp 1px borders (#2d3345).",
-      "Semantic Signal Accents: Cyan, Emerald, Amber, Rose, and Purple applied strictly as telemetry indicators and state badges.",
-      "Non-Destructive Invariance: Visual adaptations occur without cumulative layout shifts or focus displacement."
+      "Zero Border Radius: Pure square corners across all elements, communicating architectural rigor and data-sheet utility.",
+      "Pristine Light Chassis: Crisp off-white base (#f8f9fa) with pure white surfaces (#ffffff) and stepped elevation (#f1f5f9).",
+      "High-Contrast Typography: Deep slate-900 black ink (#0f172a, contrast > 15:1) paired with slate-600 metadata ink (#475569, contrast > 5.4:1).",
+      "Calibrated Semantic Signals: Technical cyan (#0284c7), emerald (#059669), amber (#d97706), rose (#dc2626), and purple (#7c3aed) tuned for full WCAG AA contrast against white surfaces."
     ],
     "rules": [
+      {
+        "name": "The Zero-Radius Blueprint Rule",
+        "body": "All border radii are strictly 0px (border-radius: 0). Sharp rectangular corners communicate architectural precision, eliminate visual softness, and maximize usable data space.",
+        "section": "elevation"
+      },
       {
         "name": "The Semantic Signal Rule",
         "body": "Accent colors are reserved strictly for operational status, experimental condition indicators, and live intervention episodes. Never use accent colors as decorative full-bleed backgrounds, gradients, or ambient glow washes.",
@@ -137,25 +142,21 @@
         "name": "The Telemetry Precision Rule",
         "body": "Every quantitative value, inference latency readout, session token, and status code must render in monospace (--font-mono) to guarantee tabular spacing and zero jitter during live updates.",
         "section": "typography"
-      },
-      {
-        "name": "The Zero-Blur Shadow Rule",
-        "body": "No diffuse, fuzzy, or glowing drop shadows (blur >= 4px) are permitted. Depth and focus are established through tonal contrast, border strokes, and solid 2px outline rings.",
-        "section": "elevation"
       }
     ],
     "dos": [
-      "Do maintain strict WCAG 2.1 AA contrast (body text ≥ 4.5:1 against dark surfaces, headers and active pills ≥ 3:1).",
-      "Do use JetBrains Mono for all numeric readouts, model latencies, session IDs, and status pills.",
+      "Do maintain strictly zero border radius (border-radius: 0) across all elements and components.",
+      "Do ensure high-contrast light theme readability (body text ≥ 4.5:1 against light surfaces, headers ≥ 3:1).",
+      "Do use JetBrains Mono for all numeric readouts, model latencies, session IDs, and status badges.",
       "Do ensure all AUI adaptations are non-destructive, reversible, and TTL-bounded without layout shift.",
       "Do respect prefers-reduced-motion: reduce by replacing all transitions with immediate state switches.",
-      "Do use solid 1px borders (#2d3345) and surface stepping for visual hierarchy instead of drop shadows."
+      "Do use solid 1px borders (#cbd5e1) and surface stepping for visual hierarchy instead of drop shadows."
     ],
     "donts": [
+      "Don't add rounded corners (border-radius > 0) anywhere in the layout.",
+      "Don't use cream, beige, or parchment tones for body backgrounds (--bg-primary is crisp #f8f9fa).",
+      "Don't use low-contrast light grays for text; body ink must hit ≥ 4.5:1.",
       "Don't use decorative multi-color gradients, neon glow halos, or background-clip: text.",
-      "Don't apply border-radius: 32px+ on content cards or container panels.",
-      "Don't use border-left or border-right stripes greater than 1px as accent decorations.",
-      "Don't combine a 1px border with a soft wide drop shadow (≥ 16px blur) to create ghost cards.",
       "Don't use decorative glassmorphism (backdrop-filter: blur(...)) on data containers or tables.",
       "Don't describe system interventions as detecting frustration or cognitive affect; frame all predictions around observable interaction outcomes."
     ]
