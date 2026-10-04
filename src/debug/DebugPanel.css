@@ -8,6 +8,7 @@
  * - Lightweight footprint, no heavy blurs or glowing animations
  * - Accessible, WCAG AA compliant typography and controls (contrast >= 4.5:1)
  * - Hardware-accelerated specific transitions & reduced-motion support
+ * - Collapsible section styling and height-stable status indicators
  */
 
 :root {
@@ -109,6 +110,36 @@
   gap: 6px;
 }
 
+.edge-aui-debug-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edge-aui-debug-header-toggle-all {
+  background: var(--edge-aui-bg-surface);
+  border: 1px solid var(--edge-aui-border);
+  color: var(--edge-aui-ink-muted);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.edge-aui-debug-header-toggle-all:hover {
+  background-color: var(--edge-aui-bg-elevated);
+  border-color: var(--edge-aui-cyan);
+  color: var(--edge-aui-cyan);
+}
+
+.edge-aui-debug-header-toggle-all:focus-visible {
+  outline: 2px solid var(--edge-aui-cyan);
+  outline-offset: 1px;
+}
+
 .edge-aui-debug-close {
   background: transparent;
   border: none;
@@ -135,7 +166,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   background-color: var(--edge-aui-bg-surface);
   scrollbar-gutter: stable;
 }
@@ -146,6 +177,69 @@
   border: 1px solid var(--edge-aui-border);
   border-radius: 0;
   padding: 8px 10px;
+  transition: padding-bottom 0.15s ease;
+}
+
+.edge-aui-debug-section.is-collapsed {
+  padding-bottom: 6px;
+}
+
+/* Collapsible Section Header */
+.edge-aui-debug-section-header {
+  border-bottom: 1px solid var(--edge-aui-border);
+  padding-bottom: 5px;
+  margin-bottom: 6px;
+}
+
+.edge-aui-debug-section.is-collapsed .edge-aui-debug-section-header {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.edge-aui-debug-section-toggle {
+  background: transparent;
+  border: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--edge-aui-ink-muted);
+  text-align: left;
+  border-radius: 0;
+  gap: 8px;
+  transition: color 0.15s ease;
+}
+
+.edge-aui-debug-section-toggle:hover {
+  color: var(--edge-aui-ink-main);
+}
+
+.edge-aui-debug-section-toggle:focus-visible {
+  outline: 2px solid var(--edge-aui-cyan);
+  outline-offset: 2px;
+}
+
+.edge-aui-debug-section-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edge-aui-debug-section-chevron {
+  font-size: 9px;
+  color: var(--edge-aui-ink-dim);
+  width: 10px;
+  display: inline-block;
+  user-select: none;
+  flex-shrink: 0;
 }
 
 .edge-aui-debug-section-title {
@@ -154,9 +248,49 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--edge-aui-ink-muted);
-  margin-bottom: 6px;
-  border-bottom: 1px solid var(--edge-aui-border);
-  padding-bottom: 4px;
+  white-space: nowrap;
+}
+
+.edge-aui-debug-section-toggle:hover .edge-aui-debug-section-title {
+  color: var(--edge-aui-ink-main);
+}
+
+.edge-aui-debug-section-badge-wrapper {
+  flex-shrink: 0;
+}
+
+.edge-aui-debug-section-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  background-color: var(--edge-aui-bg-surface);
+  border: 1px solid var(--edge-aui-border);
+  color: var(--edge-aui-ink-muted);
+  white-space: nowrap;
+  letter-spacing: normal;
+  border-radius: 0;
+}
+
+.edge-aui-debug-section-badge.highlight {
+  color: var(--edge-aui-cyan);
+  border-color: var(--edge-aui-cyan);
+}
+
+.edge-aui-debug-section-badge.success {
+  color: var(--edge-aui-emerald);
+  border-color: #a7f3d0;
+  background-color: #ecfdf5;
+}
+
+.edge-aui-debug-section-badge.warning {
+  color: var(--edge-aui-amber);
+  border-color: #fde68a;
+  background-color: #fffbeb;
+}
+
+.edge-aui-debug-section-body {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Data Row */
@@ -259,6 +393,36 @@
   letter-spacing: 0.1em;
 }
 
+/* Zero layout shift: Persistent height-stable window status row */
+.edge-aui-debug-window-status-row {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--edge-aui-border-subtle);
+  min-height: 20px;
+  align-items: center;
+}
+
+.edge-aui-debug-status-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.edge-aui-debug-status-pill.active {
+  background-color: #ecfdf5;
+  color: var(--edge-aui-emerald);
+  border: 1px solid #a7f3d0;
+}
+
+.edge-aui-debug-status-pill.inactive {
+  background-color: #fffbeb;
+  color: var(--edge-aui-amber);
+  border: 1px solid #fde68a;
+}
+
 /* Macro Sequence Breadcrumbs */
 .edge-aui-debug-sequence {
   display: flex;
@@ -348,7 +512,9 @@
 @media (prefers-reduced-motion: reduce) {
   .edge-aui-debug-toggle,
   .edge-aui-debug-btn,
-  .edge-aui-debug-close {
+  .edge-aui-debug-close,
+  .edge-aui-debug-section-toggle,
+  .edge-aui-debug-header-toggle-all {
     transition: none !important;
     animation: none !important;
     transform: none !important;

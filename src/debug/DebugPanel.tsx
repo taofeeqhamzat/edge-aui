@@ -8,7 +8,8 @@
  * - Strict zero border radius (border-radius: 0), crisp 1px borders, high-contrast typography
  * - Predicts observable interaction outcomes (never subjective affective states)
  * - Optimized lifecycle: zero background polling/re-rendering when collapsed
- * - Clarified and distilled technical telemetry layout
+ * - Collapsible sections: individual toggle and bulk "Collapse All / Expand All" controls
+ * - Zero layout shifts: height-stable window status row preventing CLS during inactivity
  */
 
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -39,6 +40,19 @@ const FEATURE_LABELS = [
 
 const EMPTY_MICRO_TENSOR = Object.freeze(new Array(18).fill(0)) as number[];
 
+export const ALL_SECTION_IDS = [
+  "session-task",
+  "decision-state",
+  "active-episode",
+  "dual-gate",
+  "runtime-status",
+  "macro-sequence",
+  "micro-tensor",
+  "recorder-buffers",
+] as const;
+
+export type SectionId = (typeof ALL_SECTION_IDS)[number];
+
 /**
  * Whether the researcher panel should be reachable in this build.
  * Exported so it can be tested without rendering, and so the decision is in one place.
@@ -47,33 +61,100 @@ export function isDiagnosticsVisible(
   forceShow: boolean,
   isDev: boolean,
   search: string,
-  envFlag?: string
+  envFlag?: string,
 ): boolean {
   if (forceShow) return true;
   if (isDev) return true;
   if (envFlag === "1" || envFlag === "true") return true;
   try {
     const params = new URLSearchParams(search);
-    return params.get("auiDiagnostics") === "1" || params.get("auiDiagnostics") === "true";
+    return (
+      params.get("auiDiagnostics") === "1" ||
+      params.get("auiDiagnostics") === "true"
+    );
   } catch {
     return false;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Memoized Telemetry Sub-Sections (Optimised & Distilled)
+// Reusable Collapsible Section Container
+// ---------------------------------------------------------------------------
+
+interface CollapsibleSectionProps {
+  id: SectionId;
+  title: string;
+  badge?: React.ReactNode;
+  isCollapsed: boolean;
+  onToggle: (id: SectionId) => void;
+  children: React.ReactNode;
+}
+
+const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
+  id,
+  title,
+  badge,
+  isCollapsed,
+  onToggle,
+  children,
+}) => {
+  return (
+    <div
+      className={`edge-aui-debug-section ${isCollapsed ? "is-collapsed" : ""}`}
+      data-testid={`debug-section-${id}`}
+    >
+      <div className="edge-aui-debug-section-header">
+        <button
+          type="button"
+          className="edge-aui-debug-section-toggle"
+          onClick={() => onToggle(id)}
+          aria-expanded={!isCollapsed}
+          aria-controls={`section-${id}-content`}
+          aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${title} section`}
+        >
+          <span className="edge-aui-debug-section-toggle-left">
+            <span className="edge-aui-debug-section-chevron" aria-hidden="true">
+              {isCollapsed ? "▸" : "▾"}
+            </span>
+            <span className="edge-aui-debug-section-title">{title}</span>
+          </span>
+          {badge && (
+            <span className="edge-aui-debug-section-badge-wrapper">
+              {badge}
+            </span>
+          )}
+        </button>
+      </div>
+      {!isCollapsed && (
+        <div
+          id={`section-${id}-content`}
+          className="edge-aui-debug-section-body"
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Memoized Telemetry Sub-Sections
 // ---------------------------------------------------------------------------
 
 interface SessionTaskSectionProps {
   session: SessionContext | null;
   taskState: TaskState;
   uiContext: UIContext;
+  isCollapsed: boolean;
+  onToggle: (id: SectionId) => void;
 }
 
 const SessionTaskSection = memo(function SessionTaskSection({
   session,
   taskState,
   uiContext,
+  isCollapsed,
+  onToggle,
 }: SessionTaskSectionProps) {
   const activeTask = taskState.currentTaskId
     ? EXPERIMENTAL_TASKS[taskState.currentTaskId]
@@ -81,8 +162,20 @@ const SessionTaskSection = memo(function SessionTaskSection({
   const currentStep = activeTask?.steps[taskState.currentStepIndex];
 
   return (
-    <div className="edge-aui-debug-section">
-      <div className="edge-aui-debug-section-title">Session & Task Context</div>
+    <CollapsibleSection
+      id="session-task"
+      title="Session & Task Context"
+      badge={
+        isCollapsed ? (
+          <span className="edge-aui-debug-section-badge">
+            {session?.conditionId ?? "--"} ·{" "}
+            {activeTask ? activeTask.id : "Idle"}
+          </span>
+        ) : undefined
+      }
+      isCollapsed={isCollapsed}
+      onToggle={onToggle}
+    >
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Session ID:</span>
         <span className="edge-aui-debug-val">
@@ -131,21 +224,26 @@ const SessionTaskSection = memo(function SessionTaskSection({
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Flags:</span>
         <span className="edge-aui-debug-val dim">
-          primaryAction:{uiContext.primaryActionAvailable ? "yes" : "no"} | help:
+          primaryAction:{uiContext.primaryActionAvailable ? "yes" : "no"} |
+          help:
           {uiContext.helpAvailable ? "yes" : "no"} | expandable:
           {uiContext.expandable ? "yes" : "no"}
         </span>
       </div>
-    </div>
+    </CollapsibleSection>
   );
 });
 
 interface DecisionStateSectionProps {
   liveMetrics: LiveDebugMetrics;
+  isCollapsed: boolean;
+  onToggle: (id: SectionId) => void;
 }
 
 const DecisionStateSection = memo(function DecisionStateSection({
   liveMetrics,
+  isCollapsed,
+  onToggle,
 }: DecisionStateSectionProps) {
   const policyStateClass =
     liveMetrics.policyState === "POLICY REJECTED" ||
@@ -156,8 +254,19 @@ const DecisionStateSection = memo(function DecisionStateSection({
         : "dim";
 
   return (
-    <div className="edge-aui-debug-section">
-      <div className="edge-aui-debug-section-title">Decision State</div>
+    <CollapsibleSection
+      id="decision-state"
+      title="Decision State"
+      badge={
+        isCollapsed ? (
+          <span className={`edge-aui-debug-section-badge ${policyStateClass}`}>
+            {liveMetrics.policyState ?? "NO PREDICTION"}
+          </span>
+        ) : undefined
+      }
+      isCollapsed={isCollapsed}
+      onToggle={onToggle}
+    >
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">State:</span>
         <span
@@ -169,6 +278,7 @@ const DecisionStateSection = memo(function DecisionStateSection({
       </div>
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Policy Reason:</span>
+        <br />
         <span className="edge-aui-debug-val">
           {liveMetrics.policyReason ??
             liveMetrics.interventionStatus?.state ??
@@ -213,22 +323,41 @@ const DecisionStateSection = memo(function DecisionStateSection({
             : "--"}
         </span>
       </div>
-    </div>
+    </CollapsibleSection>
   );
 });
 
 interface InterventionEpisodeSectionProps {
   liveMetrics: LiveDebugMetrics;
+  isCollapsed: boolean;
+  onToggle: (id: SectionId) => void;
 }
 
 const InterventionEpisodeSection = memo(function InterventionEpisodeSection({
   liveMetrics,
+  isCollapsed,
+  onToggle,
 }: InterventionEpisodeSectionProps) {
   const isEpisodeActive = Boolean(liveMetrics.activeEpisodeId);
 
   return (
-    <div className="edge-aui-debug-section">
-      <div className="edge-aui-debug-section-title">Active Intervention Episode</div>
+    <CollapsibleSection
+      id="active-episode"
+      title="Active Intervention Episode"
+      badge={
+        isCollapsed ? (
+          <span
+            className={`edge-aui-debug-section-badge ${
+              isEpisodeActive ? "success" : "dim"
+            }`}
+          >
+            {isEpisodeActive ? "ACTIVE" : "idle"}
+          </span>
+        ) : undefined
+      }
+      isCollapsed={isCollapsed}
+      onToggle={onToggle}
+    >
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Episode:</span>
         <span className="edge-aui-debug-val" data-testid="aui-active-episode">
@@ -260,26 +389,42 @@ const InterventionEpisodeSection = memo(function InterventionEpisodeSection({
             : ""}
         </span>
       </div>
-    </div>
+    </CollapsibleSection>
   );
 });
 
 interface DualGateSectionProps {
   liveMetrics: LiveDebugMetrics;
+  isCollapsed: boolean;
+  onToggle: (id: SectionId) => void;
 }
 
 const DualGateSection = memo(function DualGateSection({
   liveMetrics,
+  isCollapsed,
+  onToggle,
 }: DualGateSectionProps) {
   const fastGateMatched = liveMetrics.fastGateStatus?.matched;
   const slowGateCalled = liveMetrics.slowGateStatus?.called;
 
   return (
-    <div className="edge-aui-debug-section">
-      <div className="edge-aui-debug-section-title">
-        Gate Arbitration & Decisions
-      </div>
-
+    <CollapsibleSection
+      id="dual-gate"
+      title="Gate Arbitration & Decisions"
+      badge={
+        isCollapsed ? (
+          <span className="edge-aui-debug-section-badge">
+            {fastGateMatched
+              ? "Fast Match"
+              : slowGateCalled
+                ? "Slow Gate"
+                : "No Match"}
+          </span>
+        ) : undefined
+      }
+      isCollapsed={isCollapsed}
+      onToggle={onToggle}
+    >
       {/* Fast Gate */}
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Fast Gate:</span>
@@ -350,24 +495,39 @@ const DualGateSection = memo(function DualGateSection({
           {liveMetrics.interventionStatus?.state ?? "idle"}
         </span>
       </div>
-    </div>
+    </CollapsibleSection>
   );
 });
 
 interface RuntimeStatusSectionProps {
   liveMetrics: LiveDebugMetrics;
+  isCollapsed: boolean;
+  onToggle: (id: SectionId) => void;
 }
 
 const RuntimeStatusSection = memo(function RuntimeStatusSection({
   liveMetrics,
+  isCollapsed,
+  onToggle,
 }: RuntimeStatusSectionProps) {
   const isWorkerReady = liveMetrics.workerStatus === "ready";
 
   return (
-    <div className="edge-aui-debug-section">
-      <div className="edge-aui-debug-section-title">
-        Latency, Model & Worker Status
-      </div>
+    <CollapsibleSection
+      id="runtime-status"
+      title="Latency, Model & Worker Status"
+      badge={
+        isCollapsed ? (
+          <span className="edge-aui-debug-section-badge">
+            {liveMetrics.inferenceLatencyMs !== undefined
+              ? `${liveMetrics.inferenceLatencyMs.toFixed(1)} ms`
+              : "--"}
+          </span>
+        ) : undefined
+      }
+      isCollapsed={isCollapsed}
+      onToggle={onToggle}
+    >
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Inference Latency:</span>
         <span className="edge-aui-debug-val highlight">
@@ -441,20 +601,35 @@ const RuntimeStatusSection = memo(function RuntimeStatusSection({
             ))}
           </div>
         )}
-    </div>
+    </CollapsibleSection>
   );
 });
 
 interface MacroSequenceSectionProps {
   macroSequence: string[];
+  isCollapsed: boolean;
+  onToggle: (id: SectionId) => void;
 }
 
 const MacroSequenceSection = memo(function MacroSequenceSection({
   macroSequence,
+  isCollapsed,
+  onToggle,
 }: MacroSequenceSectionProps) {
   return (
-    <div className="edge-aui-debug-section">
-      <div className="edge-aui-debug-section-title">Macro Sequence</div>
+    <CollapsibleSection
+      id="macro-sequence"
+      title="Macro Sequence"
+      badge={
+        isCollapsed ? (
+          <span className="edge-aui-debug-section-badge">
+            {macroSequence.length} events
+          </span>
+        ) : undefined
+      }
+      isCollapsed={isCollapsed}
+      onToggle={onToggle}
+    >
       <div className="edge-aui-debug-sequence">
         {macroSequence.length > 0 ? (
           macroSequence.map((sym, idx) => (
@@ -471,7 +646,7 @@ const MacroSequenceSection = memo(function MacroSequenceSection({
           </span>
         )}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 });
 
@@ -480,6 +655,8 @@ interface MicroTensorSectionProps {
   maskBits: string;
   windowIsInactive: boolean;
   latestWindowEventCount?: number;
+  isCollapsed: boolean;
+  onToggle: (id: SectionId) => void;
 }
 
 const MicroTensorSection = memo(function MicroTensorSection({
@@ -487,21 +664,25 @@ const MicroTensorSection = memo(function MicroTensorSection({
   maskBits,
   windowIsInactive,
   latestWindowEventCount,
+  isCollapsed,
+  onToggle,
 }: MicroTensorSectionProps) {
   return (
-    <div className="edge-aui-debug-section">
-      <div className="edge-aui-debug-section-title">
-        Latest MicroTensor (18-D)
-        {windowIsInactive && (
-          <span
-            className="edge-aui-debug-val dim"
-            data-testid="aui-window-inactive"
-          >
-            {" "}
-            — INACTIVITY WINDOW (zero values are expected)
-          </span>
-        )}
-      </div>
+    <CollapsibleSection
+      id="micro-tensor"
+      title="Latest MicroTensor (18-D)"
+      badge={
+        <span
+          className={`edge-aui-debug-status-pill ${
+            windowIsInactive ? "inactive" : "active"
+          }`}
+        >
+          {windowIsInactive ? "INACTIVE" : "ACTIVE"}
+        </span>
+      }
+      isCollapsed={isCollapsed}
+      onToggle={onToggle}
+    >
       <div className="edge-aui-debug-tensor-grid">
         {featureValues.map((val, idx) => (
           <div key={FEATURE_LABELS[idx]} className="edge-aui-debug-tensor-item">
@@ -519,12 +700,26 @@ const MicroTensorSection = memo(function MicroTensorSection({
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Window Events:</span>
         <span className="edge-aui-debug-val dim">
-          {latestWindowEventCount !== undefined
-            ? latestWindowEventCount
-            : "--"}
+          {latestWindowEventCount !== undefined ? latestWindowEventCount : "--"}
         </span>
       </div>
-    </div>
+      {/* Zero layout shift: Persistent dedicated status row */}
+      <div className="edge-aui-debug-row edge-aui-debug-window-status-row">
+        <span className="edge-aui-debug-label">Window Status:</span>
+        {windowIsInactive ? (
+          <span
+            className="edge-aui-debug-val warning"
+            data-testid="aui-window-inactive"
+          >
+            INACTIVITY (zero values are expected)
+          </span>
+        ) : (
+          <span className="edge-aui-debug-val success">
+            ACTIVE STREAM (kinematics present)
+          </span>
+        )}
+      </div>
+    </CollapsibleSection>
   );
 });
 
@@ -533,6 +728,8 @@ interface RecorderBuffersSectionProps {
   evictionCounters: ReturnType<typeof experimentRecorder.getEvictionCounters>;
   collectionState: string;
   collectionDetail?: LiveDebugMetrics["collectionDetail"];
+  isCollapsed: boolean;
+  onToggle: (id: SectionId) => void;
 }
 
 const RecorderBuffersSection = memo(function RecorderBuffersSection({
@@ -540,12 +737,25 @@ const RecorderBuffersSection = memo(function RecorderBuffersSection({
   evictionCounters,
   collectionState,
   collectionDetail,
+  isCollapsed,
+  onToggle,
 }: RecorderBuffersSectionProps) {
   const isTruncated = evictionCounters.truncated;
 
   return (
-    <div className="edge-aui-debug-section">
-      <div className="edge-aui-debug-section-title">Recorder Buffers</div>
+    <CollapsibleSection
+      id="recorder-buffers"
+      title="Recorder Buffers"
+      badge={
+        isCollapsed ? (
+          <span className="edge-aui-debug-section-badge">
+            {eventCounts.total} buffered
+          </span>
+        ) : undefined
+      }
+      isCollapsed={isCollapsed}
+      onToggle={onToggle}
+    >
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Buffered Events:</span>
         <span className="edge-aui-debug-val">
@@ -600,7 +810,7 @@ const RecorderBuffersSection = memo(function RecorderBuffersSection({
           </span>
         </div>
       )}
-    </div>
+    </CollapsibleSection>
   );
 });
 
@@ -622,20 +832,24 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
   const search = typeof window !== "undefined" ? window.location.search : "";
 
   const [isOpen, setIsOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<
+    Record<string, boolean>
+  >({});
+
   const [session, setSession] = useState<SessionContext | null>(() =>
-    sessionManager.getActiveSession()
+    sessionManager.getActiveSession(),
   );
   const [taskState, setTaskState] = useState<TaskState>(() =>
-    taskManager.getState()
+    taskManager.getState(),
   );
   const [uiContext, setUiContext] = useState<UIContext>(() =>
-    getActiveUIContext()
+    getActiveUIContext(),
   );
   const [liveMetrics, setLiveMetrics] = useState<LiveDebugMetrics>(() =>
-    debugBus.getSnapshot()
+    debugBus.getSnapshot(),
   );
   const [eventCounts, setEventCounts] = useState(() =>
-    experimentRecorder.getEventCounts()
+    experimentRecorder.getEventCounts(),
   );
 
   // Background subscriptions required for toggle status & session
@@ -692,6 +906,28 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
     setIsOpen(false);
   }, []);
 
+  const handleToggleSection = useCallback((id: SectionId) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  }, []);
+
+  const allCollapsed = useMemo(() => {
+    return ALL_SECTION_IDS.every((id) => Boolean(collapsedSections[id]));
+  }, [collapsedSections]);
+
+  const handleToggleAllSections = useCallback(() => {
+    setCollapsedSections((prev) => {
+      const willCollapse = !ALL_SECTION_IDS.every((id) => Boolean(prev[id]));
+      const next: Record<string, boolean> = {};
+      for (const id of ALL_SECTION_IDS) {
+        next[id] = willCollapse;
+      }
+      return next;
+    });
+  }, []);
+
   // MicroTensor calculations (memoized to prevent render-time allocations)
   const { featureValues, maskBits } = useMemo(() => {
     const tensor = liveMetrics.latestMicroTensor ?? EMPTY_MICRO_TENSOR;
@@ -706,12 +942,12 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
   const windowIsInactive = Boolean(liveMetrics.latestWindowInactive);
   const macroSequence = useMemo(
     () => liveMetrics.latestMacroSequence ?? [],
-    [liveMetrics.latestMacroSequence]
+    [liveMetrics.latestMacroSequence],
   );
 
   const evictionCounters = useMemo(
     () => experimentRecorder.getEvictionCounters(),
-    [eventCounts.total]
+    [eventCounts.total],
   );
 
   const collectionState = liveMetrics.collectionState ?? "not configured";
@@ -732,7 +968,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
           onClick={handleOpenPanel}
           aria-label="Open Edge-AUI Development Debug Panel"
         >
-          <span className="edge-aui-debug-toggle-icon">⚡ AUI Debug</span>
+          <span className="edge-aui-debug-toggle-icon">⚡ Debug</span>
           <span
             className={`edge-aui-debug-toggle-status ${
               isTaskRunning ? "status-in-progress" : "status-idle"
@@ -759,16 +995,31 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
         <div className="edge-aui-debug-header">
           <div className="edge-aui-debug-title">
             <span aria-hidden="true">⚡</span>
-            <span>Edge-AUI Pipeline Inspector</span>
+            <span>Pipeline Inspector</span>
           </div>
-          <button
-            className="edge-aui-debug-close"
-            onClick={handleClosePanel}
-            aria-label="Collapse Debug Panel"
-            title="Collapse panel"
-          >
-            &times;
-          </button>
+          <div className="edge-aui-debug-header-controls">
+            <button
+              type="button"
+              className="edge-aui-debug-header-toggle-all"
+              onClick={handleToggleAllSections}
+              aria-label={
+                allCollapsed ? "Expand all sections" : "Collapse all sections"
+              }
+              title={
+                allCollapsed ? "Expand all sections" : "Collapse all sections"
+              }
+            >
+              {allCollapsed ? "Expand All" : "Collapse All"}
+            </button>
+            <button
+              className="edge-aui-debug-close"
+              onClick={handleClosePanel}
+              aria-label="Collapse Debug Panel"
+              title="Close panel"
+            >
+              &times;
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Body */}
@@ -778,22 +1029,44 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             session={session}
             taskState={taskState}
             uiContext={uiContext}
+            isCollapsed={Boolean(collapsedSections["session-task"])}
+            onToggle={handleToggleSection}
           />
 
           {/* Priority 2: Decision State */}
-          <DecisionStateSection liveMetrics={liveMetrics} />
+          <DecisionStateSection
+            liveMetrics={liveMetrics}
+            isCollapsed={Boolean(collapsedSections["decision-state"])}
+            onToggle={handleToggleSection}
+          />
 
           {/* Priority 3: Active Intervention Episode */}
-          <InterventionEpisodeSection liveMetrics={liveMetrics} />
+          <InterventionEpisodeSection
+            liveMetrics={liveMetrics}
+            isCollapsed={Boolean(collapsedSections["active-episode"])}
+            onToggle={handleToggleSection}
+          />
 
           {/* Priority 4: Dual-Gate Arbitration & Decisions */}
-          <DualGateSection liveMetrics={liveMetrics} />
+          <DualGateSection
+            liveMetrics={liveMetrics}
+            isCollapsed={Boolean(collapsedSections["dual-gate"])}
+            onToggle={handleToggleSection}
+          />
 
           {/* Priority 5: Latency, Model & Worker Runtime Status */}
-          <RuntimeStatusSection liveMetrics={liveMetrics} />
+          <RuntimeStatusSection
+            liveMetrics={liveMetrics}
+            isCollapsed={Boolean(collapsedSections["runtime-status"])}
+            onToggle={handleToggleSection}
+          />
 
           {/* Priority 6: Macro Interaction Sequence */}
-          <MacroSequenceSection macroSequence={macroSequence} />
+          <MacroSequenceSection
+            macroSequence={macroSequence}
+            isCollapsed={Boolean(collapsedSections["macro-sequence"])}
+            onToggle={handleToggleSection}
+          />
 
           {/* Priority 7: Latest 18-D MicroTensor */}
           <MicroTensorSection
@@ -801,6 +1074,8 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             maskBits={maskBits}
             windowIsInactive={windowIsInactive}
             latestWindowEventCount={liveMetrics.latestWindowEventCount}
+            isCollapsed={Boolean(collapsedSections["micro-tensor"])}
+            onToggle={handleToggleSection}
           />
 
           {/* Priority 8: Trace Recording, Eviction & Collection */}
@@ -809,6 +1084,8 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             evictionCounters={evictionCounters}
             collectionState={collectionState}
             collectionDetail={liveMetrics.collectionDetail}
+            isCollapsed={Boolean(collapsedSections["recorder-buffers"])}
+            onToggle={handleToggleSection}
           />
         </div>
 
