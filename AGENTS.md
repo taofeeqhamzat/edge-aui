@@ -98,3 +98,11 @@ The framework predicts **observable interaction outcomes**, not internal user st
 
 - [`docs/architecture.md`](docs/architecture.md) — the implemented system and its contracts
 - [`docs/assessments/`](docs/assessments/) — the audit and the implementation record
+
+## 7. Design Context
+
+- **Register:** `product` (Scientific research testbed & analytics dashboard).
+- **Creative North Star:** "The Instrument Bench" — Precision telemetry, high-contrast density, monochrome chassis, and zero decorative fluff.
+- **Product Context:** [PRODUCT.md](PRODUCT.md) — Dual audience (study participants on tasks T1–T3, researchers monitoring live trials and telemetry).
+- **Design System & Tokens:** [DESIGN.md](DESIGN.md) — Flat tonal layering, strict semantic signal rules, and telemetry precision typography.
+
