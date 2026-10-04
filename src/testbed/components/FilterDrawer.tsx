@@ -79,7 +79,7 @@ export function FilterDrawer({
             data-aui-component="filter-date-input"
             data-aui-role="form-field"
             data-aui-action="change"
-            style={{ width: "100%", padding: "4px" }}
+            className="filter-input-date"
           />
         ),
       },
@@ -93,7 +93,7 @@ export function FilterDrawer({
             data-aui-role="filter"
             data-aui-action="change"
             data-aui-task-role="required"
-            style={{ width: "100%", padding: "4px" }}
+            className="filter-select"
           >
             <option value="All">All regions</option>
             {REPORT_REGIONS.map((region) => (
@@ -109,7 +109,7 @@ export function FilterDrawer({
         content: (
           <div>
             {REPORT_CATEGORIES.map((category) => (
-              <label key={category} style={{ display: "block" }}>
+              <label key={category} className="filter-checkbox-label">
                 <input
                   type="checkbox"
                   checked={filters.categories.includes(category)}
@@ -117,7 +117,7 @@ export function FilterDrawer({
                   data-aui-component={`filter-category-${category.toLowerCase()}`}
                   data-aui-role="filter"
                   data-aui-action="change"
-                />{" "}
+                />
                 {category}
               </label>
             ))}
@@ -128,8 +128,8 @@ export function FilterDrawer({
         name: "Advanced Options",
         content: (
           <div>
-            <label style={{ display: "block", marginBottom: "8px" }}>
-              Customer Segment
+            <label className="filter-checkbox-label" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+              <span>Customer Segment</span>
               <select
                 value={filters.segment}
                 onChange={(e) => update({ segment: e.target.value })}
@@ -137,7 +137,7 @@ export function FilterDrawer({
                 data-aui-role="filter"
                 data-aui-action="change"
                 data-aui-task-role="required"
-                style={{ width: "100%", padding: "4px", marginTop: "4px" }}
+                className="filter-select"
               >
                 <option value="All">All</option>
                 <option value="New">New</option>
@@ -157,24 +157,11 @@ export function FilterDrawer({
       data-aui-component="filter-drawer"
       data-aui-role="filter"
       aria-label="Filters"
-      style={{
-        width: "250px",
-        borderRight: "1px solid #ccc",
-        padding: "16px",
-        background: "transparent",
-      }}
+      className="filter-drawer-container"
     >
-      <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Filters</h3>
+      <h3 className="filter-drawer-title">Filters</h3>
       {sections.map((section) => (
-        <div
-          key={section.name}
-          style={{
-            marginBottom: "8px",
-            border: "1px solid #ddd",
-            borderRadius: "4px",
-            background: "#fffa",
-          }}
-        >
+        <div key={section.name} className="filter-section">
           <button
             type="button"
             onClick={() => toggleSection(section.name)}
@@ -182,20 +169,12 @@ export function FilterDrawer({
             data-aui-role="accordion"
             data-aui-action="click"
             aria-expanded={openSections[section.name]}
-            style={{
-              width: "100%",
-              padding: "8px",
-              textAlign: "left",
-              background: "none",
-              border: "none",
-              fontWeight: "bold",
-              cursor: "pointer",
-            }}
+            className="filter-accordion-btn"
           >
             {openSections[section.name] ? "▼" : "▶"} {section.name}
           </button>
           {openSections[section.name] && (
-            <div style={{ padding: "8px", borderTop: "1px solid #ddd" }}>
+            <div className="filter-section-content">
               {section.content}
             </div>
           )}
@@ -207,16 +186,7 @@ export function FilterDrawer({
         data-aui-role="submit-action"
         data-aui-action="click"
         data-aui-task-role="required"
-        style={{
-          width: "100%",
-          padding: "8px",
-          background: "#006064",
-          color: "#fff",
-          border: "none",
-          borderRadius: "4px",
-          cursor: "pointer",
-          marginTop: "16px",
-        }}
+        className="btn-apply-filters"
       >
         Apply Filters
       </button>

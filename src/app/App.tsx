@@ -27,37 +27,37 @@ export function App() {
       className="app-container"
       data-aui-route={currentPage}
       data-aui-component={`page-${currentPage.toLowerCase()}`}
-      style={{ display: 'flex', minHeight: '100vh', fontFamily: 'sans-serif' }}
     >
       <Navigation currentPage={currentPage} onNavigate={setCurrentPage} />
 
-      {currentPage === 'Analytics' ? (
-        <div style={{ display: 'flex', flex: 1 }}>
-          <FilterDrawer onApply={setAppliedFilters} />
-          <main style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column' }}>
-            <header style={{ borderBottom: '1px solid #ccc', paddingBottom: '16px', marginBottom: '24px' }}>
-              <h1 style={{ margin: 0, fontSize: '24px' }}>{currentPage}</h1>
-            </header>
-            <TrialControls />
-            <KPICards />
-            <ResultsTable
-              rows={rows}
-              filters={appliedFilters}
-              onExport={(visibleRows) => downloadRows(visibleRows)}
-            />
-          </main>
+      <main className="app-main">
+        <header className="page-header">
+          <h1 className="page-title">{currentPage}</h1>
+        </header>
+
+        <TrialControls />
+
+        <div className="page-body">
+          {currentPage === 'Analytics' ? (
+            <div className="analytics-layout">
+              <FilterDrawer onApply={setAppliedFilters} />
+              <div className="analytics-results">
+                <KPICards />
+                <ResultsTable
+                  rows={rows}
+                  filters={appliedFilters}
+                  onExport={(visibleRows) => downloadRows(visibleRows)}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="page-content">
+              <p>This is the {currentPage} view.</p>
+            </div>
+          )}
         </div>
-      ) : (
-        <main style={{ flex: 1, padding: '24px' }}>
-          <header style={{ borderBottom: '1px solid #ccc', paddingBottom: '16px', marginBottom: '24px' }}>
-            <h1 style={{ margin: 0, fontSize: '24px' }}>{currentPage}</h1>
-          </header>
-          <TrialControls />
-          <div className="page-content">
-            <p>This is the {currentPage} view.</p>
-          </div>
-        </main>
-      )}
+      </main>
+
       <DebugPanel />
     </div>
   );

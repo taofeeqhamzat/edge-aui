@@ -76,30 +76,13 @@ export function TrialControls({
       data-aui-component="trial-controls"
       data-aui-role="trial-controls"
       aria-label="Experimental trial controls"
-      style={{
-        border: "1px solid #ccc",
-        borderRadius: "8px",
-        padding: "16px",
-        marginBottom: "24px",
-        background: "transparent",
-      }}
+      className="trial-controls-card"
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 16,
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="trial-controls-header">
         <div>
-          <strong style={{ display: "block", marginBottom: 4 }}>
-            Experimental Trial
-          </strong>
-          <span style={{ fontSize: 12, color: "#666" }}>
-            Session:{" "}
-            {sessionManager.getActiveSession()?.sessionId ?? "starting…"}
+          <strong className="trial-title">Experimental Trial</strong>
+          <span className="trial-session-id">
+            Session: {sessionManager.getActiveSession()?.sessionId ?? "starting…"}
           </span>
         </div>
 
@@ -108,9 +91,9 @@ export function TrialControls({
           aria-label="Experimental condition"
           data-aui-component="condition-selector"
           data-aui-role="condition-selector"
-          style={{ display: "flex", gap: 8, alignItems: "center" }}
+          className="condition-selector"
         >
-          <span style={{ fontSize: 12, color: "#666" }}>Condition:</span>
+          <span className="condition-label">Condition:</span>
           {(["baseline", "adaptive"] as ExperimentalCondition[]).map(
             (candidate) => (
               <button
@@ -123,14 +106,7 @@ export function TrialControls({
                 data-aui-action="click"
                 disabled={busy}
                 onClick={() => handleCondition(candidate)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                  background: condition === candidate ? "#e0f7fa" : "#fff",
-                  fontWeight: condition === candidate ? "bold" : "normal",
-                  cursor: busy ? "wait" : "pointer",
-                }}
+                className={`condition-btn ${condition === candidate ? "active" : ""}`}
               >
                 {candidate}
               </button>
@@ -139,7 +115,7 @@ export function TrialControls({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+      <div className="trial-actions">
         {(Object.keys(EXPERIMENTAL_TASKS) as TaskId[]).map((taskId) => (
           <button
             key={taskId}
@@ -149,14 +125,7 @@ export function TrialControls({
             data-aui-action="click"
             disabled={busy}
             onClick={() => handleStart(taskId)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 4,
-              border: "1px solid #006064",
-              background: "#fff",
-              color: "#006064",
-              cursor: busy ? "wait" : "pointer",
-            }}
+            className="btn-start-task"
           >
             Start {taskId}: {EXPERIMENTAL_TASKS[taskId].name}
           </button>
@@ -168,21 +137,14 @@ export function TrialControls({
           data-aui-action="click"
           disabled={busy}
           onClick={handleReset}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 4,
-            border: "1px solid #b71c1c",
-            background: "#fff",
-            color: "#b71c1c",
-            cursor: busy ? "wait" : "pointer",
-          }}
+          className="btn-reset-trial"
         >
           Reset Trial
         </button>
       </div>
 
       <div
-        style={{ marginTop: 12, fontSize: 13 }}
+        className="trial-status-row"
         data-aui-component="trial-status"
         data-aui-role="status"
       >

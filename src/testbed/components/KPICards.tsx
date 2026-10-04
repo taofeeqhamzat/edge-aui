@@ -9,44 +9,19 @@ export function KPICards() {
   return (
     <div
       data-aui-component="kpi-cards"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: "16px",
-        marginBottom: "24px",
-      }}
+      className="kpi-grid"
     >
       {kpis.map((kpi, index) => (
         <div
           key={index}
+          className="kpi-card"
           data-aui-component={`kpi-card-${kpi.label.toLowerCase().replace(/\s+/g, "-")}`}
           data-aui-role="kpi-card"
           data-aui-action="hover"
-          style={{
-            border: "1px solid #ccc",
-            padding: "16px",
-            borderRadius: "8px",
-            background: "transparent",
-          }}
         >
-          <div style={{ fontSize: "14px", color: "#666", marginBottom: "8px" }}>
-            {kpi.label}
-          </div>
-          <div
-            style={{
-              fontSize: "24px",
-              fontWeight: "bold",
-              marginBottom: "8px",
-            }}
-          >
-            {kpi.value}
-          </div>
-          <div
-            style={{
-              fontSize: "14px",
-              color: kpi.change.startsWith("+") ? "green" : "red",
-            }}
-          >
+          <div className="kpi-label">{kpi.label}</div>
+          <div className="kpi-value">{kpi.value}</div>
+          <div className={`kpi-change ${kpi.change.startsWith("+") ? "positive" : "negative"}`}>
             {kpi.change} vs last month
           </div>
         </div>
