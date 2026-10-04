@@ -1,0 +1,25 @@
+{
+  // Cloudflare Workers deployment configuration.
+  //
+  // This project is deployed as a Worker with static assets, not as a classic Pages
+  // project: Cloudflare's current "Workers & Pages" flow creates a Worker, and its Builds
+  // API drives the deployment through `wrangler deploy`. There is therefore no "Build output
+  // directory" field in the dashboard — the published directory is declared here.
+  //
+  //   wrangler.jsonc assets.directory  ≡  the Pages "Build output directory" setting
+  //
+  // There is deliberately no `main` entry: this is a static testbed with no server-side code,
+  // so every response is a static-asset response. That matters for `_headers`, which Workers
+  // applies to static-asset responses only. `dist/_headers` (copied from `public/_headers` by
+  // Vite and asserted by `npm run check:deploy-assets`) is what supplies the cross-origin
+  // isolation headers the threaded ONNX Runtime build needs.
+  //
+  // The `name` must match the existing Worker so a build updates it in place rather than
+  // creating a second service.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "edge-aui",
+  "compatibility_date": "2026-10-04",
+  "assets": {
+    "directory": "./dist"
+  }
+}
