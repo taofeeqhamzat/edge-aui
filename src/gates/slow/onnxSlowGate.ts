@@ -17,11 +17,12 @@
  */
 
 import type * as OrtNamespace from 'onnxruntime-web';
-import { SlowGate, SlowGateInput, SlowGateResult, SlowGateMappingSource } from './types';
+import { SlowGate, SlowGateInput, SlowGateResult, SlowGateMappingSource, FOUNDATION_OUTCOME_VOCABULARY_VERSION } from './types';
 import { InterventionCommand, InterventionType } from '../../intervention/types';
 import { OutcomeType } from '../../telemetry/events';
 import { CONTEXT_VECTOR_DIM, encodeUIContext } from '../../types/contextVector';
 import { defaultCollector } from '../../runtime/instrumentation';
+import { argmax } from '../contracts';
 
 /** Outcome class order, aligned with model-preparation/config.yaml `foundation_classes`. */
 export const OUTCOME_CLASS_ORDER: OutcomeType[] = [
@@ -398,6 +399,7 @@ export class OnnxSlowGate implements SlowGate {
     let outcome: OutcomeType = 'NO_OUTCOME';
     let outcomeConfidence = 0;
     let outcomeProbabilities: Float32Array | undefined;
+    let outcomeIndex: number | undefined;
 
     if (foundationOutputs && bundle.foundation) {
       const fndOutputName = bundle.foundation.outputNames[0] ?? 'output';
@@ -411,6 +413,7 @@ export class OnnxSlowGate implements SlowGate {
       const argmax = this.argmaxOutcome(outcomeProbabilities);
       outcome = argmax.outcome;
       outcomeConfidence = argmax.confidence;
+      outcomeIndex = argmax.index;
       this.lastOutcome = outcome;
     }
 
@@ -455,6 +458,19 @@ export class OnnxSlowGate implements SlowGate {
       interventionProbabilities,
       interventionConfidence,
       mappingSource,
+      prediction: {
+        outcomeId: outcome,
+        vocabularyVersion: FOUNDATION_OUTCOME_VOCABULARY_VERSION,
+        outcomeIndex: outcomeIndex ?? undefined,
+        confidence: outcomeConfidence,
+        matched: outcome !== 'NO_OUTCOME',
+        source: 'slow',
+        mappingSource,
+        target: input.context.activeComponentId
+          ? { componentId: input.context.activeComponentId }
+          : undefined
+      },
+      gateVersion: 'onnx-slow-gate/1.0.0',
       source: 'slow'
     };
   }
@@ -491,32 +507,26 @@ export class OnnxSlowGate implements SlowGate {
     }
   }
 
-  private argmaxOutcome(probabilities: Float32Array): { outcome: OutcomeType; confidence: number } {
-    let bestIdx = 0;
-    let bestProb = -Infinity;
-    for (let i = 0; i < probabilities.length; i++) {
-      if (probabilities[i] > bestProb) {
-        bestProb = probabilities[i];
-        bestIdx = i;
-      }
-    }
-    return { outcome: OUTCOME_CLASS_ORDER[bestIdx] ?? 'NO_OUTCOME', confidence: bestProb };
+  private argmaxOutcome(probabilities: Float32Array): {
+    outcome: OutcomeType;
+    confidence: number;
+    index: number;
+  } {
+    const { index, confidence } = argmax(probabilities);
+    return {
+      outcome: OUTCOME_CLASS_ORDER[index] ?? 'NO_OUTCOME',
+      confidence,
+      index
+    };
   }
 
   private argmaxIntervention(
     probabilities: Float32Array
   ): { type: InterventionType; confidence: number } {
-    let bestIdx = 0;
-    let bestProb = -Infinity;
-    for (let i = 0; i < probabilities.length; i++) {
-      if (probabilities[i] > bestProb) {
-        bestProb = probabilities[i];
-        bestIdx = i;
-      }
-    }
+    const { index, confidence } = argmax(probabilities);
     return {
-      type: TARGET_INTERVENTION_ORDER[bestIdx] ?? 'no_op',
-      confidence: bestProb
+      type: TARGET_INTERVENTION_ORDER[index] ?? 'no_op',
+      confidence
     };
   }
 

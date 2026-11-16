@@ -7,7 +7,8 @@
 
 import { OutcomeType } from '../../telemetry/events';
 import { InterventionCommand, InterventionType, isInterventionType } from '../../intervention/types';
-import { SlowGate, SlowGateInput, SlowGateResult } from './types';
+import { SlowGate, SlowGateInput, SlowGateResult, FOUNDATION_OUTCOME_VOCABULARY_VERSION } from './types';
+import { GatePrediction } from '../contracts';
 import { defaultCollector } from '../../runtime/instrumentation';
 
 export interface MockSlowGateOptions {
@@ -61,6 +62,7 @@ export class MockSlowGate implements SlowGate {
           return {
             outcome: 'NO_OUTCOME',
             confidence: 0,
+            prediction: this.buildPrediction('NO_OUTCOME', 0, input),
             source: 'slow'
           };
         }
@@ -76,6 +78,11 @@ export class MockSlowGate implements SlowGate {
         confidence: this.confidence,
         probabilities: this.probabilities,
         intervention: candidateIntervention,
+        prediction: this.buildPrediction(
+          this.outcome ?? 'NO_OUTCOME',
+          this.confidence,
+          input
+        ),
         source: 'slow'
       };
     });
@@ -128,6 +135,30 @@ export class MockSlowGate implements SlowGate {
    */
   public getLastInput(): SlowGateInput | null {
     return this.lastInput;
+  }
+
+  /**
+   * Normalized prediction for the mock's configured outcome.
+   *
+   * The mock is a deterministic stand-in for the ONNX foundation head, so it reports
+   * `deterministic_mapping` as its attribution (ADR-006).
+   */
+  private buildPrediction(
+    outcome: string,
+    confidence: number,
+    input: SlowGateInput
+  ): GatePrediction {
+    return {
+      outcomeId: outcome,
+      vocabularyVersion: FOUNDATION_OUTCOME_VOCABULARY_VERSION,
+      confidence,
+      matched: outcome !== 'NO_OUTCOME',
+      source: 'slow',
+      mappingSource: 'deterministic_mapping',
+      target: input.context.activeComponentId
+        ? { componentId: input.context.activeComponentId }
+        : undefined
+    };
   }
 
   private assertValidShape(input: SlowGateInput): void {

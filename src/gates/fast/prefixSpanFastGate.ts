@@ -20,8 +20,14 @@ import {
   isInterventionType
 } from '../../intervention/types';
 import { FastGate, GateDecision } from './types';
+import {
+  INTERVENTION_OUTCOME_VOCABULARY_VERSION
+} from '../contracts';
 import { defaultCollector } from '../../runtime/instrumentation';
 import { getWallClockTimestamp } from '../../telemetry/normalizer';
+
+/** Provenance identity of this gate implementation, reported on every match. */
+const PREFIXSPAN_GATE_VERSION = 'prefixspan-wasm/1.0.0';
 
 /** Shape of a mined frequent pattern, mirroring the Rust `PrefixSpanPattern`. */
 export interface MinedPattern {
@@ -223,12 +229,25 @@ export class PrefixSpanFastGate implements FastGate {
       const intervention = this.createIntervention(resolvedIntervention, patternKey, pattern);
 
       this.reportOutcome('executed');
+      const confidence = intervention.confidence ?? this.options.defaultConfidence;
       return {
         matched: true,
         source: 'fast',
-        confidence: intervention.confidence ?? this.options.defaultConfidence,
+        confidence,
         intervention,
-        matchedPattern: pattern.pattern
+        prediction: {
+          outcomeId: intervention.type,
+          vocabularyVersion: INTERVENTION_OUTCOME_VOCABULARY_VERSION,
+          confidence,
+          matched: true,
+          source: 'fast',
+          mappingSource: 'fast_gate_pattern',
+          target: intervention.targetComponentId
+            ? { componentId: intervention.targetComponentId }
+            : undefined
+        },
+        matchedPattern: pattern.pattern,
+        gateVersion: PREFIXSPAN_GATE_VERSION
       };
     }
 

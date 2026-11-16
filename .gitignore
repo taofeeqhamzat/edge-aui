@@ -98,3 +98,6 @@ docs/experiments/**
 supabase/.temp/
 supabase/.branches/
 
+
+# Quality-tool output (crapper/dryer/mutator)
+.metrics/

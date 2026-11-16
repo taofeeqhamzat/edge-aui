@@ -41,7 +41,7 @@ import {
   StageTimingRecord,
   StageTimingStats
 } from './instrumentation';
-import { InterventionPolicy, PolicyConfig } from '../intervention/policy';
+import { InterventionPolicy, PolicyConfig, CandidateResolver } from '../intervention/policy';
 import { UIActuator } from '../intervention/actuator';
 import { experimentRecorder } from '../telemetry/recorder';
 import { sessionManager, type SessionContext } from '../telemetry/session';
@@ -59,6 +59,7 @@ import {
 } from '../telemetry/events';
 import type { MiningCounters } from '../telemetry/traceSchema';
 import { InferenceResult } from '../gates/arbitration';
+import { nextPredictionId } from '../gates/contracts';
 import { InterventionCommand, InterventionType } from '../intervention/types';
 import { UIContext } from '../types/uiContext.js';
 import { encodeUIContext } from '../types/contextVector';
@@ -88,6 +89,14 @@ export interface AdaptiveRuntimeOptions {
   fastGatePatterns?: Record<string, InterventionType | Partial<InterventionCommand>>;
   /** Policy configuration overrides. */
   policyConfig?: Partial<PolicyConfig>;
+  /**
+   * Application port mapping a predicted outcome to a candidate adaptation.
+   *
+   * Defaults to the framework resolver, which only recognises the intervention
+   * vocabulary. An application with its own outcome vocabulary supplies its own resolver
+   * (Task 20.1); no outcome→intervention table lives in core.
+   */
+  candidateResolver?: CandidateResolver;
   /** Provide a slow gate; defaults to the deterministic mock. */
   enableSlowGate?: boolean;
   /**
@@ -174,7 +183,6 @@ export class AdaptiveRuntime {
    * makes "which window produced this decision" answerable.
    */
   private evaluatedWindowIds: number[] = [];
-  private predictionCounter = 0;
 
   /**
    * Bounded Fast Gate execution counters (F-02). Surfaced in the trace so a dropped or
@@ -267,16 +275,19 @@ export class AdaptiveRuntime {
       requestTimeoutMs: this.config.fastGate.rpcTimeoutMs
     });
 
-    this.policy = new InterventionPolicy({
-      confidenceThreshold: this.config.policy.confidenceThreshold,
-      requiredConsecutiveWindows: this.config.policy.requiredConsecutiveWindows,
-      enforceContextEligibility: this.config.policy.enforceContextEligibility,
-      cooldownMs: this.config.policy.cooldownMs,
-      dismissalCooldownMs: this.config.policy.dismissalCooldownMs,
-      // The adaptation lifetime is a research-methodology parameter; it is now wired rather
-      // than merely declared, so an accepted adaptation actually expires (F-03).
-      ttlMs: this.config.actuation.defaultTtlMs
-    });
+    this.policy = new InterventionPolicy(
+      {
+        confidenceThreshold: this.config.policy.confidenceThreshold,
+        requiredConsecutiveWindows: this.config.policy.requiredConsecutiveWindows,
+        enforceContextEligibility: this.config.policy.enforceContextEligibility,
+        cooldownMs: this.config.policy.cooldownMs,
+        dismissalCooldownMs: this.config.policy.dismissalCooldownMs,
+        // The adaptation lifetime is a research-methodology parameter; it is now wired
+        // rather than merely declared, so an accepted adaptation actually expires (F-03).
+        ttlMs: this.config.actuation.defaultTtlMs
+      },
+      { resolveCandidate: options.candidateResolver }
+    );
     this.actuator = new UIActuator({
       defaultAssistanceText: this.config.actuation.defaultAssistanceText
     });
@@ -775,8 +786,9 @@ export class AdaptiveRuntime {
         this.options.interventionModelUrl ??
         (this.modelLoaded ? 'TargetInterventionHead-v1.0.0-int8' : undefined);
 
-      this.predictionCounter++;
-      const predictionId = `pred_${this.predictionCounter}`;
+      // Arbitration is the single producer of prediction identity, so the trace event and
+      // the prediction it describes cannot disagree (Task 20.1).
+      const predictionId = result.prediction?.predictionId ?? nextPredictionId();
 
       // Fold the worker's bounded-execution counters in before the prediction is recorded.
       const workerDiagnostics = (result as InferenceResult & {
@@ -846,7 +858,7 @@ export class AdaptiveRuntime {
       // No candidate at all: record the absence explicitly so "no prediction" is
       // distinguishable from "prediction rejected" in the exported trace (F-07).
       // ---------------------------------------------------------------------
-      if (!result.intervention) {
+      if (!result.prediction || !result.prediction.matched) {
         this.recordPolicyDecision({
           windowId: evaluatedWindowId,
           predictionId,
@@ -868,7 +880,10 @@ export class AdaptiveRuntime {
         return;
       }
 
-      const decision = this.policy.accept(result.intervention, uiContext);
+      // The policy acts on the predicted outcome and the UI context. It no longer needs a
+      // gate to have emitted a command, so the adaptation is an application decision
+      // (Task 20.1).
+      const decision = this.policy.acceptPrediction(result.prediction, uiContext);
 
       // ---------------------------------------------------------------------
       // Rejected: the reason is a research result and is persisted, not just logged.
@@ -878,7 +893,7 @@ export class AdaptiveRuntime {
           windowId: evaluatedWindowId,
           predictionId,
           candidate: decision.command.type,
-          confidence: result.intervention.confidence ?? result.slowResult?.confidence,
+          confidence: result.prediction.confidence,
           accepted: false,
           policyDecision: 'rejected',
           policyReason: decision.reason,

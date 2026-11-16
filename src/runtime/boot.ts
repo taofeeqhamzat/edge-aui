@@ -11,6 +11,7 @@
  */
 
 import { AdaptiveRuntime, AdaptiveRuntimeOptions } from './adaptiveRuntime';
+import type { CandidateResolver } from '../intervention/policy';
 import { ExperimentalCondition } from '../telemetry/events';
 import { InterventionType } from '../intervention/types';
 import { sessionManager } from '../telemetry/session';
@@ -46,6 +47,22 @@ let defaultUiAdapterProvider: (() => UiAdapter) | null = null;
 
 export function registerDefaultUiAdapter(provider: (() => UiAdapter) | null): void {
   defaultUiAdapterProvider = provider;
+}
+
+/**
+ * Registers the application's outcome→candidate resolver.
+ *
+ * The composition root registers it exactly as it registers the UI adapter: `src/runtime`
+ * must not depend on `src/testbed` (ADR-011), so the testbed policy adapter is injected
+ * rather than imported. Without a registered resolver the framework default applies, which
+ * only recognises the intervention vocabulary.
+ */
+let defaultCandidateResolverProvider: (() => CandidateResolver) | null = null;
+
+export function registerDefaultCandidateResolver(
+  provider: (() => CandidateResolver) | null
+): void {
+  defaultCandidateResolverProvider = provider;
 }
 
 let currentRuntime: AdaptiveRuntime | null = null;
@@ -113,6 +130,7 @@ export async function bootTestbed(
   const runtime = new AdaptiveRuntime({
     experimentId,
     conditionId,
+    candidateResolver: defaultCandidateResolverProvider?.(),
     // support=1: the deterministic Fast Gate observes each frequent sequence from its
     // first occurrence, so the fast path is exercised inside a single trial. A
     // multi-trial study can raise this without any other change.

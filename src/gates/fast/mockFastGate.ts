@@ -8,6 +8,10 @@
 import { MacroInteraction } from '../../telemetry/events';
 import { InterventionCommand, InterventionType, isInterventionType } from '../../intervention/types';
 import { FastGate, GateDecision } from './types';
+import { INTERVENTION_OUTCOME_VOCABULARY_VERSION } from '../contracts';
+
+/** Provenance identity of this gate implementation, reported on every match. */
+const MOCK_GATE_VERSION = 'mock-fast-gate/1.0.0';
 
 export type PatternDefinition = string | readonly string[];
 export type PatternIntervention = InterventionType | Partial<InterventionCommand>;
@@ -51,12 +55,25 @@ export class MockFastGate implements FastGate {
       const matches = this.checkMatch(currentSymbols, patternTokens);
       if (matches) {
         const intervention = this.createIntervention(target, patternKey);
+        const confidence = intervention.confidence ?? this.defaultConfidence;
         return {
           matched: true,
           source: 'fast',
-          confidence: intervention.confidence ?? this.defaultConfidence,
+          confidence,
           intervention,
-          matchedPattern: patternTokens
+          prediction: {
+            outcomeId: intervention.type,
+            vocabularyVersion: INTERVENTION_OUTCOME_VOCABULARY_VERSION,
+            confidence,
+            matched: true,
+            source: 'fast',
+            mappingSource: 'fast_gate_pattern',
+            target: intervention.targetComponentId
+              ? { componentId: intervention.targetComponentId }
+              : undefined
+          },
+          matchedPattern: patternTokens,
+          gateVersion: MOCK_GATE_VERSION
         };
       }
     }
