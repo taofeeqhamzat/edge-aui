@@ -6,7 +6,7 @@
 
 import { BehaviourEvent, MacroInteraction, ExperimentalCondition } from '../telemetry/events';
 import { experimentRecorder } from '../telemetry/recorder';
-import { deriveMacroSymbol } from './symbols';
+import { MacroMapper, createAnnotationMacroMapper } from './mapper';
 import { defaultCollector } from '../runtime/instrumentation';
 
 export type MacroInteractionListener = (interaction: MacroInteraction) => void;
@@ -14,6 +14,11 @@ export type MacroInteractionListener = (interaction: MacroInteraction) => void;
 export interface MacroInteractionStreamOptions {
   maxCapacity?: number; // default: 100
   autoRecordToTrace?: boolean; // default: true
+  /**
+   * Application macro vocabulary. Defaults to the generic annotation mapper, so an
+   * unconfigured DOM application still produces a stream (Task 20.2).
+   */
+  macroMapper?: MacroMapper;
 }
 
 /**
@@ -32,11 +37,13 @@ export class MacroInteractionStream {
   private readonly autoRecordToTrace: boolean;
   private listeners: Set<MacroInteractionListener> = new Set();
   private context: MacroContext = {};
+  private readonly mapper: MacroMapper;
   private windowIdProvider: (() => number | undefined) | null = null;
 
   constructor(options: MacroInteractionStreamOptions = {}) {
     this.maxCapacity = options.maxCapacity ?? 100;
     this.autoRecordToTrace = options.autoRecordToTrace ?? true;
+    this.mapper = options.macroMapper ?? createAnnotationMacroMapper();
   }
 
   /** Sets the correlation context applied to subsequently recorded interactions. */
@@ -50,6 +57,11 @@ export class MacroInteractionStream {
    */
   public setWindowIdProvider(provider: () => number | undefined): void {
     this.windowIdProvider = provider;
+  }
+
+  /** The application macro vocabulary this stream maps events into. */
+  public getMacroMapper(): MacroMapper {
+    return this.mapper;
   }
 
   /**
@@ -84,7 +96,7 @@ export class MacroInteractionStream {
    * If derived, automatically records it to the stream and returns the token.
    */
   public recordFromBehaviourEvent(event: BehaviourEvent): MacroInteraction | null {
-    const symbol = deriveMacroSymbol(event);
+    const symbol = this.mapper.deriveSymbol(event);
     if (!symbol) {
       return null;
     }
@@ -120,7 +132,7 @@ export class MacroInteractionStream {
 
   /**
    * Formats the recent macro symbols into a pattern string for Fast Gate matching.
-   * Example: "NAV_ANALYTICS > OPEN_FILTERS > SELECT_REGION"
+   * Example: "SYMBOL_A > SYMBOL_B > SYMBOL_C"
    */
   public toPatternString(k?: number, separator = ' > '): string {
     return this.getRecentSymbols(k).join(separator);

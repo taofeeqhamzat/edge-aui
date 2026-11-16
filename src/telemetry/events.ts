@@ -87,10 +87,10 @@ export interface BehaviourEvent {
   /**
    * Post-action disclosure state of the interaction target, when it declares one.
    *
-   * Captured because macro-symbol derivation previously inferred "opened the filters" from
-   * an `action` string containing "close", which nothing produced — so `CLOSE_FILTERS` was
-   * unreachable and every accordion interaction collapsed into `OPEN_FILTERS`. The observed
-   * `aria-expanded` value is the honest source for that distinction (assessment F-06).
+   * Captured because macro-symbol derivation previously inferred "opened" from an `action`
+   * string containing "close", which nothing produced — so the accordion *close* symbol was
+   * unreachable and every accordion interaction collapsed into the *open* symbol. The
+   * observed `aria-expanded` value is the honest source for that distinction (assessment F-06).
    */
   ariaExpanded?: boolean;
 

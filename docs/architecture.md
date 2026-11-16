@@ -139,7 +139,12 @@ Parity with the Python reference is verified two ways:
 
 ## 5. Macro interaction vocabulary
 
-Thirty symbols in `src/macro/symbols.ts`, derived from the semantic DOM annotations
+The **framework** defines a `MacroMapper` contract (`src/macro/mapper.ts`): an event in, one
+symbol out, or `null` when the event carries no macro intent. It buffers, orders and
+correlates symbols; it knows no symbol names.
+
+The **application** supplies the vocabulary. The testbed's thirty symbols live in
+`src/testbed/config/macroVocabulary.ts` and are derived from the semantic DOM annotations
 (`data-aui-component`, `data-aui-role`, `data-aui-action`):
 
 ```
@@ -151,6 +156,15 @@ Table        TABLE_PAGE_NEXT TABLE_PAGE_PREV TABLE_SORT TABLE_ROW_SELECT
 Help         HOVER_KPI HOVER_HELP EXPAND_TOOLTIP
 Behavioural  BACKTRACK IDLE_DWELL RAPID_SCROLL
 ```
+
+`BACKTRACK`, `RAPID_SCROLL` and `IDLE_DWELL` are framework-detected behavioural markers, so
+every integration shares them. The rest is application vocabulary: a second application
+supplies its own mapper, and `tests/framework_boundary.test.ts` proves a checkout flow can
+do so without importing a testbed module.
+
+When no mapper is registered, `createAnnotationMacroMapper()` derives mechanical symbols
+from the annotation contract (`CLICK_BTN_SUBMIT`, `SELECT_QUANTITY_INPUT`, …). That is a
+deterministic convention for an unconfigured application, not a curated vocabulary.
 
 Symbols are `string`s because that is the wire shape the Rust PrefixSpan miner consumes.
 
@@ -167,8 +181,9 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
 
 - Mines frequent symbol sequences with the Rust/WASM PrefixSpan implementation
   (`src/gates/fast/prefixSpanMiner.ts` — the single WASM boundary in the framework).
-- Resolves a mined pattern through a declared pattern → intervention map
-  (`TESTBED_FAST_GATE_PATTERNS` in `src/runtime/boot.ts`).
+- Resolves a mined pattern through the application's declared pattern → intervention map
+  (`TESTBED_FAST_GATE_PATTERNS` in `src/testbed/config/fastGatePatterns.ts`, injected at the
+  composition root). The framework default map is empty.
 - Ranks deterministically: support desc, then length desc, then lexicographic.
 - Matches a pattern as an **in-order subsequence** of the recent sequence
   (`suffixMatchOnly: false`). Strict suffix matching was tried first and proved too strict

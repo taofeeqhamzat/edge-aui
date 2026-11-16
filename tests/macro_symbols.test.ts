@@ -3,7 +3,7 @@ import {
   MACRO_SYMBOLS,
   deriveMacroSymbol,
   isMacroSymbol
-} from '../src/macro/symbols';
+} from '../src/testbed/config/macroVocabulary';
 import { BehaviourEvent } from '../src/telemetry/events';
 
 describe('Macro Symbol Vocabulary & Derivation (Task 6.1)', () => {

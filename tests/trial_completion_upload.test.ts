@@ -21,7 +21,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { bootTestbed, getCollection, getRuntime, registerDefaultUiAdapter } from '../src/runtime/boot';
+import { bootTestbed, getCollection, getRuntime, registerRuntimeDefaults } from '../src/runtime/boot';
 import { testbedAdapter } from '../src/testbed/adapter';
 import { taskManager } from '../src/testbed/tasks/taskManager';
 import { type TaskId } from '../src/testbed/tasks/taskModel';
@@ -130,7 +130,7 @@ describe('Trial completion uploads the trace', () => {
     // `main.tsx` registers the real testbed adapter before booting; without it the runtime falls
     // back to `DefaultUiAdapter`, whose `getTaskState()` is a constant, and every trace would
     // report the task status as `Idle`.
-    registerDefaultUiAdapter(() => testbedAdapter);
+    registerRuntimeDefaults({ adapter: testbedAdapter });
 
     // The Slow Gate is disabled so this test does not depend on worker/ONNX availability; the
     // upload path is independent of which gate produced the predictions.

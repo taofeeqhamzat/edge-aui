@@ -62,7 +62,12 @@ import { InferenceResult } from '../gates/arbitration';
 import { nextPredictionId } from '../gates/contracts';
 import { InterventionCommand, InterventionType } from '../intervention/types';
 import { UIContext } from '../types/uiContext.js';
-import { encodeUIContext } from '../types/contextVector';
+import {
+  encodeUIContext,
+  DEFAULT_CONTEXT_ENCODING_CONFIG,
+  ContextEncodingConfig
+} from '../types/contextVector';
+import { MacroMapper } from '../macro/mapper';
 import { PREPROCESSING_CONFIG, PIPELINE_CONFIG } from '../config/pipelineConfig';
 import {
   RuntimeConfig,
@@ -87,6 +92,8 @@ export interface AdaptiveRuntimeOptions {
   minPatternSupport?: number;
   /** Declared pattern → intervention map for the Fast Gate. */
   fastGatePatterns?: Record<string, InterventionType | Partial<InterventionCommand>>;
+  /** Version of the declared pattern set, reported on every Fast Gate prediction. */
+  fastGatePatternVersion?: string;
   /** Policy configuration overrides. */
   policyConfig?: Partial<PolicyConfig>;
   /**
@@ -122,6 +129,15 @@ export interface AdaptiveRuntimeOptions {
   collector?: InstrumentationCollector;
   /** UI Adapter injecting application-specific task models, context, and actions. */
   adapter?: UiAdapter;
+  /**
+   * Application macro vocabulary. Defaults to the generic annotation mapper (Task 20.2).
+   */
+  macroMapper?: MacroMapper;
+  /**
+   * Application context-encoding vocabulary (routes, actions, task step counts).
+   * Defaults to the framework encoding, which declares no application vocabulary.
+   */
+  contextEncoding?: ContextEncodingConfig;
 }
 
 export interface AdaptiveRuntimeStatus {
@@ -154,6 +170,7 @@ export class AdaptiveRuntime {
   private actuator: UIActuator;
   private adapter: UiAdapter;
   private readonly config: RuntimeConfig;
+  private readonly contextEncoding: ContextEncodingConfig;
 
   private readonly options: AdaptiveRuntimeOptions;
   private readonly conditionId: ExperimentalCondition;
@@ -263,8 +280,10 @@ export class AdaptiveRuntime {
       settlementDelayMs: this.config.windowing.settlementDelayMs,
       emitInactiveWindows: this.config.windowing.emitInactiveWindows
     });
+    this.contextEncoding = options.contextEncoding ?? DEFAULT_CONTEXT_ENCODING_CONFIG;
     this.macroStream = new MacroInteractionStream({
-      maxCapacity: this.config.macro.maxHistoryLength
+      maxCapacity: this.config.macro.maxHistoryLength,
+      macroMapper: options.macroMapper
     });
     this.outcomeDeriver = new OutcomeDeriver();
 
@@ -338,9 +357,13 @@ export class AdaptiveRuntime {
           | 'prefixspan'
           | 'mock',
         fastGatePatterns: patternMap,
+        fastGatePatternVersion: this.options.fastGatePatternVersion,
         minPatternSupport: this.options.minPatternSupport ?? 2,
         enableFastGate: true,
-        enableSlowGate: this.options.enableSlowGate !== false
+        enableSlowGate: this.options.enableSlowGate !== false,
+        // The Slow Gate encodes UIContext inside the worker, so the application vocabulary
+        // has to travel with the INIT rather than being read from core (Task 20.2).
+        contextEncoding: this.contextEncoding
       };
 
       const desiredSlowGate = this.resolveSlowGateMode();
@@ -1253,7 +1276,7 @@ export class AdaptiveRuntime {
    * what a real target head consumes (assessment §15).
    */
   public getContextVector(): Float32Array {
-    return encodeUIContext(this.resolveUIContext());
+    return encodeUIContext(this.resolveUIContext(), this.contextEncoding);
   }
 
   /** Returns the active UI adapter. */

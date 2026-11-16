@@ -20,7 +20,11 @@ import type * as OrtNamespace from 'onnxruntime-web';
 import { SlowGate, SlowGateInput, SlowGateResult, SlowGateMappingSource, FOUNDATION_OUTCOME_VOCABULARY_VERSION } from './types';
 import { InterventionCommand, InterventionType } from '../../intervention/types';
 import { OutcomeType } from '../../telemetry/events';
-import { CONTEXT_VECTOR_DIM, encodeUIContext } from '../../types/contextVector';
+import {
+  CONTEXT_VECTOR_DIM,
+  encodeUIContext,
+  ContextEncodingConfig
+} from '../../types/contextVector';
 import { defaultCollector } from '../../runtime/instrumentation';
 import { argmax } from '../contracts';
 
@@ -111,6 +115,11 @@ export interface OnnxSlowGateOptions {
   interventionModelUrl?: string | null;
   /** Preferred execution provider order. */
   executionProviders?: ('webgpu' | 'wasm' | 'cpu')[];
+  /**
+   * Application route/action/task vocabulary used to encode UIContext.
+   * Omitted means the framework default, which declares no application vocabulary.
+   */
+  contextEncoding?: ContextEncodingConfig;
   /** Minimum confidence required to emit a candidate intervention. Default 0.5. */
   confidenceThreshold?: number;
   /** Minimum outcome confidence for foundation head. */
@@ -342,7 +351,7 @@ export class OnnxSlowGate implements SlowGate {
     const [batch] = input.shape;
 
     // Compute R^6 context vector
-    const contextVector = encodeUIContext(input.context);
+    const contextVector = encodeUIContext(input.context, this.options.contextEncoding);
     if (contextVector.length !== CONTEXT_VECTOR_DIM) {
       throw new Error(
         `[OnnxSlowGate] Context vector must have ${CONTEXT_VECTOR_DIM} elements, received ${contextVector.length}`

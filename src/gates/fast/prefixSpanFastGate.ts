@@ -92,6 +92,8 @@ export interface PrefixSpanFastGateOptions {
   miningTimeoutMs?: number;
   /** Confidence reported on emitted decisions. Default 1.0. */
   defaultConfidence?: number;
+  /** Version of the declared pattern set, reported on every match. */
+  gateVersion?: string;
   /**
    * Invoked once per evaluation with the outcome, so bounded-execution counters can be
    * published without this gate depending on the diagnostics layer.
@@ -247,7 +249,7 @@ export class PrefixSpanFastGate implements FastGate {
             : undefined
         },
         matchedPattern: pattern.pattern,
-        gateVersion: PREFIXSPAN_GATE_VERSION
+        gateVersion: this.options.gateVersion ?? PREFIXSPAN_GATE_VERSION
       };
     }
 

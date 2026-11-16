@@ -1,10 +1,33 @@
 /**
- * Semantic Macro Interaction Symbol Vocabulary & Event Derivation
- * Implements Stage 6.1 specifications from docs/testbed/prd.md Sections 16 & 17.
- * Maps high-level intentional user actions to discrete symbolic tokens for the Fast Gate PrefixSpan engine.
+ * Testbed Macro Vocabulary (Task 20.2)
+ *
+ * The testbed's macro symbol vocabulary and its event→symbol rules. This is application
+ * vocabulary: it names the testbed's pages, filters, reports and table controls, so it
+ * lives with the testbed integration and is injected into the framework, never imported by
+ * framework core.
+ *
+ * The derivation rules are unchanged from the framework-internal version they replace. They
+ * are presented as the reference implementation of the `MacroMapper` contract, and the
+ * generic mapper in `src/macro/mapper.ts` is the mechanical fallback for an application
+ * that does not curate one.
+ *
+ * Two rules exist specifically to stop the macro stream from being dominated by repetition
+ * artefacts rather than interaction episodes (assessment F-06):
+ *
+ * 1. Navigation symbols require a *deliberate* navigation act (a click on a navigation
+ *    control, or a real navigation event). They used to also be derived from `event.route`
+ *    alone, and because every event on a page carries the page's route, a `mouseover` on the
+ *    page root produced one navigation symbol per hover — 18 per short trial in the audit —
+ *    which the Fast Gate then "recognised" as a pattern.
+ * 2. Accordion open/close is derived from the observed `aria-expanded` state, not from an
+ *    `action` substring. No producer ever emitted an action containing "close", so the close
+ *    symbol was unreachable while every accordion interaction became an open symbol.
  */
 
-import { BehaviourEvent } from '../telemetry/events';
+import type { BehaviourEvent } from '../../telemetry/events';
+import type { MacroMapper } from '../../macro/mapper';
+
+export const TESTBED_MACRO_VOCABULARY_ID = 'testbed-macro/1.0.0';
 
 export const MACRO_SYMBOLS = [
   // Navigation
@@ -53,21 +76,9 @@ export function isMacroSymbol(val: string): val is MacroSymbol {
 }
 
 /**
- * Derives a semantic MacroSymbol from an observed canonical BehaviourEvent.
- * Returns null if the event is a micro-interaction (e.g. raw mousemove) without semantic intent.
- *
- * Two rules here exist specifically to stop the macro stream from being dominated by
- * repetition artefacts rather than interaction episodes (assessment F-06):
- *
- * 1. Navigation symbols require a *deliberate* navigation act (a click on a navigation
- *    control, or a real navigation event). They used to also be derived from
- *    `event.route` alone, and because every event on a page carries the page's route, a
- *    `mouseover` on the page root produced one `NAV_OVERVIEW` per hover — 18 per short trial
- *    in the audit — which the Fast Gate then "recognised" as a pattern.
- * 2. Accordion open/close is derived from the observed `aria-expanded` state, not from an
- *    `action` substring. No producer ever emitted an action containing "close", so
- *    `CLOSE_FILTERS` was unreachable while every accordion interaction became
- *    `OPEN_FILTERS`.
+ * Derives a testbed MacroSymbol from an observed canonical BehaviourEvent.
+ * Returns null if the event is a micro-interaction (e.g. raw mousemove) without semantic
+ * intent.
  */
 export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
   const componentId = event.componentId?.toLowerCase() ?? '';
@@ -97,7 +108,7 @@ export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
     if (route.includes('customers')) return 'NAV_CUSTOMERS';
     if (route.includes('settings')) return 'NAV_SETTINGS';
     // An unnamed destination on a real navigation event is not a navigation episode: it is
-    // the current page reporting itself. Returning NAV_GENERAL there produced one generic
+    // the current page reporting itself. Returning a generic symbol there produced one
     // symbol per navigation event, which is the noise this rule removes.
     return type === 'click' ? 'NAV_GENERAL' : null;
   }
@@ -119,7 +130,7 @@ export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
   // 3. Filter Drawer Accordions & Form Controls
   //
   // Open vs close comes from the observed disclosure state. When the state is unavailable
-  // the event is *not* guessed into `OPEN_FILTERS`: an unclassifiable accordion interaction
+  // the event is *not* guessed into an open symbol: an unclassifiable accordion interaction
   // produces no symbol rather than a wrong one, because a wrong symbol is mined as a
   // behavioural pattern.
   const isAccordionInteraction = componentRole === 'accordion' || componentId === 'filter-drawer';
@@ -189,3 +200,13 @@ export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
 
   return null;
 }
+
+/**
+ * The testbed's `MacroMapper` implementation, injected at the composition root.
+ */
+export const TESTBED_MACRO_MAPPER: MacroMapper = {
+  vocabularyId: TESTBED_MACRO_VOCABULARY_ID,
+  symbols: MACRO_SYMBOLS,
+  isSymbol: isMacroSymbol,
+  deriveSymbol: deriveMacroSymbol
+};

@@ -30,6 +30,7 @@ import {
   SlowGateMode
 } from '../messages';
 import { defaultCollector } from '../instrumentation';
+import type { ContextEncodingConfig } from '../../types/contextVector';
 
 export class RuntimeWorkerCore {
   private sequenceBuilder: SequenceBuilder;
@@ -42,9 +43,13 @@ export class RuntimeWorkerCore {
     minOutcomeConfidence?: number;
   } | null = null;
 
+  /** Application context vocabulary supplied by the runtime at INIT. */
+  private contextEncoding?: ContextEncodingConfig;
+
   private fastGateMode: FastGateMode = 'mock';
   private slowGateMode: SlowGateMode = 'mock';
   private fastGatePatterns: Record<string, PatternIntervention> = {};
+  private fastGatePatternVersion?: string;
   private minPatternSupport = 2;
   private minPatternConfidence = 0;
   private executionProvider = 'none';
@@ -97,7 +102,8 @@ export class RuntimeWorkerCore {
       modelUrl: this.options?.modelUrl,
       interventionModelUrl: this.options?.interventionModelUrl,
       confidenceThreshold: this.options?.minOutcomeConfidence,
-      useDeterministicMapping: this.options?.useDeterministicMapping
+      useDeterministicMapping: this.options?.useDeterministicMapping,
+      contextEncoding: this.contextEncoding
     });
 
     try {
@@ -137,6 +143,7 @@ export class RuntimeWorkerCore {
         maxCorpusSequences: this.fastGateBounds.maxCorpusSequences,
         miningTimeoutMs: this.fastGateBounds.miningTimeoutMs,
         resolveIntervention: (patternKey) => this.fastGatePatterns[patternKey] ?? null,
+        gateVersion: this.fastGatePatternVersion,
         onEvaluationOutcome: (outcome) => {
           // Bounded-execution counters live in this scope so a timed-out or failed
           // evaluation is reported to the main thread instead of vanishing (F-02).
@@ -146,7 +153,7 @@ export class RuntimeWorkerCore {
       });
     }
 
-    return new MockFastGate({ patterns: this.fastGatePatterns });
+    return new MockFastGate({ patterns: this.fastGatePatterns, gateVersion: this.fastGatePatternVersion });
   }
 
   /**
@@ -212,6 +219,8 @@ export class RuntimeWorkerCore {
           this.fastGateMode = request.payload?.fastGateMode ?? 'mock';
           this.slowGateMode = request.payload?.slowGateMode ?? 'mock';
           this.fastGatePatterns = request.payload?.fastGatePatterns ?? {};
+          this.fastGatePatternVersion = request.payload?.fastGatePatternVersion;
+          this.contextEncoding = request.payload?.contextEncoding;
           this.minPatternSupport = request.payload?.minPatternSupport ?? 2;
           if (request.payload?.fastGateBounds) {
             this.fastGateBounds = {

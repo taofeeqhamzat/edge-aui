@@ -384,13 +384,15 @@ export class UIActuator {
       container?: HTMLElement | null;
     }> = [];
 
-    // Tag drawer or container with edge-aui-simplified
-    const filterDrawer = this.root.querySelector('[data-aui-component="filter-drawer"]');
-    const drawerHadClass = filterDrawer?.hasAttribute('class');
-    const drawerInitialClass = filterDrawer?.getAttribute('class');
+    // Tag the surface that contains the options being simplified. The framework does not
+    // know the application's container identifier, so the accordions' own parent is the
+    // anchor — a generic element, not an application-specific selector (Task 20.2).
+    const simplifiedSurface = accordionButtons[0]?.parentElement ?? null;
+    const surfaceHadClass = simplifiedSurface?.hasAttribute('class');
+    const surfaceInitialClass = simplifiedSurface?.getAttribute('class');
 
-    if (filterDrawer) {
-      filterDrawer.classList.add('edge-aui-simplified');
+    if (simplifiedSurface) {
+      simplifiedSurface.classList.add('edge-aui-simplified');
     }
 
     for (const btn of accordionButtons) {
@@ -423,11 +425,11 @@ export class UIActuator {
       // correlation attributes go there rather than on a wrapper the user cannot see.
       element: accordionButtons[0],
       cleanup: () => {
-        if (filterDrawer) {
-          if (drawerHadClass && typeof drawerInitialClass === 'string') {
-            filterDrawer.setAttribute('class', drawerInitialClass);
+        if (simplifiedSurface) {
+          if (surfaceHadClass && typeof surfaceInitialClass === 'string') {
+            simplifiedSurface.setAttribute('class', surfaceInitialClass);
           } else {
-            filterDrawer.removeAttribute('class');
+            simplifiedSurface.removeAttribute('class');
           }
         }
         // Restore previously open accordions

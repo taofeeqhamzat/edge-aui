@@ -14,7 +14,8 @@ import { PrefixSpanFastGate, MinedPattern } from '../src/gates/fast/prefixSpanFa
 import { MockSlowGate } from '../src/gates/slow/mockSlowGate';
 import { AdaptiveInferenceEngine } from '../src/gates/arbitration';
 import { MacroInteraction } from '../src/telemetry/events';
-import { TESTBED_FAST_GATE_PATTERNS } from '../src/runtime/boot';
+import { TESTBED_FAST_GATE_PATTERNS } from '../src/testbed/config/fastGatePatterns';
+import { TESTBED_VOCABULARY } from './helpers/testbedVocabulary';
 import { experimentRecorder } from '../src/telemetry/recorder';
 import { sessionManager } from '../src/telemetry/session';
 
@@ -61,7 +62,12 @@ describe('Macro sequence construction for PrefixSpan', () => {
 
   it('groups an interaction episode into one mineable sequence', async () => {
     renderAnnotatedDom();
-    runtime = new AdaptiveRuntime({ forceInProcessWorker: true, minPatternSupport: 1 });
+    runtime = new AdaptiveRuntime({
+      forceInProcessWorker: true,
+      minPatternSupport: 1,
+      fastGatePatterns: TESTBED_FAST_GATE_PATTERNS,
+      ...TESTBED_VOCABULARY
+    });
     await runtime.start();
 
     const click = (componentId: string) => {
@@ -101,7 +107,12 @@ describe('Macro sequence construction for PrefixSpan', () => {
 
   it('exposes the corpus to the gate that arbitration actually uses', async () => {
     renderAnnotatedDom();
-    runtime = new AdaptiveRuntime({ forceInProcessWorker: true, minPatternSupport: 1 });
+    runtime = new AdaptiveRuntime({
+      forceInProcessWorker: true,
+      minPatternSupport: 1,
+      fastGatePatterns: TESTBED_FAST_GATE_PATTERNS,
+      ...TESTBED_VOCABULARY
+    });
     await runtime.start();
 
     const click = (componentId: string) => {

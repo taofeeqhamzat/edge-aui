@@ -5,6 +5,11 @@ import {
   CONTEXT_VECTOR_DIM
 } from '../src/types/contextVector';
 import { UIContext } from '../src/types/uiContext';
+import { TESTBED_CONTEXT_ENCODING_CONFIG, TASK_STEP_COUNTS } from '../src/testbed/config/contextEncoding';
+import { EXPERIMENTAL_TASKS } from '../src/testbed/tasks/taskModel';
+
+/** These cases assert the testbed's own route/task vocabulary, so they encode with it. */
+const encode = (context: UIContext) => encodeUIContext(context, TESTBED_CONTEXT_ENCODING_CONFIG);
 
 const baseContext: UIContext = {
   route: 'Analytics',
@@ -16,13 +21,13 @@ const baseContext: UIContext = {
 
 describe('UIContext to R^6 encoding (assessment §15 / §25 P2-2)', () => {
   it('produces a vector of the model-preparation context_dim', () => {
-    const vector = encodeUIContext(baseContext);
+    const vector = encode(baseContext);
     expect(vector.length).toBe(CONTEXT_VECTOR_DIM);
     expect(CONTEXT_VECTOR_DIM).toBe(6);
   });
 
   it('is bounded in [0, 1] for every component', () => {
-    const vector = encodeUIContext({
+    const vector = encode({
       ...baseContext,
       taskId: 'TD1',
       taskStepId: 'TD1-5',
@@ -37,17 +42,17 @@ describe('UIContext to R^6 encoding (assessment §15 / §25 P2-2)', () => {
   });
 
   it('encodes the route as a normalized vocabulary index', () => {
-    const overview = encodeUIContext({ ...baseContext, route: 'Overview' });
-    const settings = encodeUIContext({ ...baseContext, route: 'Settings' });
+    const overview = encode({ ...baseContext, route: 'Overview' });
+    const settings = encode({ ...baseContext, route: 'Settings' });
 
     expect(overview[0]).toBe(0);
     expect(settings[0]).toBeGreaterThan(overview[0]);
     // Unknown routes fall back to 0 rather than throwing or exceeding bounds.
-    expect(encodeUIContext({ ...baseContext, route: 'Unknown' })[0]).toBe(0);
+    expect(encode({ ...baseContext, route: 'Unknown' })[0]).toBe(0);
   });
 
   it('encodes capability flags as binary components', () => {
-    const vector = encodeUIContext({
+    const vector = encode({
       ...baseContext,
       primaryActionAvailable: true,
       helpAvailable: false,
@@ -60,8 +65,8 @@ describe('UIContext to R^6 encoding (assessment §15 / §25 P2-2)', () => {
   });
 
   it('encodes task progress from the current step', () => {
-    const atStart = encodeUIContext({ ...baseContext, taskId: 'TD1', taskStepId: 'TD1-1' });
-    const atEnd = encodeUIContext({ ...baseContext, taskId: 'TD1', taskStepId: 'TD1-5' });
+    const atStart = encode({ ...baseContext, taskId: 'TD1', taskStepId: 'TD1-1' });
+    const atEnd = encode({ ...baseContext, taskId: 'TD1', taskStepId: 'TD1-5' });
 
     expect(atStart[4]).toBe(0);
     expect(atEnd[4]).toBeCloseTo(4 / 5, 6);
@@ -69,12 +74,12 @@ describe('UIContext to R^6 encoding (assessment §15 / §25 P2-2)', () => {
   });
 
   it('reports zero task progress when no task is active', () => {
-    expect(encodeUIContext(baseContext)[4]).toBe(0);
+    expect(encode(baseContext)[4]).toBe(0);
   });
 
   it('scales action availability by the vocabulary size', () => {
-    const one = encodeUIContext({ ...baseContext, availableActions: ['click'] });
-    const many = encodeUIContext({
+    const one = encode({ ...baseContext, availableActions: ['click'] });
+    const many = encode({
       ...baseContext,
       availableActions: ['click', 'change', 'hover', 'select', 'input', 'focus', 'toggle']
     });
@@ -84,8 +89,8 @@ describe('UIContext to R^6 encoding (assessment §15 / §25 P2-2)', () => {
   });
 
   it('is deterministic for identical context', () => {
-    const a = encodeUIContext(baseContext);
-    const b = encodeUIContext({ ...baseContext });
+    const a = encode(baseContext);
+    const b = encode({ ...baseContext });
     expect(Array.from(a)).toEqual(Array.from(b));
   });
 
@@ -101,5 +106,15 @@ describe('UIContext to R^6 encoding (assessment §15 / §25 P2-2)', () => {
     const notFinite = new Float32Array(CONTEXT_VECTOR_DIM);
     notFinite[0] = Number.NaN;
     expect(validateContextVector(notFinite).valid).toBe(false);
+  });
+});
+
+describe('testbed context encoding vocabulary', () => {
+  it('declares a step count matching the task model for every task', () => {
+    for (const [taskId, task] of Object.entries(EXPERIMENTAL_TASKS)) {
+      expect(TASK_STEP_COUNTS[taskId], `step count for ${taskId}`).toBe(
+        task.steps?.length ?? 0
+      );
+    }
   });
 });

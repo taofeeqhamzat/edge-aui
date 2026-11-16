@@ -1,5 +1,5 @@
 import type { Page } from '../../app/Navigation';
-import { DEFAULT_RUNTIME_CONFIG } from '../../config/runtimeConfig';
+import { TESTBED_TASK_TIMEOUTS_MS } from '../config/experiment';
 
 export type TaskId = 'TD1' | 'TD2' | 'TD3' | 'TD4';
 export type TaskStatus = 'Idle' | 'In Progress' | 'Completed' | 'Abandoned' | 'Failed';
@@ -92,7 +92,7 @@ export interface TaskState {
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 const timeoutFor = (taskId: TaskId): number =>
-  DEFAULT_RUNTIME_CONFIG.experiment.taskTimeoutsMs[taskId] ?? DEFAULT_TIMEOUT_MS;
+  TESTBED_TASK_TIMEOUTS_MS[taskId] ?? DEFAULT_TIMEOUT_MS;
 
 /**
  * Experimental task definitions.

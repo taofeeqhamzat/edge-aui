@@ -1,13 +1,20 @@
 /**
- * Testbed Boot
+ * Runtime Boot
  *
- * Single composition root for the target testbed. Replaces the previous boot of the
- * legacy `EdgeAUIFramework` (assessment §4.1 / §25 P0-1).
+ * Single composition point. Replaces the previous boot of the legacy `EdgeAUIFramework`
+ * (assessment §4.1 / §25 P0-1).
  *
  * The experimental condition is the one piece of state that must be fixed before the
  * pipeline starts, because it determines whether the actuator is permitted to mutate
  * the DOM. Switching condition therefore rebuilds the runtime between trials, which is
  * the correct experimental boundary.
+ *
+ * `src/runtime` must not depend on `src/testbed` (ADR-011). Everything that is application
+ * vocabulary or application policy — the UI adapter, the macro mapper, the context
+ * encoding, the declared Fast Gate patterns and the outcome→adaptation resolver — is
+ * registered by the composition root and consumed here. Framework defaults apply when
+ * nothing is registered, so a non-testbed deployment is a configuration change rather than
+ * a source edit (Task 20.2).
  */
 
 import { AdaptiveRuntime, AdaptiveRuntimeOptions } from './adaptiveRuntime';
@@ -19,50 +26,52 @@ import { experimentRecorder } from '../telemetry/recorder';
 import { ResearchCollection } from '../telemetry/collection';
 import { debugBus } from '../debug/debugBus';
 import { getRuntimeDiagnostics, startRuntimeDiagnostics } from './diagnostics';
+import { UiAdapter, DefaultUiAdapter, type UiTaskLifecycleEvent } from '../integration/index';
+import type { MacroMapper } from '../macro/mapper';
+import type { ContextEncodingConfig } from '../types/contextVector';
 
 export interface BootOptions extends AdaptiveRuntimeOptions {
   conditionId?: ExperimentalCondition;
 }
 
 /**
- * Patterns the deterministic Fast Gate may act on.
+ * Application-supplied defaults for the runtime.
  *
- * Each key is a macro-symbol sequence; each value is the declared intervention for it.
- * These are the testbed's candidate "known deterministic patterns" for the Fast Gate.
- *
- * The final key is also the task T1 completion path, so the task's own success sequence
- * is a pattern the Fast Gate can recognise deterministically.
+ * One registration replaces what used to be a testbed-shaped boot: every field is
+ * application vocabulary or application policy, and none has a framework meaning.
  */
-import { UiAdapter, DefaultUiAdapter, type UiTaskLifecycleEvent } from '../integration/index';
-
-export const TESTBED_FAST_GATE_PATTERNS: Record<string, InterventionType> = {
-  'OPEN_FILTERS > APPLY_FILTER': 'highlight_primary_action',
-  'NAV_ANALYTICS > OPEN_FILTERS': 'simplify_options',
-  'NAV_ANALYTICS > OPEN_FILTERS > APPLY_FILTER': 'highlight_primary_action',
-  'SELECT_DATE > OPEN_FILTERS > SELECT_REGION > APPLY_FILTER': 'highlight_primary_action',
-  'HOVER_KPI > HOVER_KPI': 'expand_tooltip'
-};
-
-let defaultUiAdapterProvider: (() => UiAdapter) | null = null;
-
-export function registerDefaultUiAdapter(provider: (() => UiAdapter) | null): void {
-  defaultUiAdapterProvider = provider;
+export interface RegisteredRuntimeDefaults {
+  /** UI adapter supplying task model, context and action mapping. */
+  adapter?: UiAdapter;
+  /** Macro symbol vocabulary and event→symbol rules. */
+  macroMapper?: MacroMapper;
+  /** Route/action/task vocabulary for the R^6 context encoding. */
+  contextEncoding?: ContextEncodingConfig;
+  /** Declared Fast Gate patterns: macro-symbol sequence → adaptation. */
+  fastGatePatterns?: Record<string, InterventionType | Partial<import('../intervention/types').InterventionCommand>>;
+  /** Version of the declared pattern set, recorded with predictions. */
+  fastGatePatternVersion?: string;
+  /** Predicted outcome → candidate adaptation. */
+  candidateResolver?: CandidateResolver;
+  /** Study schedule: trial order and per-task timeouts. */
+  experiment?: {
+    trialOrder?: string[];
+    taskTimeoutsMs?: Record<string, number>;
+  };
 }
 
-/**
- * Registers the application's outcome→candidate resolver.
- *
- * The composition root registers it exactly as it registers the UI adapter: `src/runtime`
- * must not depend on `src/testbed` (ADR-011), so the testbed policy adapter is injected
- * rather than imported. Without a registered resolver the framework default applies, which
- * only recognises the intervention vocabulary.
- */
-let defaultCandidateResolverProvider: (() => CandidateResolver) | null = null;
+let registeredDefaults: RegisteredRuntimeDefaults = {};
 
-export function registerDefaultCandidateResolver(
-  provider: (() => CandidateResolver) | null
-): void {
-  defaultCandidateResolverProvider = provider;
+/**
+ * Registers application defaults. Merges over any previous registration, so the
+ * composition root can register in as many calls as it likes.
+ */
+export function registerRuntimeDefaults(defaults: RegisteredRuntimeDefaults | null): void {
+  registeredDefaults = defaults ? { ...registeredDefaults, ...defaults } : {};
+}
+
+export function getRegisteredRuntimeDefaults(): Readonly<RegisteredRuntimeDefaults> {
+  return { ...registeredDefaults };
 }
 
 let currentRuntime: AdaptiveRuntime | null = null;
@@ -77,7 +86,7 @@ export function getExperimentId(): string {
  * Starts (or restarts) the adaptive runtime for a condition. Idempotent for the same
  * condition; rebuilds when the condition changes.
  */
-export async function bootTestbed(
+export async function bootRuntime(
   optionsOrCondition: ExperimentalCondition | BootOptions = currentCondition
 ): Promise<AdaptiveRuntime> {
   const options: BootOptions =
@@ -124,18 +133,23 @@ export async function bootTestbed(
   // The resolved adapter is captured because trial completion is wired through the adapter
   // contract, not through the testbed: `src/runtime` must not depend on `src/testbed`
   // (ADR-011, asserted by tests/ui_adapter_contract.test.ts).
-  const adapter =
-    options.adapter ?? (defaultUiAdapterProvider ? defaultUiAdapterProvider() : new DefaultUiAdapter());
+  const adapter = options.adapter ?? registeredDefaults.adapter ?? new DefaultUiAdapter();
 
   const runtime = new AdaptiveRuntime({
     experimentId,
     conditionId,
-    candidateResolver: defaultCandidateResolverProvider?.(),
+    config: registeredDefaults.experiment
+      ? { experiment: registeredDefaults.experiment, ...options.config }
+      : options.config,
+    candidateResolver: registeredDefaults.candidateResolver,
+    macroMapper: registeredDefaults.macroMapper,
+    contextEncoding: registeredDefaults.contextEncoding,
     // support=1: the deterministic Fast Gate observes each frequent sequence from its
     // first occurrence, so the fast path is exercised inside a single trial. A
     // multi-trial study can raise this without any other change.
     minPatternSupport: 1,
-    fastGatePatterns: TESTBED_FAST_GATE_PATTERNS,
+    fastGatePatterns: registeredDefaults.fastGatePatterns,
+    fastGatePatternVersion: registeredDefaults.fastGatePatternVersion,
     policyConfig: { confidenceThreshold: 0.75, requiredConsecutiveWindows: 2 },
     enableSlowGate: true,
     enableInstrumentation,
@@ -302,3 +316,10 @@ export function stopTestbed(): void {
   currentRuntime?.stop();
   currentRuntime = null;
 }
+
+/**
+ * Previous name of `bootRuntime`.
+ *
+ * Kept so an existing call site keeps working; the composition root uses `bootRuntime`.
+ */
+export const bootTestbed = bootRuntime;

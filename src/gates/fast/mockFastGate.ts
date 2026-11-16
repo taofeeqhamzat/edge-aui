@@ -20,16 +20,20 @@ export interface MockFastGateOptions {
   patterns?: Record<string, PatternIntervention>;
   defaultConfidence?: number;
   exactMatchOnly?: boolean; // false: matches suffix of sequence (default); true: exact length match
+  /** Version of the declared pattern set, reported on every match. */
+  gateVersion?: string;
 }
 
 export class MockFastGate implements FastGate {
   private patterns: Map<string, PatternIntervention> = new Map();
   private defaultConfidence: number;
   private exactMatchOnly: boolean;
+  private readonly gateVersion: string;
 
   constructor(options: MockFastGateOptions = {}) {
     this.defaultConfidence = options.defaultConfidence ?? 1.0;
     this.exactMatchOnly = options.exactMatchOnly ?? false;
+    this.gateVersion = options.gateVersion ?? MOCK_GATE_VERSION;
 
     if (options.patterns) {
       for (const [pattern, target] of Object.entries(options.patterns)) {
@@ -73,7 +77,7 @@ export class MockFastGate implements FastGate {
               : undefined
           },
           matchedPattern: patternTokens,
-          gateVersion: MOCK_GATE_VERSION
+          gateVersion: this.gateVersion
         };
       }
     }
@@ -86,7 +90,7 @@ export class MockFastGate implements FastGate {
 
   /**
    * Registers or updates a pattern and its corresponding intervention.
-   * Example: "NAV_ANALYTICS > OPEN_FILTERS > SELECT_REGION" -> "highlight_primary_action"
+   * Example: "SYMBOL_A > SYMBOL_B > SYMBOL_C" -> "highlight_primary_action"
    */
   public setPattern(pattern: PatternDefinition, intervention: PatternIntervention): void {
     const key = this.normalizePatternKey(pattern);

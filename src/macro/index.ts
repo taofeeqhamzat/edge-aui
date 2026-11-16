@@ -1,2 +1,2 @@
-export * from './symbols';
+export * from './mapper';
 export * from './sequence';

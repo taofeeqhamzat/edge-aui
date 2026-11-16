@@ -220,13 +220,10 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
     miningTimeoutMs: 1500,
     rpcTimeoutMs: 3000,
     rankingStrategy: 'confidence',
-    patternInterventionMap: {
-      'OPEN_FILTERS > APPLY_FILTER': 'highlight_primary_action',
-      'NAV_ANALYTICS > OPEN_FILTERS': 'simplify_options',
-      'NAV_ANALYTICS > OPEN_FILTERS > APPLY_FILTER': 'highlight_primary_action',
-      'SELECT_DATE > OPEN_FILTERS > SELECT_REGION > APPLY_FILTER': 'highlight_primary_action',
-      'HOVER_KPI > HOVER_KPI': 'expand_tooltip'
-    }
+    // No declared patterns: the application supplies its own. Patterns are application
+    // vocabulary — the symbol names in them are the application's macro vocabulary — so a
+    // framework default would encode one application into every deployment (Task 20.2).
+    patternInterventionMap: {}
   },
   slowGate: {
     modelPath: '/models/gru_edge_aui.onnx',
@@ -258,13 +255,10 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   experiment: {
     experimentId: 'exp-default',
     conditionId: 'adaptive',
-    trialOrder: ['TD1', 'TD2', 'TD3', 'TD4'],
-    taskTimeoutsMs: {
-      TD1: 120000,
-      TD2: 120000,
-      TD3: 150000,
-      TD4: 150000
-    },
+    // The study schedule is application configuration. The testbed declares its own in
+    // `src/testbed/config/experiment.ts` (Task 20.2).
+    trialOrder: [],
+    taskTimeoutsMs: {},
     traceSchemaVersion: EXPERIMENT_TRACE_SCHEMA_VERSION
   }
 };
