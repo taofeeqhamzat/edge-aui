@@ -8,6 +8,13 @@ import { MacroInteraction } from '../../telemetry/events';
 import { InterventionCommand } from '../../intervention/types';
 import { GatePrediction } from '../contracts';
 
+export type {
+  PatternOutcomeMapping,
+  PatternTarget,
+  PatternTarget as PatternIntervention
+} from './patternTarget';
+export { isPatternOutcomeMapping, resolvePatternTarget } from './patternTarget';
+
 export interface GateDecision {
   matched: boolean;
   /**

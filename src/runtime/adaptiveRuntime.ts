@@ -940,6 +940,36 @@ export class AdaptiveRuntime {
       }
 
       // ---------------------------------------------------------------------
+      // A predicted outcome with no mapped adaptation: recorded as a decision, never as an
+      // episode. Opening an episode would claim an adaptation that does not exist, and the
+      // DOM could never evidence it (F-05).
+      // ---------------------------------------------------------------------
+      if (decision.command.type === 'no_op') {
+        this.recordPolicyDecision({
+          windowId: evaluatedWindowId,
+          predictionId,
+          candidate: decision.command.type,
+          confidence: result.prediction.confidence,
+          accepted: true,
+          policyDecision: 'decision_only',
+          policyReason: `${decision.reason} — no adaptation engaged`,
+          candidateCount: decision.candidateCount,
+          cooldownRemainingMs: decision.cooldownRemainingMs,
+          phase: 'policy'
+        });
+        debugBus.update({
+          interventionStatus: {
+            type: 'no_op',
+            source: decision.command.source,
+            state: 'no adaptation engaged'
+          },
+          policyState: 'NO ADAPTATION',
+          policyReason: decision.reason
+        });
+        return;
+      }
+
+      // ---------------------------------------------------------------------
       // Baseline: permitted, recorded, but never applied. The verdict is persisted so a
       // baseline session evidences "decided but not applied" from the trace alone (§17).
       // ---------------------------------------------------------------------

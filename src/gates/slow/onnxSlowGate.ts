@@ -17,7 +17,12 @@
  */
 
 import type * as OrtNamespace from 'onnxruntime-web';
-import { SlowGate, SlowGateInput, SlowGateResult, SlowGateMappingSource, FOUNDATION_OUTCOME_VOCABULARY_VERSION } from './types';
+import {
+  SlowGate,
+  SlowGateInput,
+  SlowGateResult,
+  SlowGateMappingSource
+} from './types';
 import { InterventionCommand, InterventionType } from '../../intervention/types';
 import { OutcomeType } from '../../telemetry/events';
 import {
@@ -26,31 +31,34 @@ import {
   ContextEncodingConfig
 } from '../../types/contextVector';
 import { defaultCollector } from '../../runtime/instrumentation';
-import { argmax } from '../contracts';
+import { argmax, OutcomeVocabulary } from '../contracts';
+import { GatePrediction } from '../contracts';
+import {
+  DEFAULT_MODEL_URL,
+  DEFAULT_INTERVENTION_MODEL_URL,
+  DEFAULT_SLOW_GATE_MANIFEST,
+  SlowGateManifest
+} from '../../config/modelManifest';
 
-/** Outcome class order, aligned with model-preparation/config.yaml `foundation_classes`. */
+/**
+ * Outcome class order of the built-in foundation vocabulary.
+ *
+ * Compatibility alias: the active order is `manifest.foundation.vocabulary` (Task 20.3).
+ * Tests and ADRs that cite the historical seven-class order still read this name.
+ */
 export const OUTCOME_CLASS_ORDER: OutcomeType[] = [
-  'NO_OUTCOME',
-  'CLICK',
-  'FORM_SUBMIT',
-  'BACKTRACK',
-  'RAPID_SCROLL',
-  'HOVER_DWELL',
-  'ABANDON'
+  ...(DEFAULT_SLOW_GATE_MANIFEST.foundation.vocabulary.outcomes as readonly OutcomeType[])
 ];
 
 export const SLOW_GATE_NUM_CLASSES = OUTCOME_CLASS_ORDER.length;
 
 /**
- * Target intervention class order, aligned with model-preparation/src/config.yaml
- * and bundle.json `target_intervention_vocabulary`.
+ * Intervention class order of the built-in intervention head.
+ *
+ * Compatibility alias: the active order is `manifest.intervention.vocabulary`.
  */
 export const TARGET_INTERVENTION_ORDER: InterventionType[] = [
-  'simplify_options',
-  'highlight_primary_action',
-  'offer_assistance',
-  'expand_tooltip',
-  'no_op'
+  ...(DEFAULT_SLOW_GATE_MANIFEST.intervention!.vocabulary.outcomes as readonly InterventionType[])
 ];
 
 export const TARGET_INTERVENTION_NUM_CLASSES = TARGET_INTERVENTION_ORDER.length;
@@ -68,22 +76,34 @@ export const DEFAULT_OUTCOME_INTERVENTIONS: Partial<Record<OutcomeType, Interven
   FORM_SUBMIT: 'no_op'
 };
 
-/** Default bundled graph URLs. */
-export const DEFAULT_MODEL_URL = '/models/model_int8.onnx';
-export const DEFAULT_INTERVENTION_MODEL_URL = '/models/intervention_head_int8.onnx';
+/**
+ * Default bundled graph URLs and artifact identity.
+ *
+ * Re-exported from the model manifest, which is now the single place that describes which
+ * artifacts the built-in vocabulary belongs to (Task 20.3).
+ */
+export {
+  DEFAULT_MODEL_URL,
+  DEFAULT_INTERVENTION_MODEL_URL,
+  TARGET_INTERVENTION_MODEL_VERSION
+} from '../../config/modelManifest';
 
 /**
- * Identity of the deployed intervention-head graph.
+ * Resolves a head URL.
  *
- * The shipped ONNX files carry no version metadata beyond an `onnxruntime.quant` producer
- * string, so the runtime cannot read the training-side bundle manifest. Pinning the
- * identity here at least makes the value checkable against the committed artifact set:
- * swapping in a different export requires changing this constant, which a test enforces.
- *
- * This replaces a literal that was assigned only when a model happened to be loaded, which
- * meant two genuinely different graphs were both recorded under one name (F-19).
+ * An explicit option wins (and `null` disables the head), then the manifest, then the
+ * built-in default. This is what lets the legacy option names stay supported while a
+ * manifest describes the same or a different artifact set.
  */
-export const TARGET_INTERVENTION_MODEL_VERSION = 'TargetInterventionHead-v1.0.0-int8';
+function resolveHeadUrl(
+  explicit: string | null | undefined,
+  manifestUrl: string | undefined,
+  fallback: string | null
+): string | null {
+  if (explicit === null) return null;
+  if (explicit !== undefined) return explicit;
+  return manifestUrl ?? fallback;
+}
 
 /**
  * Resolves model path or URL in both browser worker and Node.js testing scopes.
@@ -128,6 +148,14 @@ export interface OnnxSlowGateOptions {
   useDeterministicMapping?: boolean;
   /** Outcome → intervention overrides for deterministic mapping. */
   interventionByOutcome?: Partial<Record<OutcomeType, InterventionType>>;
+  /**
+   * Model manifest: the ordered vocabularies, their versions and the artifact versions.
+   *
+   * Omitted means the built-in manifest, which describes the bundled
+   * `model_int8.onnx` / `intervention_head_int8.onnx` artifacts and their 7/5-class
+   * vocabularies — the compatibility path (Task 20.3).
+   */
+  manifest?: SlowGateManifest;
   /** Injected ORT module for tests. */
   ortModule?: typeof OrtNamespace;
 }
@@ -244,19 +272,19 @@ async function getSession(options: OnnxSlowGateOptions): Promise<DualSessionBund
   ort.env.wasm.numThreads = 1;
   ort.env.wasm.simd = true;
 
-  const foundationUrl =
-    options.modelUrl === null
-      ? null
-      : options.modelUrl !== undefined
-        ? options.modelUrl
-        : DEFAULT_MODEL_URL;
-
-  const interventionUrl =
-    options.interventionModelUrl === null
-      ? null
-      : options.interventionModelUrl !== undefined
-        ? options.interventionModelUrl
-        : DEFAULT_INTERVENTION_MODEL_URL;
+  const manifest = options.manifest ?? DEFAULT_SLOW_GATE_MANIFEST;
+  const foundationUrl = resolveHeadUrl(
+    options.modelUrl,
+    manifest.foundation.modelUrl,
+    DEFAULT_MODEL_URL
+  );
+  // A manifest describes the whole artifact set: a head it does not declare is not loaded.
+  // Without a manifest the legacy pair is loaded, which is the compatibility path.
+  const interventionUrl = resolveHeadUrl(
+    options.interventionModelUrl,
+    manifest.intervention?.modelUrl,
+    options.manifest === undefined ? DEFAULT_INTERVENTION_MODEL_URL : null
+  );
 
   let foundation: ModelSessionInfo | undefined;
   let intervention: ModelSessionInfo | undefined;
@@ -288,14 +316,101 @@ export function resetOnnxSlowGateSession(): void {
   cached = null;
 }
 
+/**
+ * Fails visibly when a graph's output dimension contradicts the vocabulary that is supposed
+ * to describe it. Silently falling back to a default order would relabel every class of a
+ * mis-exported model.
+ */
+function assertVocabularyDimension(
+  head: string,
+  vocabulary: OutcomeVocabulary,
+  received: number
+): void {
+  const expected = vocabulary.outcomes.length;
+  if (received !== expected) {
+    throw new Error(
+      `[OnnxSlowGate] ${head} output dimension ${received} does not match vocabulary ` +
+        `'${vocabulary.id}' (${vocabulary.version}) which declares ${expected} classes. ` +
+        'The model and the manifest must agree.'
+    );
+  }
+}
+
+/** Argmax over the raw scores, following the configured class order by index. */
+function argmaxOutcome(scores: Float32Array): { index: number; confidence: number } {
+  return argmax(scores);
+}
+
+/**
+ * The intervention head's logits are passed through the same argmax. Kept as a named
+ * function so the call site states which head it is ranking.
+ */
+function logitsAsProbabilities(logits: Float32Array): Float32Array {
+  return logits;
+}
+
+/** True when `label` belongs to the generic foundation taxonomy. */
+function isFoundationOutcome(label: string | undefined): label is OutcomeType {
+  return label !== undefined && (OUTCOME_CLASS_ORDER as string[]).includes(label);
+}
+
+/** The component a prediction was computed against, when one is known. */
+function targetForContext(context: { activeComponentId?: string }) {
+  return context.activeComponentId ? { componentId: context.activeComponentId } : undefined;
+}
+
+/**
+ * Whether a predicted label is an assertion the policy must engage.
+ *
+ * `NO_OUTCOME` and `no_op` mean "the head predicts no change"; they are recorded but are not
+ * matches, and a prediction with no confidence asserts nothing.
+ */
+function isAssertiveLabel(label: string | undefined, confidence: number): boolean {
+  if (label === undefined || confidence <= 0) return false;
+  return label !== 'NO_OUTCOME' && label !== 'no_op';
+}
+
+/** True when `label` names an intervention type. */
+function isInterventionTypeString(label: string | undefined): label is InterventionType {
+  return label !== undefined && (TARGET_INTERVENTION_ORDER as string[]).includes(label);
+}
+
+/** Provenance identity of this gate implementation, reported on every inference. */
+const ONNX_GATE_VERSION = 'onnx-slow-gate/1.0.0';
+
 export class OnnxSlowGate implements SlowGate {
   private readonly options: OnnxSlowGateOptions;
+  private readonly manifest: SlowGateManifest;
   private lastProvider = 'uninitialised';
   private lastOutcome?: OutcomeType;
   private lastLatencyMs?: number;
 
   constructor(options: OnnxSlowGateOptions = {}) {
     this.options = options;
+    this.manifest = options.manifest ?? DEFAULT_SLOW_GATE_MANIFEST;
+  }
+
+  /** Ordered outcome vocabulary of the loaded outcome graph (Task 20.3). */
+  public get outcomeVocabulary(): OutcomeVocabulary {
+    return this.manifest.foundation.vocabulary;
+  }
+
+  /** Ordered intervention vocabulary of the legacy intervention head, when configured. */
+  public get interventionVocabulary(): OutcomeVocabulary | undefined {
+    return this.manifest.intervention?.vocabulary;
+  }
+
+  /**
+   * Version of the graph that serves the decision.
+   *
+   * The learned head answers when it is loaded and not ablated, so its identity is the one
+   * recorded; otherwise the outcome graph's identity is.
+   */
+  public get modelVersion(): string {
+    const useHead = !this.options.useDeterministicMapping && this.manifest.intervention;
+    return useHead
+      ? (this.manifest.intervention?.modelVersion ?? this.manifest.foundation.modelVersion)
+      : this.manifest.foundation.modelVersion;
   }
 
   /**
@@ -318,7 +433,7 @@ export class OnnxSlowGate implements SlowGate {
         executionProvider: this.lastProvider,
         foundationLoaded: false,
         interventionLoaded: false,
-        modelVersion: TARGET_INTERVENTION_MODEL_VERSION,
+        modelVersion: this.modelVersion,
         providers: {}
       };
     }
@@ -328,7 +443,7 @@ export class OnnxSlowGate implements SlowGate {
       executionProvider: this.lastProvider,
       foundationLoaded: Boolean(bundle.foundation?.modelLoaded),
       interventionLoaded: Boolean(bundle.intervention?.modelLoaded),
-      modelVersion: TARGET_INTERVENTION_MODEL_VERSION,
+      modelVersion: this.modelVersion,
       providers: {
         foundation: bundle.foundation?.executionProvider,
         intervention: bundle.intervention?.executionProvider
@@ -405,43 +520,49 @@ export class OnnxSlowGate implements SlowGate {
     const latencyMs = performance.now() - start;
     this.lastLatencyMs = latencyMs;
 
-    let outcome: OutcomeType = 'NO_OUTCOME';
+    // `outcome` is the generic seven-class label, and is only defined when the configured
+    // vocabulary is that taxonomy. A custom vocabulary is described by `outcomeLabel`.
+    let outcome: OutcomeType | undefined;
+    let outcomeLabel: string | undefined;
     let outcomeConfidence = 0;
     let outcomeProbabilities: Float32Array | undefined;
     let outcomeIndex: number | undefined;
 
     if (foundationOutputs && bundle.foundation) {
+      const vocabulary = this.outcomeVocabulary;
       const fndOutputName = bundle.foundation.outputNames[0] ?? 'output';
       const fndLogits = foundationOutputs[fndOutputName].data as Float32Array;
-      if (fndLogits.length !== SLOW_GATE_NUM_CLASSES) {
-        throw new Error(
-          `[OnnxSlowGate] Expected foundation output dimension ${SLOW_GATE_NUM_CLASSES}, received ${fndLogits.length}`
-        );
-      }
+      assertVocabularyDimension('Foundation', vocabulary, fndLogits.length);
       outcomeProbabilities = softmax(fndLogits);
-      const argmax = this.argmaxOutcome(outcomeProbabilities);
-      outcome = argmax.outcome;
-      outcomeConfidence = argmax.confidence;
-      outcomeIndex = argmax.index;
+      const ranked = argmaxOutcome(fndLogits);
+      outcomeLabel = vocabulary.outcomes[ranked.index];
+      outcomeConfidence = ranked.confidence;
+      outcomeIndex = ranked.index;
+      outcome = isFoundationOutcome(outcomeLabel) ? outcomeLabel : undefined;
       this.lastOutcome = outcome;
     }
 
     let interventionProbabilities: Float32Array | undefined;
     let interventionConfidence = 0;
+    let interventionIndex: number | undefined;
     let predictedInterventionType: InterventionType = 'no_op';
 
     if (interventionOutputs && bundle.intervention) {
+      const vocabulary = this.interventionVocabulary;
       const intOutputName = bundle.intervention.outputNames[0] ?? 'intervention_logits';
       const intLogits = interventionOutputs[intOutputName].data as Float32Array;
-      if (intLogits.length !== TARGET_INTERVENTION_NUM_CLASSES) {
+      if (!vocabulary) {
         throw new Error(
-          `[OnnxSlowGate] Expected intervention output dimension ${TARGET_INTERVENTION_NUM_CLASSES}, received ${intLogits.length}`
+          '[OnnxSlowGate] An intervention graph is loaded but the manifest declares no intervention vocabulary'
         );
       }
+      assertVocabularyDimension('Intervention', vocabulary, intLogits.length);
       interventionProbabilities = softmax(intLogits);
-      const argmaxInt = this.argmaxIntervention(interventionProbabilities);
-      predictedInterventionType = argmaxInt.type;
-      interventionConfidence = argmaxInt.confidence;
+      const ranked = argmaxOutcome(logitsAsProbabilities(intLogits));
+      const label = vocabulary.outcomes[ranked.index];
+      predictedInterventionType = isInterventionTypeString(label) ? label : 'no_op';
+      interventionIndex = ranked.index;
+      interventionConfidence = ranked.confidence;
     }
 
     let mappingSource: SlowGateMappingSource;
@@ -467,20 +588,56 @@ export class OnnxSlowGate implements SlowGate {
       interventionProbabilities,
       interventionConfidence,
       mappingSource,
-      prediction: {
-        outcomeId: outcome,
-        vocabularyVersion: FOUNDATION_OUTCOME_VOCABULARY_VERSION,
-        outcomeIndex: outcomeIndex ?? undefined,
-        confidence: outcomeConfidence,
-        matched: outcome !== 'NO_OUTCOME',
-        source: 'slow',
+      prediction: this.buildPrediction({
         mappingSource,
-        target: input.context.activeComponentId
-          ? { componentId: input.context.activeComponentId }
-          : undefined
-      },
-      gateVersion: 'onnx-slow-gate/1.0.0',
+        outcomeLabel,
+        outcomeIndex,
+        outcomeConfidence,
+        predictedInterventionType,
+        interventionIndex,
+        interventionConfidence,
+        context: input.context
+      }),
+      gateVersion: ONNX_GATE_VERSION,
       source: 'slow'
+    };
+  }
+
+  /**
+   * Builds the normalized prediction, naming the head that actually decided.
+   *
+   * The learned head predicts an intervention class (the legacy outcome vocabulary); the
+   * outcome graph predicts an outcome class. Whichever decided supplies the vocabulary, the
+   * index and the artifact version recorded on the prediction (Task 20.3).
+   */
+  private buildPrediction(params: {
+    mappingSource: SlowGateMappingSource;
+    outcomeLabel?: string;
+    outcomeIndex?: number;
+    outcomeConfidence: number;
+    predictedInterventionType: InterventionType;
+    interventionIndex?: number;
+    interventionConfidence: number;
+    context: { activeComponentId?: string };
+  }): GatePrediction {
+    const learned = params.mappingSource === 'learned_head';
+    const vocabulary = learned ? this.interventionVocabulary : this.outcomeVocabulary;
+    const label = learned ? params.predictedInterventionType : params.outcomeLabel;
+    const confidence = learned ? params.interventionConfidence : params.outcomeConfidence;
+
+    return {
+      outcomeId: label ?? 'NO_OUTCOME',
+      vocabularyId: vocabulary?.id,
+      vocabularyVersion: vocabulary?.version ?? '',
+      outcomeIndex: learned ? params.interventionIndex : params.outcomeIndex,
+      confidence,
+      matched: isAssertiveLabel(label, confidence),
+      source: 'slow',
+      modelVersion: learned
+        ? this.manifest.intervention?.modelVersion
+        : this.manifest.foundation.modelVersion,
+      mappingSource: params.mappingSource,
+      target: targetForContext(params.context)
     };
   }
 
@@ -516,29 +673,6 @@ export class OnnxSlowGate implements SlowGate {
     }
   }
 
-  private argmaxOutcome(probabilities: Float32Array): {
-    outcome: OutcomeType;
-    confidence: number;
-    index: number;
-  } {
-    const { index, confidence } = argmax(probabilities);
-    return {
-      outcome: OUTCOME_CLASS_ORDER[index] ?? 'NO_OUTCOME',
-      confidence,
-      index
-    };
-  }
-
-  private argmaxIntervention(
-    probabilities: Float32Array
-  ): { type: InterventionType; confidence: number } {
-    const { index, confidence } = argmax(probabilities);
-    return {
-      type: TARGET_INTERVENTION_ORDER[index] ?? 'no_op',
-      confidence
-    };
-  }
-
   private buildLearnedIntervention(
     type: InterventionType,
     confidence: number,
@@ -560,10 +694,13 @@ export class OnnxSlowGate implements SlowGate {
   }
 
   private buildDeterministicIntervention(
-    outcome: OutcomeType,
+    outcome: OutcomeType | undefined,
     confidence: number,
     input: SlowGateInput
   ): InterventionCommand | undefined {
+    // A custom vocabulary has no entry in the generic outcome→intervention table, so the
+    // deterministic path declares no intervention for it rather than guessing one.
+    if (!outcome) return undefined;
     const threshold = this.options.confidenceThreshold ?? 0.5;
     if (confidence < threshold) return undefined;
 

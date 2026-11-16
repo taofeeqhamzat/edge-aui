@@ -148,4 +148,37 @@ describe('runtime actuation through the prediction contract', () => {
     expect(policyDecision?.predictionId).toBeTruthy();
     expect(trace.predictions.some((p) => p.predictionId === policyDecision!.predictionId)).toBe(true);
   }, 30000);
+
+  it('records a decision, and opens no episode, when the outcome has no mapped adaptation', async () => {
+    renderAnnotatedDom();
+    runtime = new AdaptiveRuntime({
+      forceInProcessWorker: true,
+      conditionId: 'adaptive',
+      policyConfig: { requiredConsecutiveWindows: 1, confidenceThreshold: 0.5, cooldownMs: 0 },
+      // Every predicted outcome is refused, which is the "predicted, no adaptation
+      // warranted" case. Nothing may be applied, and nothing may claim to be.
+      candidateResolver: { resolve: () => null }
+    });
+    await runtime.start();
+
+    const started = Date.now();
+    while (Date.now() - started < 3000) {
+      window.dispatchEvent(
+        new MouseEvent('mousemove', { bubbles: true, clientX: 40, clientY: 80 })
+      );
+      await new Promise((r) => setTimeout(r, 40));
+    }
+
+    await waitFor(() => experimentRecorder.getEventCounts().policyDecisions > 0, {
+      label: 'a recorded policy decision'
+    });
+
+    const trace = experimentRecorder.export();
+    expect(runtime.getStatus().interventionsApplied).toBe(0);
+    expect(trace.interventions.filter((event) => event.type === 'applied')).toHaveLength(0);
+    const decisions = trace.policyDecisions.filter((d) => d.policyDecision === 'decision_only');
+    expect(decisions.length).toBeGreaterThan(0);
+    expect(decisions[0].accepted).toBe(true);
+    expect(decisions[0].policyReason).toContain('no adaptation engaged');
+  }, 30000);
 });

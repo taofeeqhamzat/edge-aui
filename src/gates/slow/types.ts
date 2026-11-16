@@ -14,10 +14,11 @@ import { GatePrediction } from '../contracts';
  * Version of the generic foundation outcome vocabulary
  * (`NO_OUTCOME | CLICK | FORM_SUBMIT | BACKTRACK | RAPID_SCROLL | HOVER_DWELL | ABANDON`).
  *
- * The vocabulary itself is a model-manifest property (Task 20.3); this constant is the
- * identity of the built-in default that the bundled foundation graphs were trained on.
+ * The vocabulary is a model-manifest property (Task 20.3); this is the identity of the
+ * built-in default that the bundled foundation graphs were trained on. Re-exported so
+ * callers of the Slow Gate contract do not import the config layer.
  */
-export const FOUNDATION_OUTCOME_VOCABULARY_VERSION = 'foundation-7-class/1.0.0';
+export { FOUNDATION_OUTCOME_VOCABULARY_VERSION } from '../../config/modelManifest';
 
 export interface SlowGateInput {
   sequence: Float32Array;

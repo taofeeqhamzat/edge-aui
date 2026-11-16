@@ -42,11 +42,28 @@ export interface PredictionTarget {
   taskStepId?: string;
 }
 
+/**
+ * Ordered class vocabulary a model emits.
+ *
+ * Index `i` is the model's output `i`. The vocabulary travels with the model because it
+ * changes when the model is retrained, not when the runtime is edited (Task 20.3).
+ */
+export interface OutcomeVocabulary {
+  /** Identity of the vocabulary, e.g. `foundation`, `intervention`, `semantic`. */
+  id: string;
+  /** Version of the vocabulary, recorded on every prediction. */
+  version: string;
+  /** Ordered class labels. */
+  outcomes: readonly string[];
+}
+
 /** What a gate emits. Deliberately free of trace identity. */
 export interface GatePrediction {
   /** Application-supplied outcome identifier. Core assigns no meaning to the value. */
   outcomeId: string;
-  /** Identity of the vocabulary `outcomeId` belongs to, so a renamed class is visible. */
+  /** Identity of the vocabulary `outcomeId` belongs to. */
+  vocabularyId?: string;
+  /** Version of the vocabulary `outcomeId` belongs to, so a renamed class is visible. */
   vocabularyVersion: string;
   /** Class index within the configured vocabulary, when the gate knows it. */
   outcomeIndex?: number;
