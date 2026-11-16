@@ -8,7 +8,9 @@ import {
   TaskId,
   TaskState,
   TaskStatus,
-  TaskUiState
+  TaskUiState,
+  TargetTask,
+  TargetTaskStep
 } from './taskModel';
 import { evaluateTaskCompletion } from './completion';
 import { getWallClockTimestamp } from '../../telemetry/normalizer';
@@ -74,15 +76,14 @@ export class TaskManager {
   }
 
   public subscribe(listener: StateChangeListener): () => void {
-    this.listeners.add(listener);
+    const unsubscribe = addListener(this.listeners, listener);
     listener(this.state);
-    return () => this.listeners.delete(listener);
+    return unsubscribe;
   }
 
   /** Subscribes to task lifecycle transitions. */
   public onLifecycle(listener: TaskLifecycleListener): () => void {
-    this.lifecycleListeners.add(listener);
-    return () => this.lifecycleListeners.delete(listener);
+    return addListener(this.lifecycleListeners, listener);
   }
 
   private notify() {
@@ -181,65 +182,34 @@ export class TaskManager {
 
     const task = EXPERIMENTAL_TASKS[this.state.currentTaskId];
     const completed = new Set(this.state.completedSteps);
+    this.evidence = updateEvidence(this.evidence, componentId, action, this.state.uiState);
 
-    if (componentId === 'btn-apply-filters' || (componentId === 'filter-drawer' && action === 'submit')) {
-      this.evidence.applyRecorded = true;
-    }
-    if (componentId === 'btn-reset-filters' && action === 'click') {
-      this.evidence.resetRecorded = true;
-    }
-    if (componentId === 'btn-export' && action === 'click') {
-      this.evidence.exportRecorded = true;
-    }
-
-    if (this.state.uiState?.empty && this.evidence.applyRecorded) {
-      this.evidence.sawEmptyResult = true;
-    }
-
-    const matchingStep = task.steps.find(
-      (step) =>
-        !completed.has(step.stepId) &&
-        step.expectedComponentId === componentId &&
-        step.expectedAction === action
-    );
-
+    const matchingStep = findUncompletedStep(task, completed, componentId, action);
     if (matchingStep) {
       this.completeStep(matchingStep.stepId);
       this.checkCompletion();
       return;
     }
 
-    const duplicateOfCompletedStep = task.steps.some(
-      (step) =>
-        completed.has(step.stepId) &&
-        step.expectedComponentId === componentId &&
-        step.expectedAction === action
-    );
-    if (duplicateOfCompletedStep) return;
+    const expectedStep = findExpectedStep(task, completed, componentId);
+    if (!expectedStep || isBenignCompanion(expectedStep.expectedAction, action)) return;
+    if (!isActionBearing(action)) return;
 
-    const expectedForComponent = task.steps.find(
-      (step) => !completed.has(step.stepId) && step.expectedComponentId === componentId
-    );
-    if (expectedForComponent && isBenignCompanion(expectedForComponent.expectedAction, action)) {
-      return;
-    }
+    this.recordError(expectedStep.stepId, task.definitionVersion);
+  }
 
-    if (
-      expectedForComponent &&
-      ['click', 'change', 'submit'].includes(action)
-    ) {
-      this.state.errors++;
-      this.notify();
-      this.emitLifecycle({
-        timestamp: getWallClockTimestamp(),
-        type: 'task_error',
-        taskId: this.state.currentTaskId,
-        taskStepId: expectedForComponent.stepId,
-        status: this.state.status,
-        errors: this.state.errors,
-        definitionVersion: task.definitionVersion
-      });
-    }
+  private recordError(stepId: string, definitionVersion: 'TD-v2'): void {
+    this.state.errors++;
+    this.notify();
+    this.emitLifecycle({
+      timestamp: getWallClockTimestamp(),
+      type: 'task_error',
+      taskId: this.state.currentTaskId,
+      taskStepId: stepId,
+      status: this.state.status,
+      errors: this.state.errors,
+      definitionVersion
+    });
   }
 
   private completeStep(stepId: string) {
@@ -352,6 +322,60 @@ export class TaskManager {
   public getState(): TaskState {
     return this.state;
   }
+}
+
+function addListener<T>(listeners: Set<T>, listener: T): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function updateEvidence(
+  evidence: TaskEvidence,
+  componentId: string,
+  action: string,
+  uiState: TaskUiState | undefined
+): TaskEvidence {
+  const next = { ...evidence };
+  if (isApplyInteraction(componentId, action)) next.applyRecorded = true;
+  if (componentId === 'btn-reset-filters' && action === 'click') next.resetRecorded = true;
+  if (componentId === 'btn-export' && action === 'click') next.exportRecorded = true;
+  if (uiState?.empty && next.applyRecorded) next.sawEmptyResult = true;
+  return next;
+}
+
+function isApplyInteraction(componentId: string, action: string): boolean {
+  return componentId === 'btn-apply-filters' ||
+    (componentId === 'filter-drawer' && action === 'submit');
+}
+
+function findUncompletedStep(
+  task: TargetTask,
+  completed: Set<string>,
+  componentId: string,
+  action: string
+): TargetTaskStep | undefined {
+  return task.steps.find(
+    (step) =>
+      !completed.has(step.stepId) &&
+      step.expectedComponentId === componentId &&
+      step.expectedAction === action
+  );
+}
+
+function findExpectedStep(
+  task: TargetTask,
+  completed: Set<string>,
+  componentId: string
+): TargetTaskStep | undefined {
+  return task.steps.find(
+    (step) => !completed.has(step.stepId) && step.expectedComponentId === componentId
+  );
+}
+
+const ACTION_BEARING = new Set(['click', 'change', 'submit']);
+
+function isActionBearing(action: string): boolean {
+  return ACTION_BEARING.has(action);
 }
 
 function cloneUiState(state: TaskUiState): TaskUiState {

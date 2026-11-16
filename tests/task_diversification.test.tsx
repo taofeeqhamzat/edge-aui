@@ -73,6 +73,33 @@ describe('State-verified completion predicates', () => {
     ).toBe(false);
   });
 
+  it('TD3 rejects a restored row count when any filter is still non-default', () => {
+    const restored = ui({ page: 'Analytics', visibleRowCount: 50 });
+    const evidenceState = evidence({ sawEmptyResult: true, resetRecorded: true });
+
+    expect(
+      evaluateTaskCompletion(
+        'TD3',
+        { ...restored, appliedFilters: { dateFrom: '2025-01-01', region: 'All', categories: [] } },
+        evidenceState
+      )
+    ).toBe(false);
+    expect(
+      evaluateTaskCompletion(
+        'TD3',
+        { ...restored, appliedFilters: { dateFrom: '', region: 'Europe', categories: [] } },
+        evidenceState
+      )
+    ).toBe(false);
+    expect(
+      evaluateTaskCompletion(
+        'TD3',
+        { ...restored, appliedFilters: { dateFrom: '', region: 'All', categories: ['Books'] } },
+        evidenceState
+      )
+    ).toBe(false);
+  });
+
   it('TD4 requires both reports, Europe Books, six rows, and export', () => {
     const state = ui({
       page: 'Analytics',
@@ -173,6 +200,109 @@ describe('Task lifecycle, timeout, and canonical interactions', () => {
 
     expect(taskManager.getState().errors).toBe(0);
     expect(taskManager.getState().status).toBe('Completed');
+  });
+
+  it('records Apply from a form submit even without a button click', () => {
+    taskManager.startTask('TD1');
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '', region: 'Europe', categories: [] },
+      visibleRowCount: 18,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('filter-drawer', 'submit');
+    taskManager.recordInteraction('btn-export', 'click');
+
+    expect(taskManager.getState().status).toBe('Completed');
+    expect(taskManager.getState().errors).toBe(0);
+  });
+
+  it('treats a submit companion on a click target as benign', () => {
+    taskManager.startTask('TD1');
+    taskManager.recordInteraction('nav-Analytics', 'submit');
+
+    expect(taskManager.getState().errors).toBe(0);
+    expect(taskManager.getState().completedSteps).not.toContain('TD1-1');
+  });
+
+  it('does not count an empty state observed before Apply as TD3 recovery evidence', () => {
+    taskManager.startTask('TD3');
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '2025-09-01', region: 'Europe', categories: ['Books'] },
+      visibleRowCount: 0,
+      empty: true,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '', region: 'All', categories: [] },
+      visibleRowCount: 50,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('btn-apply-filters', 'click');
+    taskManager.recordInteraction('btn-reset-filters', 'click');
+
+    expect(taskManager.getState().status).toBe('In Progress');
+  });
+
+  it('does not treat a non-Apply interaction as apply evidence', () => {
+    taskManager.startTask('TD2');
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '2025-06-01', region: 'All', categories: ['Books'] },
+      visibleRowCount: 5,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('filter-Region-select', 'change');
+
+    expect(taskManager.getState().status).toBe('In Progress');
+  });
+
+  it('records a completed task duration and terminal step', () => {
+    taskManager.startTask('TD1');
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '', region: 'Europe', categories: [] },
+      visibleRowCount: 18,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('btn-apply-filters', 'click');
+    taskManager.recordInteraction('btn-export', 'click');
+
+    const complete = lifecycle.find((event) => event.type === 'task_complete');
+    const state = taskManager.getState();
+    expect(complete?.taskStepId).toBe('TD1-5');
+    expect(complete?.durationMs).toBe((state.endTime ?? 0) - (state.startTime ?? 0));
+  });
+
+  it('resets a completed trial without reporting an abandonment', () => {
+    taskManager.startTask('TD2');
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '2025-06-01', region: 'All', categories: ['Books'] },
+      visibleRowCount: 5,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('btn-apply-filters', 'click');
+    expect(taskManager.getState().status).toBe('Completed');
+    lifecycle.length = 0;
+
+    taskManager.resetTask();
+
+    expect(lifecycle.some((event) => event.type === 'task_abandon')).toBe(false);
+    expect(taskManager.getState().status).toBe('Idle');
   });
 
   it('records a replaced trial when a new task starts mid-trial', () => {
