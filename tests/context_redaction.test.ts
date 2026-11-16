@@ -77,8 +77,8 @@ describe('Task 5.2 / ADR-010: Context Redaction & Telemetry Privacy Guarantees',
       helpAvailable: true,
       expandable: false,
       availableActions: ['click', 'change', 'input'],
-      taskId: 'T1',
-      taskStepId: 'T1-2'
+      taskId: 'TD1',
+      taskStepId: 'TD1-2'
     };
 
     const independentlyEncoded = encodeUIContext(context);
@@ -102,8 +102,8 @@ describe('Task 5.2 / ADR-010: Context Redaction & Telemetry Privacy Guarantees',
     expect(independentlyEncoded[2]).toBe(1.0);
     // expandable = 0.0
     expect(independentlyEncoded[3]).toBe(0.0);
-    // taskProgress = (2 - 1) / 4 = 0.25
-    expect(independentlyEncoded[4]).toBeCloseTo(0.25, 4);
+    // taskProgress = (2 - 1) / 5 = 0.2 for TD1-2 (TD1 has five steps)
+    expect(independentlyEncoded[4]).toBeCloseTo(0.2, 4);
     // actionAvailability = 3 / 7
     expect(independentlyEncoded[5]).toBeCloseTo(3 / 7, 4);
   });
@@ -270,8 +270,8 @@ describe('Task 5.2 / ADR-010: Context Redaction & Telemetry Privacy Guarantees',
       helpAvailable: false,
       expandable: true,
       availableActions: ['click', 'toggle'],
-      taskId: 'T2',
-      taskStepId: 'T2-1',
+      taskId: 'TD2',
+      taskStepId: 'TD2-1',
       // Arbitrary fields that a compromised UI might attempt to attach:
       freeTextComment: 'SECRET_USER_INPUT_NOTES',
       passwordField: 'SUPER_SECRET_VALUE',

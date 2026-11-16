@@ -99,21 +99,21 @@ describe('Task 3.2: Active UI Context Provider (getActiveUIContext)', () => {
     const { container } = render(<App />);
 
     // Start Task T1
-    taskManager.startTask('T1');
+    taskManager.startTask('TD1');
     let context = getActiveUIContext({ root: container });
-    expect(context.taskId).toBe('T1');
-    expect(context.taskStepId).toBe('T1-1');
+    expect(context.taskId).toBe('TD1');
+    expect(context.taskStepId).toBe('TD1-1');
 
     // Simulate completing step 1 (nav-Analytics click)
     taskManager.recordInteraction('nav-Analytics', 'click');
     context = getActiveUIContext({ root: container });
-    expect(context.taskId).toBe('T1');
-    expect(context.taskStepId).toBe('T1-2');
+    expect(context.taskId).toBe('TD1');
+    expect(context.taskStepId).toBe('TD1-2');
 
     // Simulate completing step 2 (filter-Region click)
-    taskManager.recordInteraction('filter-Region', 'click');
+    taskManager.recordInteraction('filter-section-region', 'click');
     context = getActiveUIContext({ root: container });
-    expect(context.taskStepId).toBe('T1-3');
+    expect(context.taskStepId).toBe('TD1-3');
   });
 
   it('tracks hovered element via setTrackedUIElement and initUIContextTracker', () => {

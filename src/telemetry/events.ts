@@ -331,7 +331,7 @@ export interface InterventionEvent {
 export type ExperimentalCondition = 'baseline' | 'adaptive';
 
 /** Status of an experimental task trial. */
-export type TaskEventStatus = 'Idle' | 'In Progress' | 'Completed' | 'Abandoned';
+export type TaskEventStatus = 'Idle' | 'In Progress' | 'Completed' | 'Abandoned' | 'Failed';
 
 /**
  * Task lifecycle record. The assessment (§6.2) found that the testbed produced no
@@ -346,13 +346,14 @@ export interface TaskEvent {
     | 'task_complete'
     | 'task_error'
     | 'task_reset'
-    | 'task_abandon';
+    | 'task_abandon'
+    | 'task_fail';
   taskId: string | null;
   taskStepId?: string;
   status: TaskEventStatus;
   errors: number;
   durationMs?: number;
-  reason?: 'reset' | 'timeout' | 'navigation';
+  reason?: 'reset' | 'replaced' | 'condition_change' | 'interrupted' | 'timeout';
   sessionId?: string;
   experimentId?: string;
   conditionId?: ExperimentalCondition;

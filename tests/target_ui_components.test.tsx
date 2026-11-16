@@ -45,7 +45,7 @@ describe('Target UI & Task State Test Suite (Task 11.1)', () => {
       act(() => {
         fireEvent.click(reportsNavBtn);
       });
-      expect(screen.getByText('This is the Reports view.')).not.toBeNull();
+      expect(screen.getByText('Available Reports')).not.toBeNull();
     });
   });
 
@@ -132,52 +132,52 @@ describe('Target UI & Task State Test Suite (Task 11.1)', () => {
   });
 
   describe('TaskManager State Machine & Reset', () => {
-    it('executes task transitions, records correct interactions, and resets deterministically', () => {
+    it('executes state-verified task transitions and resets deterministically', () => {
       expect(taskManager.getState().status).toBe('Idle');
       expect(taskManager.getState().currentTaskId).toBeNull();
 
-      // Start Task T1
-      taskManager.startTask('T1');
+      taskManager.startTask('TD1');
       let state = taskManager.getState();
       expect(state.status).toBe('In Progress');
-      expect(state.currentTaskId).toBe('T1');
-      expect(state.currentStepIndex).toBe(0);
+      expect(state.currentTaskId).toBe('TD1');
+      expect(state.definitionVersion).toBe('TD-v2');
 
-      // Step 1: nav-Analytics / click
       taskManager.recordInteraction('nav-Analytics', 'click');
-      state = taskManager.getState();
-      expect(state.currentStepIndex).toBe(1);
-      expect(state.completedSteps).toContain('T1-1');
-
-      // Erroneous action on non-matching element increments errors
-      taskManager.recordInteraction('wrong-button', 'click');
-      state = taskManager.getState();
-      expect(state.errors).toBe(1);
-      expect(state.currentStepIndex).toBe(1);
-
-      // Step 2: filter-Region / click
-      taskManager.recordInteraction('filter-Region', 'click');
-      expect(taskManager.getState().currentStepIndex).toBe(2);
-
-      // Step 3: filter-Region-select / change
+      taskManager.updateUiState({
+        page: 'Analytics',
+        appliedFilters: { dateFrom: '', region: 'All', categories: [] },
+        visibleRowCount: 50,
+        empty: false,
+        currentReportId: null,
+        visitedReportIds: []
+      });
+      taskManager.recordInteraction('filter-section-region', 'click');
       taskManager.recordInteraction('filter-Region-select', 'change');
-      expect(taskManager.getState().currentStepIndex).toBe(3);
-
-      // Step 4: btn-apply-filters / click
+      taskManager.updateUiState({
+        page: 'Analytics',
+        appliedFilters: { dateFrom: '', region: 'Europe', categories: [] },
+        visibleRowCount: 18,
+        empty: false,
+        currentReportId: null,
+        visitedReportIds: []
+      });
       taskManager.recordInteraction('btn-apply-filters', 'click');
+      expect(taskManager.getState().status).toBe('In Progress');
+      taskManager.recordInteraction('btn-export', 'click');
+
       state = taskManager.getState();
       expect(state.status).toBe('Completed');
-      expect(state.completedSteps).toEqual(['T1-1', 'T1-2', 'T1-3', 'T1-4']);
+      expect(state.errors).toBe(0);
+      expect(state.completedSteps).toEqual(['TD1-1', 'TD1-2', 'TD1-3', 'TD1-4', 'TD1-5']);
       expect(state.endTime).toBeDefined();
 
-      // Reset Task returns to clean initial state
       taskManager.resetTask();
       const resetState = taskManager.getState();
       expect(resetState.status).toBe('Idle');
       expect(resetState.currentTaskId).toBeNull();
-      expect(resetState.currentStepIndex).toBe(0);
       expect(resetState.completedSteps).toHaveLength(0);
       expect(resetState.errors).toBe(0);
     });
   });
 });
+

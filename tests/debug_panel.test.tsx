@@ -40,7 +40,7 @@ describe("DebugPanel (Task 10.2)", () => {
 
   it("expands panel and displays prioritized session, task, and gate metrics", () => {
     sessionManager.startSession("T1");
-    taskManager.startTask("T1");
+    taskManager.startTask("TD1");
 
     debugBus.update({
       latestMicroTensor: [
@@ -78,8 +78,8 @@ describe("DebugPanel (Task 10.2)", () => {
     expect(screen.getByText("Pipeline Inspector")).not.toBeNull();
 
     // Verify Session & Task info
-    expect(screen.getByText(/T1 \(Filter Analytics\)/)).not.toBeNull();
-    expect(screen.getByText(/T1-1: Navigate to Analytics/)).not.toBeNull();
+    expect(screen.getByText(/TD1 \(Regional sales export\)/)).not.toBeNull();
+    expect(screen.getByText(/TD1-1: Navigate to Analytics/)).not.toBeNull();
 
     // Verify Dual-Gate Decisions
     expect(screen.getByText(/MATCH \(SEQ_FILTER\)/)).not.toBeNull();
@@ -176,7 +176,7 @@ describe("DebugPanel (Task 10.2)", () => {
 
   it("allows collapsing and expanding individual telemetry sections", () => {
     sessionManager.startSession("T1");
-    taskManager.startTask("T1");
+    taskManager.startTask("TD1");
 
     act(() => {
       render(<DebugPanel forceShow={true} />);
@@ -190,7 +190,7 @@ describe("DebugPanel (Task 10.2)", () => {
     });
 
     // Content in Session & Task section is visible initially
-    expect(screen.getByText(/T1 \(Filter Analytics\)/)).not.toBeNull();
+    expect(screen.getByText(/TD1 \(Regional sales export\)/)).not.toBeNull();
 
     // Find and click the Session & Task section toggle
     const sessionSectionToggle = screen.getByRole("button", {
@@ -204,19 +204,19 @@ describe("DebugPanel (Task 10.2)", () => {
 
     // Now it is collapsed
     expect(sessionSectionToggle.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByText(/T1 \(Filter Analytics\)/)).toBeNull();
+    expect(screen.queryByText(/TD1 \(Regional sales export\)/)).toBeNull();
 
     // Click again to expand
     act(() => {
       fireEvent.click(sessionSectionToggle);
     });
     expect(sessionSectionToggle.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByText(/T1 \(Filter Analytics\)/)).not.toBeNull();
+    expect(screen.getByText(/TD1 \(Regional sales export\)/)).not.toBeNull();
   });
 
   it("collapses and expands all sections via the header toggle button", () => {
     sessionManager.startSession("T1");
-    taskManager.startTask("T1");
+    taskManager.startTask("TD1");
 
     act(() => {
       render(<DebugPanel forceShow={true} />);
@@ -240,7 +240,7 @@ describe("DebugPanel (Task 10.2)", () => {
     });
 
     // Content should now be hidden
-    expect(screen.queryByText(/T1 \(Filter Analytics\)/)).toBeNull();
+    expect(screen.queryByText(/TD1 \(Regional sales export\)/)).toBeNull();
 
     // Button label should now be Expand All
     const expandAllBtn = screen.getByRole("button", {
@@ -254,7 +254,7 @@ describe("DebugPanel (Task 10.2)", () => {
     });
 
     // Content restored
-    expect(screen.getByText(/T1 \(Filter Analytics\)/)).not.toBeNull();
+    expect(screen.getByText(/TD1 \(Regional sales export\)/)).not.toBeNull();
   });
 
   it("renders inactivity window status indicator without shifting section title", () => {

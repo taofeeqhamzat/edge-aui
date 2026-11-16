@@ -26,8 +26,8 @@ describe('Task 11.3: End-to-End Simulation & Dual-Gate Arbitration Integration',
     route: 'Analytics',
     activeComponentId: 'filter-Region',
     componentRole: 'accordion',
-    taskId: 'T1',
-    taskStepId: 'T1-2',
+    taskId: 'TD1',
+    taskStepId: 'TD1-2',
     availableActions: ['click', 'change'],
     primaryActionAvailable: true,
     helpAvailable: true,
@@ -56,9 +56,9 @@ describe('Task 11.3: End-to-End Simulation & Dual-Gate Arbitration Integration',
 
     // Initialize pipeline modules
     sessionManager.resetSession();
-    sessionManager.startSession('T1');
+    sessionManager.startSession('TD1');
     taskManager.resetTask();
-    taskManager.startTask('T1');
+    taskManager.startTask('TD1');
 
     fastGate = new MockFastGate({
       patterns: {

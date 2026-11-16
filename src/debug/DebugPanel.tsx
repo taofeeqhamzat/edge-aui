@@ -984,6 +984,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
   return (
     <div
       className="edge-aui-debug-container"
+      data-aui-region="debug"
       data-testid="edge-aui-debug-container"
     >
       <div

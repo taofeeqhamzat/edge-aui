@@ -713,3 +713,85 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   Plan 3 Task Controls, Reports Catalogue and Task State
+   ========================================================================== */
+
+.btn-reset-filters {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: var(--bg-elevated);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.btn-reset-filters:hover {
+  background-color: #e2e8f0;
+  border-color: var(--accent-cyan);
+}
+
+.btn-reset-filters:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+.current-report {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background-color: #f0f9ff;
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reports-catalogue {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 16px;
+}
+
+.reports-catalogue-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.reports-data-table td {
+  padding: 10px 14px;
+}
+
+.btn-open-report {
+  padding: 5px 12px;
+  background-color: var(--bg-elevated);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-open-report:hover {
+  background-color: #e2e8f0;
+  border-color: var(--accent-cyan);
+}
+
+.btn-open-report:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
+}
+
+.report-row-current td {
+  background-color: #f0f9ff;
+}

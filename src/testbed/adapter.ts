@@ -90,7 +90,17 @@ export class TestbedUiAdapter implements UiAdapter {
   }
 
   abandonTask(reason: string): void {
-    taskManager.abandonTask(reason as 'reset' | 'timeout' | 'navigation');
+    const mapped =
+      reason === 'timeout'
+        ? 'timeout'
+        : reason === 'reset'
+          ? 'reset'
+          : reason === 'replaced'
+            ? 'replaced'
+            : reason === 'condition_change'
+              ? 'condition_change'
+              : 'interrupted';
+    taskManager.abandonTask(mapped);
   }
 
   getTaskActionForEvent(eventType: string): string | undefined {

@@ -24,7 +24,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { bootTestbed, getCollection, getRuntime, registerDefaultUiAdapter } from '../src/runtime/boot';
 import { testbedAdapter } from '../src/testbed/adapter';
 import { taskManager } from '../src/testbed/tasks/taskManager';
-import { EXPERIMENTAL_TASKS, type TaskId } from '../src/testbed/tasks/taskModel';
+import { type TaskId } from '../src/testbed/tasks/taskModel';
 import { sessionManager } from '../src/telemetry/session';
 import { experimentRecorder } from '../src/telemetry/recorder';
 
@@ -47,12 +47,62 @@ async function waitFor(
   throw new Error(`Timed out after ${timeoutMs}ms waiting for ${label}`);
 }
 
-/** Drives a task to `Completed` exactly as the observer bridge does. */
+/** Drives a task to `Completed` through the same state/evidence path the UI uses. */
 function completeTask(taskId: TaskId): void {
   taskManager.startTask(taskId);
-  for (const step of EXPERIMENTAL_TASKS[taskId].steps) {
-    taskManager.recordInteraction(step.expectedComponentId!, step.expectedAction!);
+
+  if (taskId === 'TD1') {
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '', region: 'Europe', categories: [] },
+      visibleRowCount: 18,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('btn-apply-filters', 'click');
+    taskManager.recordInteraction('btn-export', 'click');
+  } else if (taskId === 'TD2') {
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '2025-06-01', region: 'All', categories: ['Books'] },
+      visibleRowCount: 5,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('btn-apply-filters', 'click');
+  } else if (taskId === 'TD3') {
+    taskManager.recordInteraction('btn-apply-filters', 'click');
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '2025-09-01', region: 'Europe', categories: ['Books'] },
+      visibleRowCount: 0,
+      empty: true,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('btn-reset-filters', 'click');
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '', region: 'All', categories: [] },
+      visibleRowCount: 50,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+  } else {
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '', region: 'Europe', categories: ['Books'] },
+      visibleRowCount: 6,
+      empty: false,
+      currentReportId: 'eu-books',
+      visitedReportIds: ['eu-electronics', 'eu-books']
+    });
+    taskManager.recordInteraction('btn-export', 'click');
   }
+
   expect(taskManager.getState().status).toBe('Completed');
 }
 
@@ -103,7 +153,7 @@ describe('Trial completion uploads the trace', () => {
   it('uploads the completed trial, reports uploaded, and rotates the session', async () => {
     const firstSessionId = sessionManager.getActiveSession()!.sessionId;
 
-    completeTask('T1');
+    completeTask('TD1');
     await waitFor(() => calls.length >= 2, { label: 'the T1 upload' });
 
     const [sessionCall, traceCall] = calls;
@@ -135,7 +185,7 @@ describe('Trial completion uploads the trace', () => {
 
     // Second trial: it must reach the store under its *own* session id. Under the old wiring
     // this insert was a duplicate and was discarded with the panel still reporting `uploaded`.
-    completeTask('T2');
+    completeTask('TD2');
     await waitFor(() => calls.length >= 4, { label: 'the T2 upload' });
 
     const [secondSessionCall, secondTraceCall] = calls.slice(2);
@@ -144,13 +194,13 @@ describe('Trial completion uploads the trace', () => {
     expect((secondTraceCall.body.trace as { session: { sessionId: string } }).session.sessionId).toBe(
       secondSessionId
     );
-    expect(secondSessionCall.body.task_id).toBe('T2');
+    expect(secondSessionCall.body.task_id).toBe('TD2');
   });
 
   it('closes an abandoned trial instead of folding it into the next one', async () => {
     const abandonedSessionId = sessionManager.getActiveSession()!.sessionId;
 
-    taskManager.startTask('T3');
+    taskManager.startTask('TD3');
     taskManager.recordInteraction('nav-Analytics', 'click');
     taskManager.resetTask();
 

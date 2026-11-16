@@ -2,14 +2,12 @@
  * Trial Controls
  *
  * Makes the experimental task model and the experimental condition reachable from the
- * UI. The assessment (§6, §17) found no UI affordance could start, complete or reset a
- * task, and no condition switch existed, which made both dataset construction and the
- * baseline/adaptive comparison impossible.
+ * UI. Starting a task runs the testbed-owned normalization first, then emits `task_start`.
  */
 
 import { useEffect, useState } from "react";
 import { taskManager } from "../tasks/taskManager";
-import { EXPERIMENTAL_TASKS, TaskId, TaskState } from "../tasks/taskModel";
+import { EXPERIMENTAL_TASKS, TargetTask, TaskId, TaskState, TaskUiState } from "../tasks/taskModel";
 import { bootTestbed, getRuntime, switchCondition } from "../../runtime/boot";
 import { ExperimentalCondition } from "../../telemetry/events";
 import { sessionManager } from "../../telemetry/session";
@@ -17,10 +15,16 @@ import { sessionManager } from "../../telemetry/session";
 export interface TrialControlsProps {
   /** Initial condition. */
   initialCondition?: ExperimentalCondition;
+  /** Testbed-owned task-start normalization. Runs before `task_start`. */
+  onPrepareTask?: (task: TargetTask) => TaskUiState;
+  /** Testbed-owned UI reset when a trial is reset. */
+  onResetTaskUi?: () => void;
 }
 
 export function TrialControls({
   initialCondition = "adaptive",
+  onPrepareTask,
+  onResetTaskUi,
 }: TrialControlsProps) {
   const [taskState, setTaskState] = useState<TaskState>(taskManager.getState());
   const [condition, setCondition] =
@@ -32,7 +36,10 @@ export function TrialControls({
   const activeTask = taskState.currentTaskId
     ? EXPERIMENTAL_TASKS[taskState.currentTaskId]
     : null;
-  const currentStep = activeTask?.steps[taskState.currentStepIndex];
+  const currentStep = activeTask?.steps.find(
+    (step) => !taskState.completedSteps.includes(step.stepId),
+  );
+  const inProgress = taskState.status === "In Progress";
 
   const handleStart = async (taskId: TaskId) => {
     setBusy(true);
@@ -41,7 +48,9 @@ export function TrialControls({
       if (runtime) {
         await runtime.resetTrial();
       }
-      taskManager.startTask(taskId);
+      const task = EXPERIMENTAL_TASKS[taskId];
+      const initialState = onPrepareTask?.(task);
+      taskManager.startTask(taskId, initialState);
     } finally {
       setBusy(false);
     }
@@ -52,6 +61,7 @@ export function TrialControls({
     try {
       // Records an abandonment when a task was in progress, then clears state.
       taskManager.resetTask();
+      onResetTaskUi?.();
       const runtime = getRuntime();
       if (runtime) {
         await runtime.resetTrial();
@@ -75,6 +85,7 @@ export function TrialControls({
     <section
       data-aui-component="trial-controls"
       data-aui-role="trial-controls"
+      data-aui-region="trial"
       aria-label="Experimental trial controls"
       className="trial-controls-card"
     >
@@ -104,7 +115,7 @@ export function TrialControls({
                 data-aui-component={`condition-${candidate}`}
                 data-aui-role="condition-option"
                 data-aui-action="click"
-                disabled={busy}
+                disabled={busy || inProgress}
                 onClick={() => handleCondition(candidate)}
                 className={`condition-btn ${condition === candidate ? "active" : ""}`}
               >
@@ -123,7 +134,7 @@ export function TrialControls({
             data-aui-component={`btn-start-${taskId}`}
             data-aui-role="secondary-action"
             data-aui-action="click"
-            disabled={busy}
+            disabled={busy || inProgress}
             onClick={() => handleStart(taskId)}
             className="btn-start-task"
           >
@@ -156,7 +167,7 @@ export function TrialControls({
         <div>
           <strong>Step:</strong>{" "}
           {currentStep
-            ? `${currentStep.stepId} (${taskState.currentStepIndex + 1}/${activeTask!.steps.length}) — ${currentStep.description}`
+            ? `${currentStep.stepId} (${taskState.completedSteps.length + 1}/${activeTask!.steps.length}) — ${currentStep.description}`
             : "N/A"}
         </div>
         <div>
@@ -164,6 +175,9 @@ export function TrialControls({
           <span data-aui-trial-errors>{taskState.errors}</span>
           {taskState.abandonmentReason
             ? ` | Abandoned: ${taskState.abandonmentReason}`
+            : ""}
+          {taskState.failureReason
+            ? ` | Failed: ${taskState.failureReason}`
             : ""}
         </div>
       </div>

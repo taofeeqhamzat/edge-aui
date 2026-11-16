@@ -47,9 +47,10 @@ export const ACTION_VOCABULARY = [
 
 /** Total step count per task id, used for the task-progress component. */
 export const TASK_STEP_COUNTS: Record<string, number> = {
-  T1: 4,
-  T2: 2,
-  T3: 4
+  TD1: 5,
+  TD2: 5,
+  TD3: 8,
+  TD4: 4
 };
 
 export interface ContextVectorOptions {

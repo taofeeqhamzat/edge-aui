@@ -258,11 +258,12 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   experiment: {
     experimentId: 'exp-default',
     conditionId: 'adaptive',
-    trialOrder: ['T1', 'T2', 'T3'],
+    trialOrder: ['TD1', 'TD2', 'TD3', 'TD4'],
     taskTimeoutsMs: {
-      T1: 120000,
-      T2: 90000,
-      T3: 150000
+      TD1: 120000,
+      TD2: 120000,
+      TD3: 150000,
+      TD4: 150000
     },
     traceSchemaVersion: EXPERIMENT_TRACE_SCHEMA_VERSION
   }

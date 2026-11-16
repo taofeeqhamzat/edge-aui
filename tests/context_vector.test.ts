@@ -24,8 +24,8 @@ describe('UIContext to R^6 encoding (assessment §15 / §25 P2-2)', () => {
   it('is bounded in [0, 1] for every component', () => {
     const vector = encodeUIContext({
       ...baseContext,
-      taskId: 'T1',
-      taskStepId: 'T1-4',
+      taskId: 'TD1',
+      taskStepId: 'TD1-5',
       availableActions: ['click', 'change', 'hover', 'select', 'input', 'focus', 'toggle'],
       expandable: true,
       helpAvailable: true
@@ -60,11 +60,11 @@ describe('UIContext to R^6 encoding (assessment §15 / §25 P2-2)', () => {
   });
 
   it('encodes task progress from the current step', () => {
-    const atStart = encodeUIContext({ ...baseContext, taskId: 'T1', taskStepId: 'T1-1' });
-    const atEnd = encodeUIContext({ ...baseContext, taskId: 'T1', taskStepId: 'T1-4' });
+    const atStart = encodeUIContext({ ...baseContext, taskId: 'TD1', taskStepId: 'TD1-1' });
+    const atEnd = encodeUIContext({ ...baseContext, taskId: 'TD1', taskStepId: 'TD1-5' });
 
     expect(atStart[4]).toBe(0);
-    expect(atEnd[4]).toBeCloseTo(3 / 4, 6);
+    expect(atEnd[4]).toBeCloseTo(4 / 5, 6);
     expect(atEnd[4]).toBeGreaterThan(atStart[4]);
   });
 

@@ -56,6 +56,7 @@ export interface UiTaskLifecycleEvent {
     | 'task_error'
     | 'task_reset'
     | 'task_abandon'
+    | 'task_fail'
     | string;
   taskId: string | null;
   taskStepId?: string;

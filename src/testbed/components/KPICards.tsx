@@ -9,6 +9,7 @@ export function KPICards() {
   return (
     <div
       data-aui-component="kpi-cards"
+      data-aui-region="kpis"
       className="kpi-grid"
     >
       {kpis.map((kpi, index) => (

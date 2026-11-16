@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, fireEvent, act } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import React from 'react';
 import { Navigation } from '../src/app/Navigation';
 import { FilterDrawer } from '../src/testbed/components/FilterDrawer';
@@ -45,12 +45,12 @@ describe('Task 3.1: Semantic DOM Annotation Contract (data-aui-*)', () => {
     expect(container.querySelector('form')).not.toBeNull();
 
     // Accordions
-    const regionAccordion = container.querySelector('[data-aui-component="filter-Region"]');
+    const regionAccordion = container.querySelector('[data-aui-component="filter-section-region"]');
     expect(regionAccordion).not.toBeNull();
     expect(regionAccordion?.getAttribute('data-aui-role')).toBe('accordion');
 
     // Region select filter (disclosed by opening its section)
-    openSection('filter-Region');
+    openSection('filter-section-region');
     const regionSelect = container.querySelector('[data-aui-component="filter-Region-select"]');
     expect(regionSelect).not.toBeNull();
     expect(regionSelect?.getAttribute('data-aui-role')).toBe('filter');
@@ -58,24 +58,20 @@ describe('Task 3.1: Semantic DOM Annotation Contract (data-aui-*)', () => {
     expect(regionSelect?.getAttribute('data-aui-task-role')).toBe('required');
 
     // Date range input (disclosed by opening its section)
-    openSection('filter-Date Range');
+    openSection('filter-section-date-range');
     const dateInput = container.querySelector('[data-aui-component="filter-date-input"]');
     expect(dateInput).not.toBeNull();
     expect(dateInput?.getAttribute('data-aui-role')).toBe('form-field');
 
-    // Advanced Options accordion toggle & customer segment select
-    const advancedAccordion = container.querySelector('[data-aui-component="filter-Advanced Options"]');
-    expect(advancedAccordion).not.toBeNull();
-    expect(advancedAccordion?.getAttribute('data-aui-role')).toBe('accordion');
-    expect(advancedAccordion?.getAttribute('aria-expanded')).toBe('false');
+    // Reset Filters is a real button and must not submit the form.
+    const resetBtn = container.querySelector('[data-aui-component="btn-reset-filters"]');
+    expect(resetBtn).not.toBeNull();
+    expect(resetBtn?.getAttribute('data-aui-role')).toBe('secondary-action');
+    expect(resetBtn?.getAttribute('type')).toBe('button');
 
-    // Click to expand Advanced Options
-    fireEvent.click(advancedAccordion!);
-    expect(advancedAccordion?.getAttribute('aria-expanded')).toBe('true');
-
-    const segmentSelect = container.querySelector('[data-aui-component="filter-segment-select"]');
-    expect(segmentSelect).not.toBeNull();
-    expect(segmentSelect?.getAttribute('data-aui-role')).toBe('filter');
+    // The inert Customer Segment control has been removed.
+    expect(container.querySelector('[data-aui-component="filter-segment-select"]')).toBeNull();
+    expect(container.querySelector('[data-aui-component="filter-Advanced Options"]')).toBeNull();
   });
 
   it('annotates ResultsTable actions, tooltips, and table rows', () => {
