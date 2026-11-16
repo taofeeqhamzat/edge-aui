@@ -25,9 +25,12 @@ import { UIContext } from '../src/types/uiContext';
 import { MappingSource } from '../src/telemetry/events';
 
 describe('Task 5.3: Trace Mapping Attribution & Versioned Schema', () => {
-  it('declares the current schema version and supports the legacy 1.2.0 and 1.1.0 formats', () => {
-    expect(EXPERIMENT_TRACE_SCHEMA_VERSION).toBe('1.3.0');
+  it('declares the current schema version and supports the legacy formats', () => {
+    // 1.4.0 adds the semantic outcome, task-definition version and normalized prediction
+    // fields (Task 20.5). 1.3.0 remains readable, as do 1.2.0 and 1.1.0.
+    expect(EXPERIMENT_TRACE_SCHEMA_VERSION).toBe('1.4.0');
     expect(SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS).toContain(EXPERIMENT_TRACE_SCHEMA_VERSION);
+    expect(SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS).toContain('1.3.0');
     expect(SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS).toContain('1.2.0');
     expect(SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS).toContain('1.1.0');
   });

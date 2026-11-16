@@ -127,6 +127,10 @@ export class ExperimentRecorder {
   private effectiveConfig: RuntimeConfig | null = null;
   /** Model provenance as actually reported by the runtime, not as requested (F-10, F-19). */
   private modelVersion: string | null = null;
+  /** Version attribution for schema 1.4.0 records (Task 20.5). */
+  private taskDefinitionVersion?: string;
+  private semanticOutcomeVocabularyVersion?: string;
+  private predictionContractVersion?: string;
   private executionProvider: string | null = null;
   private miningCounters: MiningCounters | null = null;
 
@@ -153,6 +157,29 @@ export class ExperimentRecorder {
   public setModelProvenance(modelVersion: string | null, executionProvider: string | null): void {
     if (modelVersion !== null) this.modelVersion = modelVersion;
     if (executionProvider !== null) this.executionProvider = executionProvider;
+  }
+
+  /**
+   * Records the vocabulary/contract versions the trace's records refer to (schema 1.4.0).
+   *
+   * The versions are what make the new fields interpretable: a semantic outcome without the
+   * vocabulary version it belongs to cannot be joined to a target generator.
+   */
+  public setVersionAttribution(attribution: {
+    taskDefinitionVersion?: string | null;
+    semanticOutcomeVocabularyVersion?: string | null;
+    predictionContractVersion?: string | null;
+  }): void {
+    if (attribution.taskDefinitionVersion !== undefined) {
+      this.taskDefinitionVersion = attribution.taskDefinitionVersion ?? undefined;
+    }
+    if (attribution.semanticOutcomeVocabularyVersion !== undefined) {
+      this.semanticOutcomeVocabularyVersion =
+        attribution.semanticOutcomeVocabularyVersion ?? undefined;
+    }
+    if (attribution.predictionContractVersion !== undefined) {
+      this.predictionContractVersion = attribution.predictionContractVersion ?? undefined;
+    }
   }
 
   /** Records bounded Fast Gate execution counters for the exported trace (F-02). */
@@ -402,6 +429,9 @@ export class ExperimentRecorder {
       modelVersion: this.modelVersion ?? undefined,
       executionProvider: this.executionProvider ?? undefined,
       policyVersion: POLICY_VERSION,
+      taskDefinitionVersion: this.taskDefinitionVersion,
+      semanticOutcomeVocabularyVersion: this.semanticOutcomeVocabularyVersion,
+      predictionContractVersion: this.predictionContractVersion,
       mining: this.miningCounters ?? undefined,
       evictions: this.getEvictionCounters(),
       integrityWarnings

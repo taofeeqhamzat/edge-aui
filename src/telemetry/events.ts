@@ -256,6 +256,25 @@ export interface PredictionEvent {
   contextEncodingVersion?: string;
   /** True when both gates were evaluated and returned no intervention. */
   bothGatesEvaluated: boolean;
+
+  // ---------------------------------------------------------------------------
+  // Normalized prediction (schema 1.4.0, Task 20.5)
+  //
+  // `outcome` above is the generic seven-class label. `predictedOutcome` is the
+  // application-supplied outcome the gates actually asserted, together with the contract
+  // version that describes it and the UI target it was computed against. Additive: 1.3.0
+  // consumers ignore them.
+  // ---------------------------------------------------------------------------
+  predictedOutcome?: string;
+  predictionContractVersion?: string;
+  /** Vocabulary the predicted outcome belongs to. */
+  predictedOutcomeVocabularyVersion?: string;
+  targetContext?: {
+    route?: string;
+    taskId?: string;
+    taskStepId?: string;
+    componentId?: string;
+  };
 }
 
 /**
@@ -376,7 +395,23 @@ export interface TaskEvent {
   status: TaskEventStatus;
   errors: number;
   durationMs?: number;
-  reason?: 'reset' | 'replaced' | 'condition_change' | 'interrupted' | 'timeout';
+  /**
+   * Abandonment/failure reason.
+   *
+   * 1.4.0 extends the vocabulary with the task state machine's own failure reasons, so a
+   * `task_fail` says *why* rather than only that it happened.
+   */
+  reason?:
+    | 'reset'
+    | 'replaced'
+    | 'condition_change'
+    | 'interrupted'
+    | 'timeout'
+    | 'wrong_action'
+    | 'state_mismatch'
+    | 'step_exhausted';
+  /** Version of the task definition this event refers to (schema 1.4.0). */
+  taskDefinitionVersion?: string;
   sessionId?: string;
   experimentId?: string;
   conditionId?: ExperimentalCondition;

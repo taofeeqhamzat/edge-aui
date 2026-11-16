@@ -1,10 +1,10 @@
 {
-  "schemaVersion": "1.3.0",
-  "exportedAt": "2026-10-04T16:00:49.327Z",
+  "schemaVersion": "1.4.0",
+  "exportedAt": "2026-11-16T15:00:14.844Z",
   "session": {
-    "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
-    "startedAt": 12524.9515,
-    "startedAtEpochMs": 1791129645551,
+    "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+    "startedAt": 9342.192458,
+    "startedAtEpochMs": 1794841211092,
     "experimentId": "exp-deploy-verification",
     "conditionId": "adaptive",
     "provenance": "scripted",
@@ -18,12 +18,12 @@
     "errors": 0
   },
   "metadata": {
-    "durationMs": 3775.883056640625,
-    "totalEvents": 114,
+    "durationMs": 3751.842041015625,
+    "totalEvents": 121,
     "behaviourCount": 46,
-    "microTensorCount": 13,
-    "macroCount": 36,
-    "outcomeCount": 13,
+    "microTensorCount": 12,
+    "macroCount": 45,
+    "outcomeCount": 12,
     "predictionCount": 3,
     "interventionCount": 0,
     "policyDecisionCount": 3,
@@ -102,13 +102,7 @@
         "miningTimeoutMs": 1500,
         "rpcTimeoutMs": 3000,
         "rankingStrategy": "confidence",
-        "patternInterventionMap": {
-          "OPEN_FILTERS > APPLY_FILTER": "highlight_primary_action",
-          "NAV_ANALYTICS > OPEN_FILTERS": "simplify_options",
-          "NAV_ANALYTICS > OPEN_FILTERS > APPLY_FILTER": "highlight_primary_action",
-          "SELECT_DATE > OPEN_FILTERS > SELECT_REGION > APPLY_FILTER": "highlight_primary_action",
-          "HOVER_KPI > HOVER_KPI": "expand_tooltip"
-        }
+        "patternInterventionMap": {}
       },
       "slowGate": {
         "modelPath": "/models/gru_edge_aui.onnx",
@@ -140,17 +134,9 @@
       "experiment": {
         "experimentId": "exp-deploy-verification",
         "conditionId": "adaptive",
-        "trialOrder": [
-          "T1",
-          "T2",
-          "T3"
-        ],
-        "taskTimeoutsMs": {
-          "T1": 120000,
-          "T2": 90000,
-          "T3": 150000
-        },
-        "traceSchemaVersion": "1.3.0"
+        "trialOrder": [],
+        "taskTimeoutsMs": {},
+        "traceSchemaVersion": "1.4.0"
       }
     },
     "clock": "epoch_ms",
@@ -159,9 +145,11 @@
     "modelVersion": "TargetInterventionHead-v1.0.0-int8",
     "executionProvider": "wasm",
     "policyVersion": "1.0.0",
+    "semanticOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+    "predictionContractVersion": "1.0.0",
     "mining": {
       "executed": 0,
-      "skipped": 10,
+      "skipped": 9,
       "superseded": 0,
       "timedOut": 0,
       "droppedWindows": 0
@@ -251,13 +239,7 @@
       "miningTimeoutMs": 1500,
       "rpcTimeoutMs": 3000,
       "rankingStrategy": "confidence",
-      "patternInterventionMap": {
-        "OPEN_FILTERS > APPLY_FILTER": "highlight_primary_action",
-        "NAV_ANALYTICS > OPEN_FILTERS": "simplify_options",
-        "NAV_ANALYTICS > OPEN_FILTERS > APPLY_FILTER": "highlight_primary_action",
-        "SELECT_DATE > OPEN_FILTERS > SELECT_REGION > APPLY_FILTER": "highlight_primary_action",
-        "HOVER_KPI > HOVER_KPI": "expand_tooltip"
-      }
+      "patternInterventionMap": {}
     },
     "slowGate": {
       "modelPath": "/models/gru_edge_aui.onnx",
@@ -289,29 +271,21 @@
     "experiment": {
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "trialOrder": [
-        "T1",
-        "T2",
-        "T3"
-      ],
-      "taskTimeoutsMs": {
-        "T1": 120000,
-        "T2": 90000,
-        "T3": 150000
-      },
-      "traceSchemaVersion": "1.3.0"
+      "trialOrder": [],
+      "taskTimeoutsMs": {},
+      "traceSchemaVersion": "1.4.0"
     }
   },
   "behaviourEvents": [
     {
-      "timestamp": 1791129645556.7317,
+      "timestamp": 1794841211097.2666,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "nav-Analytics",
       "componentRole": "navigation",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -325,7 +299,7 @@
       }
     },
     {
-      "timestamp": 1791129645558.2068,
+      "timestamp": 1794841211098.1614,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -333,7 +307,7 @@
       "componentRole": "accordion",
       "action": "click",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -347,14 +321,14 @@
       }
     },
     {
-      "timestamp": 1791129645566.59,
+      "timestamp": 1794841211098.9873,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "btn-apply-filters",
       "componentRole": "primary-action",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -368,13 +342,13 @@
       }
     },
     {
-      "timestamp": 1791129645568.3186,
+      "timestamp": 1794841211100.0325,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
       "action": "submit",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "form",
       "viewport": {
         "width": 1024,
@@ -388,14 +362,14 @@
       }
     },
     {
-      "timestamp": 1791129645569.9697,
+      "timestamp": 1794841211100.9631,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "kpi-card-revenue",
       "componentRole": "kpi-card",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "div",
       "viewport": {
         "width": 1024,
@@ -409,14 +383,14 @@
       }
     },
     {
-      "timestamp": 1791129645924.715,
+      "timestamp": 1794841211455.075,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "nav-Analytics",
       "componentRole": "navigation",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -430,7 +404,7 @@
       }
     },
     {
-      "timestamp": 1791129645925.8696,
+      "timestamp": 1794841211457.16,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -438,7 +412,7 @@
       "componentRole": "accordion",
       "action": "click",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -452,14 +426,14 @@
       }
     },
     {
-      "timestamp": 1791129645927.2317,
+      "timestamp": 1794841211459.3167,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "btn-apply-filters",
       "componentRole": "primary-action",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -473,13 +447,13 @@
       }
     },
     {
-      "timestamp": 1791129645930.235,
+      "timestamp": 1794841211460.8,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
       "action": "submit",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "form",
       "viewport": {
         "width": 1024,
@@ -493,14 +467,14 @@
       }
     },
     {
-      "timestamp": 1791129645932.515,
+      "timestamp": 1794841211461.754,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "kpi-card-revenue",
       "componentRole": "kpi-card",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "div",
       "viewport": {
         "width": 1024,
@@ -514,14 +488,14 @@
       }
     },
     {
-      "timestamp": 1791129646286.7766,
+      "timestamp": 1794841211815.9185,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "nav-Analytics",
       "componentRole": "navigation",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -535,7 +509,7 @@
       }
     },
     {
-      "timestamp": 1791129646288.0544,
+      "timestamp": 1794841211817.6602,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -543,7 +517,7 @@
       "componentRole": "accordion",
       "action": "click",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -557,14 +531,14 @@
       }
     },
     {
-      "timestamp": 1791129646289.3013,
+      "timestamp": 1794841211819.047,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "btn-apply-filters",
       "componentRole": "primary-action",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -578,13 +552,13 @@
       }
     },
     {
-      "timestamp": 1791129646290.8062,
+      "timestamp": 1794841211820.3018,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
       "action": "submit",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "form",
       "viewport": {
         "width": 1024,
@@ -598,14 +572,14 @@
       }
     },
     {
-      "timestamp": 1791129646292.1003,
+      "timestamp": 1794841211821.555,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "kpi-card-revenue",
       "componentRole": "kpi-card",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "div",
       "viewport": {
         "width": 1024,
@@ -619,14 +593,14 @@
       }
     },
     {
-      "timestamp": 1791129646646.293,
+      "timestamp": 1794841212176.1729,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "nav-Analytics",
       "componentRole": "navigation",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -640,7 +614,7 @@
       }
     },
     {
-      "timestamp": 1791129646648.0342,
+      "timestamp": 1794841212177.609,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -648,7 +622,7 @@
       "componentRole": "accordion",
       "action": "click",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -662,14 +636,14 @@
       }
     },
     {
-      "timestamp": 1791129646649.4675,
+      "timestamp": 1794841212178.74,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "btn-apply-filters",
       "componentRole": "primary-action",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -683,13 +657,13 @@
       }
     },
     {
-      "timestamp": 1791129646650.4805,
+      "timestamp": 1794841212179.8718,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
       "action": "submit",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "form",
       "viewport": {
         "width": 1024,
@@ -703,14 +677,14 @@
       }
     },
     {
-      "timestamp": 1791129646652.3545,
+      "timestamp": 1794841212181.9775,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "kpi-card-revenue",
       "componentRole": "kpi-card",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "div",
       "viewport": {
         "width": 1024,
@@ -724,14 +698,14 @@
       }
     },
     {
-      "timestamp": 1791129647015.475,
+      "timestamp": 1794841212535.9854,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "nav-Analytics",
       "componentRole": "navigation",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -745,7 +719,7 @@
       }
     },
     {
-      "timestamp": 1791129647016.7693,
+      "timestamp": 1794841212537.3877,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -753,7 +727,7 @@
       "componentRole": "accordion",
       "action": "click",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -767,14 +741,14 @@
       }
     },
     {
-      "timestamp": 1791129647018.4258,
+      "timestamp": 1794841212538.398,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "btn-apply-filters",
       "componentRole": "primary-action",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -788,13 +762,13 @@
       }
     },
     {
-      "timestamp": 1791129647019.7983,
+      "timestamp": 1794841212540.1523,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
       "action": "submit",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "form",
       "viewport": {
         "width": 1024,
@@ -808,14 +782,14 @@
       }
     },
     {
-      "timestamp": 1791129647021.0159,
+      "timestamp": 1794841212541.4846,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "kpi-card-revenue",
       "componentRole": "kpi-card",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "div",
       "viewport": {
         "width": 1024,
@@ -829,14 +803,14 @@
       }
     },
     {
-      "timestamp": 1791129647373.6855,
+      "timestamp": 1794841212895.742,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "nav-Analytics",
       "componentRole": "navigation",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -850,7 +824,7 @@
       }
     },
     {
-      "timestamp": 1791129647374.9614,
+      "timestamp": 1794841212897.8054,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -858,7 +832,7 @@
       "componentRole": "accordion",
       "action": "click",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -872,14 +846,14 @@
       }
     },
     {
-      "timestamp": 1791129647376.0803,
+      "timestamp": 1794841212899.6184,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "btn-apply-filters",
       "componentRole": "primary-action",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -893,13 +867,13 @@
       }
     },
     {
-      "timestamp": 1791129647377.579,
+      "timestamp": 1794841212900.8684,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
       "action": "submit",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "form",
       "viewport": {
         "width": 1024,
@@ -913,14 +887,14 @@
       }
     },
     {
-      "timestamp": 1791129647381.5645,
+      "timestamp": 1794841212901.9646,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "kpi-card-revenue",
       "componentRole": "kpi-card",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "div",
       "viewport": {
         "width": 1024,
@@ -934,14 +908,14 @@
       }
     },
     {
-      "timestamp": 1791129647733.9185,
+      "timestamp": 1794841213256.283,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "nav-Analytics",
       "componentRole": "navigation",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -955,7 +929,7 @@
       }
     },
     {
-      "timestamp": 1791129647735.1787,
+      "timestamp": 1794841213257.8481,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -963,7 +937,7 @@
       "componentRole": "accordion",
       "action": "click",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -977,14 +951,14 @@
       }
     },
     {
-      "timestamp": 1791129647736.3884,
+      "timestamp": 1794841213258.9985,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "btn-apply-filters",
       "componentRole": "primary-action",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -998,13 +972,13 @@
       }
     },
     {
-      "timestamp": 1791129647737.503,
+      "timestamp": 1794841213260.1262,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
       "action": "submit",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "form",
       "viewport": {
         "width": 1024,
@@ -1018,14 +992,14 @@
       }
     },
     {
-      "timestamp": 1791129647738.6309,
+      "timestamp": 1794841213261.2307,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "kpi-card-revenue",
       "componentRole": "kpi-card",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "div",
       "viewport": {
         "width": 1024,
@@ -1039,14 +1013,14 @@
       }
     },
     {
-      "timestamp": 1791129648092.275,
+      "timestamp": 1794841213615.7605,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "nav-Analytics",
       "componentRole": "navigation",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -1060,7 +1034,7 @@
       }
     },
     {
-      "timestamp": 1791129648093.5928,
+      "timestamp": 1794841213618.2175,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1068,7 +1042,7 @@
       "componentRole": "accordion",
       "action": "click",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -1082,14 +1056,14 @@
       }
     },
     {
-      "timestamp": 1791129648095.04,
+      "timestamp": 1794841213619.7249,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "btn-apply-filters",
       "componentRole": "primary-action",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -1103,13 +1077,13 @@
       }
     },
     {
-      "timestamp": 1791129648096.9946,
+      "timestamp": 1794841213621.009,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
       "action": "submit",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "form",
       "viewport": {
         "width": 1024,
@@ -1123,14 +1097,14 @@
       }
     },
     {
-      "timestamp": 1791129648098.908,
+      "timestamp": 1794841213622.2327,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "kpi-card-revenue",
       "componentRole": "kpi-card",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "div",
       "viewport": {
         "width": 1024,
@@ -1144,14 +1118,14 @@
       }
     },
     {
-      "timestamp": 1791129648460.8525,
+      "timestamp": 1794841213976.9329,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "nav-Analytics",
       "componentRole": "navigation",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -1165,7 +1139,7 @@
       }
     },
     {
-      "timestamp": 1791129648463.6235,
+      "timestamp": 1794841213979.0977,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1173,7 +1147,7 @@
       "componentRole": "accordion",
       "action": "click",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -1187,14 +1161,14 @@
       }
     },
     {
-      "timestamp": 1791129648465.6748,
+      "timestamp": 1794841213981.054,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "btn-apply-filters",
       "componentRole": "primary-action",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "button",
       "viewport": {
         "width": 1024,
@@ -1208,13 +1182,13 @@
       }
     },
     {
-      "timestamp": 1791129648466.7424,
+      "timestamp": 1794841213983.1497,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
       "action": "submit",
       "ariaExpanded": false,
-      "route": "Overview",
+      "route": "",
       "targetTag": "form",
       "viewport": {
         "width": 1024,
@@ -1228,14 +1202,14 @@
       }
     },
     {
-      "timestamp": 1791129648467.7715,
+      "timestamp": 1794841213985.2266,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
       "componentId": "kpi-card-revenue",
       "componentRole": "kpi-card",
       "action": "click",
-      "route": "Overview",
+      "route": "",
       "targetTag": "div",
       "viewport": {
         "width": 1024,
@@ -1249,17 +1223,17 @@
       }
     },
     {
-      "timestamp": 1791129648825.2097,
+      "timestamp": 1794841214340.9016,
       "type": "pagehide",
-      "route": "Overview",
+      "route": "",
       "action": "pagehide"
     }
   ],
   "microTensors": [
     {
       "windowId": 0,
-      "windowStart": 1791129645556.7317,
-      "windowEnd": 1791129645806.7317,
+      "windowStart": 1794841211097.2666,
+      "windowEnd": 1794841211347.2666,
       "values": [
         0,
         0,
@@ -1285,8 +1259,8 @@
     },
     {
       "windowId": 1,
-      "windowStart": 1791129645806.7317,
-      "windowEnd": 1791129646056.7317,
+      "windowStart": 1794841211347.2666,
+      "windowEnd": 1794841211597.2666,
       "values": [
         0,
         0,
@@ -1312,8 +1286,8 @@
     },
     {
       "windowId": 2,
-      "windowStart": 1791129646056.7317,
-      "windowEnd": 1791129646306.7317,
+      "windowStart": 1794841211597.2666,
+      "windowEnd": 1794841211847.2666,
       "values": [
         0,
         0,
@@ -1339,8 +1313,8 @@
     },
     {
       "windowId": 3,
-      "windowStart": 1791129646306.7317,
-      "windowEnd": 1791129646556.7317,
+      "windowStart": 1794841211847.2666,
+      "windowEnd": 1794841212097.2666,
       "values": [
         0,
         0,
@@ -1366,8 +1340,8 @@
     },
     {
       "windowId": 4,
-      "windowStart": 1791129646556.7317,
-      "windowEnd": 1791129646806.7317,
+      "windowStart": 1794841212097.2666,
+      "windowEnd": 1794841212347.2666,
       "values": [
         0,
         0,
@@ -1393,8 +1367,8 @@
     },
     {
       "windowId": 5,
-      "windowStart": 1791129646806.7317,
-      "windowEnd": 1791129647056.7317,
+      "windowStart": 1794841212347.2666,
+      "windowEnd": 1794841212597.2666,
       "values": [
         0,
         0,
@@ -1420,8 +1394,8 @@
     },
     {
       "windowId": 6,
-      "windowStart": 1791129647056.7317,
-      "windowEnd": 1791129647306.7317,
+      "windowStart": 1794841212597.2666,
+      "windowEnd": 1794841212847.2666,
       "values": [
         0,
         0,
@@ -1447,8 +1421,8 @@
     },
     {
       "windowId": 7,
-      "windowStart": 1791129647306.7317,
-      "windowEnd": 1791129647556.7317,
+      "windowStart": 1794841212847.2666,
+      "windowEnd": 1794841213097.2666,
       "values": [
         0,
         0,
@@ -1474,8 +1448,8 @@
     },
     {
       "windowId": 8,
-      "windowStart": 1791129647556.7317,
-      "windowEnd": 1791129647806.7317,
+      "windowStart": 1794841213097.2666,
+      "windowEnd": 1794841213347.2666,
       "values": [
         0,
         0,
@@ -1501,8 +1475,8 @@
     },
     {
       "windowId": 9,
-      "windowStart": 1791129647806.7317,
-      "windowEnd": 1791129648056.7317,
+      "windowStart": 1794841213347.2666,
+      "windowEnd": 1794841213597.2666,
       "values": [
         0,
         0,
@@ -1528,8 +1502,8 @@
     },
     {
       "windowId": 10,
-      "windowStart": 1791129648056.7317,
-      "windowEnd": 1791129648306.7317,
+      "windowStart": 1794841213597.2666,
+      "windowEnd": 1794841213847.2666,
       "values": [
         0,
         0,
@@ -1555,8 +1529,8 @@
     },
     {
       "windowId": 11,
-      "windowStart": 1791129648306.7317,
-      "windowEnd": 1791129648556.7317,
+      "windowStart": 1794841213847.2666,
+      "windowEnd": 1794841214097.2666,
       "values": [
         0,
         0,
@@ -1579,420 +1553,490 @@
       ],
       "eventCount": 5,
       "inactive": false
-    },
-    {
-      "windowId": 12,
-      "windowStart": 1791129648556.7317,
-      "windowEnd": 1791129648806.7317,
-      "values": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1
-      ],
-      "eventCount": 0,
-      "inactive": true
     }
   ],
   "macroInteractions": [
     {
-      "timestamp": 1791129645556.7317,
+      "timestamp": 1794841211097.2666,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791129645558.2068,
-      "symbol": "CLOSE_FILTERS",
+      "timestamp": 1794841211098.1614,
+      "symbol": "COLLAPSE_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791129645566.59,
-      "symbol": "APPLY_FILTER",
+      "timestamp": 1794841211098.9873,
+      "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791129645569.9697,
-      "symbol": "HOVER_KPI",
+      "timestamp": 1794841211100.0325,
+      "symbol": "SUBMIT_FILTER_DRAWER",
+      "componentId": "filter-drawer",
+      "action": "submit",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1794841211100.9631,
+      "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791129645924.715,
+      "timestamp": 1794841211455.075,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791129645925.8696,
-      "symbol": "CLOSE_FILTERS",
+      "timestamp": 1794841211457.16,
+      "symbol": "COLLAPSE_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791129645927.2317,
-      "symbol": "APPLY_FILTER",
+      "timestamp": 1794841211459.3167,
+      "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791129645932.515,
-      "symbol": "HOVER_KPI",
+      "timestamp": 1794841211460.8,
+      "symbol": "SUBMIT_FILTER_DRAWER",
+      "componentId": "filter-drawer",
+      "action": "submit",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive"
+    },
+    {
+      "timestamp": 1794841211461.754,
+      "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1791129646286.7766,
+      "timestamp": 1794841211815.9185,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1791129646288.0544,
-      "symbol": "CLOSE_FILTERS",
+      "timestamp": 1794841211817.6602,
+      "symbol": "COLLAPSE_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1791129646289.3013,
-      "symbol": "APPLY_FILTER",
+      "timestamp": 1794841211819.047,
+      "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1791129646292.1003,
-      "symbol": "HOVER_KPI",
-      "componentId": "kpi-card-revenue",
-      "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "timestamp": 1794841211820.3018,
+      "symbol": "SUBMIT_FILTER_DRAWER",
+      "componentId": "filter-drawer",
+      "action": "submit",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1791129646646.293,
+      "timestamp": 1794841211821.555,
+      "symbol": "CLICK_KPI_CARD_REVENUE",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 0
+    },
+    {
+      "timestamp": 1794841212176.1729,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 2
     },
     {
-      "timestamp": 1791129646648.0342,
-      "symbol": "CLOSE_FILTERS",
+      "timestamp": 1794841212177.609,
+      "symbol": "COLLAPSE_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 2
     },
     {
-      "timestamp": 1791129646649.4675,
-      "symbol": "APPLY_FILTER",
+      "timestamp": 1794841212178.74,
+      "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 2
     },
     {
-      "timestamp": 1791129646652.3545,
-      "symbol": "HOVER_KPI",
-      "componentId": "kpi-card-revenue",
-      "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "timestamp": 1794841212179.8718,
+      "symbol": "SUBMIT_FILTER_DRAWER",
+      "componentId": "filter-drawer",
+      "action": "submit",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 2
     },
     {
-      "timestamp": 1791129647015.475,
+      "timestamp": 1794841212181.9775,
+      "symbol": "CLICK_KPI_CARD_REVENUE",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 2
+    },
+    {
+      "timestamp": 1794841212535.9854,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1791129647016.7693,
-      "symbol": "CLOSE_FILTERS",
+      "timestamp": 1794841212537.3877,
+      "symbol": "COLLAPSE_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1791129647018.4258,
-      "symbol": "APPLY_FILTER",
+      "timestamp": 1794841212538.398,
+      "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1791129647021.0159,
-      "symbol": "HOVER_KPI",
-      "componentId": "kpi-card-revenue",
-      "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "timestamp": 1794841212540.1523,
+      "symbol": "SUBMIT_FILTER_DRAWER",
+      "componentId": "filter-drawer",
+      "action": "submit",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1791129647373.6855,
-      "symbol": "NAV_ANALYTICS",
-      "componentId": "nav-Analytics",
-      "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
-      "experimentId": "exp-deploy-verification",
-      "conditionId": "adaptive",
-      "windowId": 5
-    },
-    {
-      "timestamp": 1791129647374.9614,
-      "symbol": "CLOSE_FILTERS",
-      "componentId": "filter-Region",
-      "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
-      "experimentId": "exp-deploy-verification",
-      "conditionId": "adaptive",
-      "windowId": 5
-    },
-    {
-      "timestamp": 1791129647376.0803,
-      "symbol": "APPLY_FILTER",
-      "componentId": "btn-apply-filters",
-      "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
-      "experimentId": "exp-deploy-verification",
-      "conditionId": "adaptive",
-      "windowId": 5
-    },
-    {
-      "timestamp": 1791129647381.5645,
-      "symbol": "HOVER_KPI",
+      "timestamp": 1794841212541.4846,
+      "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 3
+    },
+    {
+      "timestamp": 1794841212895.742,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1791129647733.9185,
-      "symbol": "NAV_ANALYTICS",
-      "componentId": "nav-Analytics",
-      "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
-      "experimentId": "exp-deploy-verification",
-      "conditionId": "adaptive",
-      "windowId": 6
-    },
-    {
-      "timestamp": 1791129647735.1787,
-      "symbol": "CLOSE_FILTERS",
+      "timestamp": 1794841212897.8054,
+      "symbol": "COLLAPSE_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 6
+      "windowId": 5
     },
     {
-      "timestamp": 1791129647736.3884,
-      "symbol": "APPLY_FILTER",
+      "timestamp": 1794841212899.6184,
+      "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 6
+      "windowId": 5
     },
     {
-      "timestamp": 1791129647738.6309,
-      "symbol": "HOVER_KPI",
+      "timestamp": 1794841212900.8684,
+      "symbol": "SUBMIT_FILTER_DRAWER",
+      "componentId": "filter-drawer",
+      "action": "submit",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 5
+    },
+    {
+      "timestamp": 1794841212901.9646,
+      "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 6
+      "windowId": 5
     },
     {
-      "timestamp": 1791129648092.275,
+      "timestamp": 1794841213256.283,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 7
+      "windowId": 6
     },
     {
-      "timestamp": 1791129648093.5928,
-      "symbol": "CLOSE_FILTERS",
+      "timestamp": 1794841213257.8481,
+      "symbol": "COLLAPSE_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 7
+      "windowId": 6
     },
     {
-      "timestamp": 1791129648095.04,
-      "symbol": "APPLY_FILTER",
+      "timestamp": 1794841213258.9985,
+      "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 7
+      "windowId": 6
     },
     {
-      "timestamp": 1791129648098.908,
-      "symbol": "HOVER_KPI",
+      "timestamp": 1794841213260.1262,
+      "symbol": "SUBMIT_FILTER_DRAWER",
+      "componentId": "filter-drawer",
+      "action": "submit",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 6
+    },
+    {
+      "timestamp": 1794841213261.2307,
+      "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "windowId": 7
+      "windowId": 6
     },
     {
-      "timestamp": 1791129648460.8525,
+      "timestamp": 1794841213615.7605,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 7
+    },
+    {
+      "timestamp": 1794841213618.2175,
+      "symbol": "COLLAPSE_FILTER_REGION",
+      "componentId": "filter-Region",
+      "action": "click",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 7
+    },
+    {
+      "timestamp": 1794841213619.7249,
+      "symbol": "CLICK_BTN_APPLY_FILTERS",
+      "componentId": "btn-apply-filters",
+      "action": "click",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 7
+    },
+    {
+      "timestamp": 1794841213621.009,
+      "symbol": "SUBMIT_FILTER_DRAWER",
+      "componentId": "filter-drawer",
+      "action": "submit",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 7
+    },
+    {
+      "timestamp": 1794841213622.2327,
+      "symbol": "CLICK_KPI_CARD_REVENUE",
+      "componentId": "kpi-card-revenue",
+      "action": "click",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 7
+    },
+    {
+      "timestamp": 1794841213976.9329,
+      "symbol": "NAV_ANALYTICS",
+      "componentId": "nav-Analytics",
+      "action": "click",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1791129648463.6235,
-      "symbol": "CLOSE_FILTERS",
+      "timestamp": 1794841213979.0977,
+      "symbol": "COLLAPSE_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1791129648465.6748,
-      "symbol": "APPLY_FILTER",
+      "timestamp": 1794841213981.054,
+      "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1791129648467.7715,
-      "symbol": "HOVER_KPI",
+      "timestamp": 1794841213983.1497,
+      "symbol": "SUBMIT_FILTER_DRAWER",
+      "componentId": "filter-drawer",
+      "action": "submit",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "windowId": 9
+    },
+    {
+      "timestamp": 1794841213985.2266,
+      "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
-      "route": "Overview",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "route": "",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
@@ -2000,256 +2044,271 @@
   ],
   "outcomes": [
     {
-      "timestamp": 1791129646646.293,
+      "timestamp": 1794841212176.1729,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 0,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129646646.293,
+      "sourceEventTimestamp": 1794841212176.1729,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129646306.7317,
-        "lookaheadEndMs": 1791129647306.7317,
-        "candidateCount": 8,
-        "earliestTimestampMs": 1791129646646.293,
+        "lookaheadStartMs": 1794841211847.2666,
+        "lookaheadEndMs": 1794841212847.2666,
+        "candidateCount": 10,
+        "earliestTimestampMs": 1794841212176.1729,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
-      }
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1791129646646.293,
+      "timestamp": 1794841212176.1729,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 1,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129646646.293,
+      "sourceEventTimestamp": 1794841212176.1729,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129646556.7317,
-        "lookaheadEndMs": 1791129647556.7317,
-        "candidateCount": 12,
-        "earliestTimestampMs": 1791129646646.293,
+        "lookaheadStartMs": 1794841212097.2666,
+        "lookaheadEndMs": 1794841213097.2666,
+        "candidateCount": 15,
+        "earliestTimestampMs": 1794841212176.1729,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
-      }
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1791129647015.475,
+      "timestamp": 1794841212535.9854,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 2,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129647015.475,
+      "sourceEventTimestamp": 1794841212535.9854,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129646806.7317,
-        "lookaheadEndMs": 1791129647806.7317,
-        "candidateCount": 12,
-        "earliestTimestampMs": 1791129647015.475,
+        "lookaheadStartMs": 1794841212347.2666,
+        "lookaheadEndMs": 1794841213347.2666,
+        "candidateCount": 15,
+        "earliestTimestampMs": 1794841212535.9854,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
-      }
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1791129647373.6855,
+      "timestamp": 1794841212895.742,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 3,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129647373.6855,
+      "sourceEventTimestamp": 1794841212895.742,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129647056.7317,
-        "lookaheadEndMs": 1791129648056.7317,
-        "candidateCount": 8,
-        "earliestTimestampMs": 1791129647373.6855,
+        "lookaheadStartMs": 1794841212597.2666,
+        "lookaheadEndMs": 1794841213597.2666,
+        "candidateCount": 10,
+        "earliestTimestampMs": 1794841212895.742,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
-      }
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1791129647373.6855,
+      "timestamp": 1794841212895.742,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 4,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129647373.6855,
+      "sourceEventTimestamp": 1794841212895.742,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129647306.7317,
-        "lookaheadEndMs": 1791129648306.7317,
-        "candidateCount": 12,
-        "earliestTimestampMs": 1791129647373.6855,
+        "lookaheadStartMs": 1794841212847.2666,
+        "lookaheadEndMs": 1794841213847.2666,
+        "candidateCount": 15,
+        "earliestTimestampMs": 1794841212895.742,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
-      }
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1791129647733.9185,
+      "timestamp": 1794841213256.283,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 5,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129647733.9185,
+      "sourceEventTimestamp": 1794841213256.283,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129647556.7317,
-        "lookaheadEndMs": 1791129648556.7317,
-        "candidateCount": 12,
-        "earliestTimestampMs": 1791129647733.9185,
+        "lookaheadStartMs": 1794841213097.2666,
+        "lookaheadEndMs": 1794841214097.2666,
+        "candidateCount": 15,
+        "earliestTimestampMs": 1794841213256.283,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
-      }
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1791129648092.275,
+      "timestamp": 1794841213615.7605,
       "outcome": "CLICK",
-      "lookaheadComplete": true,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "lookaheadComplete": false,
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 6,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129648092.275,
+      "sourceEventTimestamp": 1794841213615.7605,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129647806.7317,
-        "lookaheadEndMs": 1791129648806.7317,
-        "candidateCount": 8,
-        "earliestTimestampMs": 1791129648092.275,
+        "lookaheadStartMs": 1794841213347.2666,
+        "lookaheadEndMs": 1794841214347.2666,
+        "candidateCount": 11,
+        "earliestTimestampMs": 1794841213615.7605,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
-      }
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1791129648092.275,
+      "timestamp": 1794841213615.7605,
       "outcome": "CLICK",
       "lookaheadComplete": false,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 7,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129648092.275,
+      "sourceEventTimestamp": 1794841213615.7605,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129648056.7317,
-        "lookaheadEndMs": 1791129649056.7317,
-        "candidateCount": 9,
-        "earliestTimestampMs": 1791129648092.275,
+        "lookaheadStartMs": 1794841213597.2666,
+        "lookaheadEndMs": 1794841214597.2666,
+        "candidateCount": 11,
+        "earliestTimestampMs": 1794841213615.7605,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
-      }
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1791129648460.8525,
+      "timestamp": 1794841213976.9329,
       "outcome": "CLICK",
       "lookaheadComplete": false,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 8,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129648460.8525,
+      "sourceEventTimestamp": 1794841213976.9329,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129648306.7317,
-        "lookaheadEndMs": 1791129649306.7317,
-        "candidateCount": 5,
-        "earliestTimestampMs": 1791129648460.8525,
+        "lookaheadStartMs": 1794841213847.2666,
+        "lookaheadEndMs": 1794841214847.2666,
+        "candidateCount": 6,
+        "earliestTimestampMs": 1794841213976.9329,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
-      }
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1791129648825.2097,
+      "timestamp": 1794841214340.9016,
       "outcome": "ABANDON",
       "lookaheadComplete": false,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 9,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129648825.2097,
+      "sourceEventTimestamp": 1794841214340.9016,
       "sourceEventType": "pagehide",
-      "route": "Overview",
+      "route": "",
       "derivation": {
-        "lookaheadStartMs": 1791129648556.7317,
-        "lookaheadEndMs": 1791129649556.7317,
+        "lookaheadStartMs": 1794841214097.2666,
+        "lookaheadEndMs": 1794841215097.2666,
         "candidateCount": 1,
-        "earliestTimestampMs": 1791129648825.2097,
+        "earliestTimestampMs": 1794841214340.9016,
         "tieBroken": false,
         "source": "lifecycle_event",
         "observableTermination": true
       }
     },
     {
-      "timestamp": 1791129648825.2097,
+      "timestamp": 1794841213847.2666,
       "outcome": "ABANDON",
       "lookaheadComplete": false,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "windowId": 10,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1791129648825.2097,
-      "sourceEventType": "pagehide",
-      "route": "Overview",
       "derivation": {
-        "lookaheadStartMs": 1791129648806.7317,
-        "lookaheadEndMs": 1791129649806.7317,
-        "candidateCount": 1,
-        "earliestTimestampMs": 1791129648825.2097,
-        "tieBroken": false,
-        "source": "lifecycle_event",
-        "observableTermination": true
-      }
-    },
-    {
-      "timestamp": 1791129648556.7317,
-      "outcome": "ABANDON",
-      "lookaheadComplete": false,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
-      "windowId": 11,
-      "experimentId": "exp-deploy-verification",
-      "conditionId": "adaptive",
-      "derivation": {
-        "lookaheadStartMs": 1791129649056.7317,
-        "lookaheadEndMs": 1791129650056.7317,
+        "lookaheadStartMs": 1794841214347.2666,
+        "lookaheadEndMs": 1794841215347.2666,
         "candidateCount": 0,
         "earliestTimestampMs": null,
         "tieBroken": false,
@@ -2258,16 +2317,16 @@
       }
     },
     {
-      "timestamp": 1791129648806.7317,
+      "timestamp": 1794841214097.2666,
       "outcome": "ABANDON",
       "lookaheadComplete": false,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
-      "windowId": 12,
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
+      "windowId": 11,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "derivation": {
-        "lookaheadStartMs": 1791129649306.7317,
-        "lookaheadEndMs": 1791129650306.7317,
+        "lookaheadStartMs": 1794841214597.2666,
+        "lookaheadEndMs": 1794841215597.2666,
         "candidateCount": 0,
         "earliestTimestampMs": null,
         "tieBroken": false,
@@ -2278,9 +2337,9 @@
   ],
   "predictions": [
     {
-      "timestamp": 1791129648140.8381,
-      "predictionId": "pred_1",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "timestamp": 1794841213624.0598,
+      "predictionId": "pred_7",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 8,
@@ -2296,18 +2355,22 @@
       ],
       "matchedGate": "none",
       "outcome": "NO_OUTCOME",
-      "confidence": 0.47721394896507263,
-      "latencyMs": 1.0774579999997513,
-      "fastGateLatencyMs": 0.019041999999899417,
-      "slowGateLatencyMs": 1.0516250000000582,
+      "predictedOutcome": "no_op",
+      "predictionContractVersion": "1.0.0",
+      "predictedOutcomeVocabularyVersion": "1.0",
+      "targetContext": {},
+      "confidence": 2.524660348892212,
+      "latencyMs": 1.285249999998996,
+      "fastGateLatencyMs": 0.018292000000656117,
+      "slowGateLatencyMs": 1.254084000000148,
       "modelVersion": "TargetInterventionHead-v1.0.0-int8",
       "contextEncodingVersion": "R6-v1.0.0",
       "bothGatesEvaluated": true
     },
     {
-      "timestamp": 1791129648664.0261,
-      "predictionId": "pred_2",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "timestamp": 1794841214129.1853,
+      "predictionId": "pred_8",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 10,
@@ -2323,18 +2386,22 @@
       ],
       "matchedGate": "none",
       "outcome": "NO_OUTCOME",
-      "confidence": 0.47498562932014465,
-      "latencyMs": 1.6310840000005555,
-      "fastGateLatencyMs": 0.0318329999990965,
-      "slowGateLatencyMs": 1.589458000000377,
+      "predictedOutcome": "offer_assistance",
+      "predictionContractVersion": "1.0.0",
+      "predictedOutcomeVocabularyVersion": "1.0",
+      "targetContext": {},
+      "confidence": 2.5132696628570557,
+      "latencyMs": 1.75,
+      "fastGateLatencyMs": 0.042584000000715605,
+      "slowGateLatencyMs": 1.6910829999997077,
       "modelVersion": "TargetInterventionHead-v1.0.0-int8",
       "contextEncodingVersion": "R6-v1.0.0",
       "bothGatesEvaluated": true
     },
     {
-      "timestamp": 1791129648920.2156,
-      "predictionId": "pred_3",
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "timestamp": 1794841214380.4424,
+      "predictionId": "pred_9",
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 11,
@@ -2350,10 +2417,14 @@
       ],
       "matchedGate": "none",
       "outcome": "NO_OUTCOME",
-      "confidence": 0.47721394896507263,
-      "latencyMs": 1.1861250000001746,
-      "fastGateLatencyMs": 0.014708999999129446,
-      "slowGateLatencyMs": 1.1624999999985448,
+      "predictedOutcome": "no_op",
+      "predictionContractVersion": "1.0.0",
+      "predictedOutcomeVocabularyVersion": "1.0",
+      "targetContext": {},
+      "confidence": 2.524660348892212,
+      "latencyMs": 2.034665999999561,
+      "fastGateLatencyMs": 0.04129099999954633,
+      "slowGateLatencyMs": 1.970999999999549,
       "modelVersion": "TargetInterventionHead-v1.0.0-int8",
       "contextEncodingVersion": "R6-v1.0.0",
       "bothGatesEvaluated": true
@@ -2361,12 +2432,12 @@
   ],
   "policyDecisions": [
     {
-      "timestamp": 1791129648142.0894,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "timestamp": 1794841213625.5469,
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 8,
-      "predictionId": "pred_1",
+      "predictionId": "pred_7",
       "accepted": false,
       "policyDecision": "no_prediction",
       "policyReason": "No intervention: both gates evaluated and returned no candidate",
@@ -2375,26 +2446,29 @@
       "phase": "no_prediction"
     },
     {
-      "timestamp": 1791129648665.8362,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "timestamp": 1794841214131.2004,
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 10,
-      "predictionId": "pred_2",
+      "predictionId": "pred_8",
+      "candidate": "no_op",
+      "confidence": 0.1700020134449005,
       "accepted": false,
-      "policyDecision": "no_prediction",
-      "policyReason": "No intervention: both gates evaluated and returned no candidate",
+      "policyDecision": "rejected",
+      "policyReason": "Confidence 0.17 below threshold 0.75",
+      "rejectionCategory": "below_threshold",
       "candidateCount": 0,
       "cooldownRemainingMs": 0,
-      "phase": "no_prediction"
+      "phase": "policy"
     },
     {
-      "timestamp": 1791129648921.5918,
-      "sessionId": "28e06bd9-1f4e-48ad-919f-97d7faf7bfb0",
+      "timestamp": 1794841214382.784,
+      "sessionId": "eec67ad6-d6b8-42a3-b837-6c6ebe70c563",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 11,
-      "predictionId": "pred_3",
+      "predictionId": "pred_9",
       "accepted": false,
       "policyDecision": "no_prediction",
       "policyReason": "No intervention: both gates evaluated and returned no candidate",

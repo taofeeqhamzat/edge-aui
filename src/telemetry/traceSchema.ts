@@ -44,8 +44,8 @@ import { SessionContext, SessionProvenance } from './session';
 import { UiTaskStateSnapshot } from '../integration/types';
 import type { RuntimeConfig } from '../config/runtimeConfig';
 
-export const EXPERIMENT_TRACE_SCHEMA_VERSION = '1.3.0';
-export const SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.3.0', '1.2.0', '1.1.0'] as const;
+export const EXPERIMENT_TRACE_SCHEMA_VERSION = '1.4.0';
+export const SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.4.0', '1.3.0', '1.2.0', '1.1.0'] as const;
 
 /**
  * The single clock every trace record uses.
@@ -169,6 +169,12 @@ export interface TraceReplayMetadata {
   executionProvider?: string;
   /** Policy version in force for this trace. */
   policyVersion: string;
+  /** Version of the task definition the recorded task events refer to (schema 1.4.0). */
+  taskDefinitionVersion?: string;
+  /** Version of the semantic outcome vocabulary used to derive `OutcomeEvent.taskOutcome`. */
+  semanticOutcomeVocabularyVersion?: string;
+  /** Version of the normalized prediction contract carried by `PredictionEvent`. */
+  predictionContractVersion?: string;
   /** Bounded Fast Gate execution counters (F-02). */
   mining?: MiningCounters;
   /** Buffer-eviction proof so truncation is never silent (F-16). */
@@ -204,6 +210,195 @@ export interface TraceValidationResult {
 }
 
 /**
+ * Validator for one record kind.
+ *
+ * Each helper receives the whole trace (records plus the version flags that decide which
+ * requirements apply) and appends its findings, so the exported validator stays a readable
+ * sequence of checks rather than one long function.
+ */
+function validateMicroTensorRecords(
+  trace: Partial<SerializableExperimentTrace>,
+  errors: string[]
+): void {
+  // Validate MicroTensor window format
+  if (Array.isArray(trace.microTensors)) {
+    for (let i = 0; i < trace.microTensors.length; i++) {
+      const mt = trace.microTensors[i];
+      if (!mt || typeof mt !== 'object') {
+        errors.push(`microTensors[${i}] must be an object`);
+        break;
+      }
+      if (typeof mt.windowStart !== 'number' || typeof mt.windowEnd !== 'number') {
+        errors.push(`microTensors[${i}] has invalid windowStart/windowEnd timestamps`);
+        break;
+      }
+      if (typeof mt.windowId !== 'number') {
+        errors.push(`microTensors[${i}] is missing the windowId correlation identifier`);
+        break;
+      }
+      if (!Array.isArray(mt.values) || mt.values.length !== 18) {
+        errors.push(`microTensors[${i}].values must be an 18-element numeric array, found length ${mt.values?.length}`);
+        break;
+      }
+    }
+  }
+}
+
+function validateOutcomeRecords(
+  trace: Partial<SerializableExperimentTrace>,
+  errors: string[],
+  requiresSemanticContract: boolean
+): void {
+  // Validate outcome correlation identity (assessment §16.3)
+  if (Array.isArray(trace.outcomes)) {
+    for (let i = 0; i < trace.outcomes.length; i++) {
+      const outcome = trace.outcomes[i];
+      if (!outcome || typeof outcome !== 'object') {
+        errors.push(`outcomes[${i}] must be an object`);
+        break;
+      }
+      if (typeof outcome.outcome !== 'string') {
+        errors.push(`outcomes[${i}] is missing an outcome label`);
+        break;
+      }
+      if (typeof outcome.windowId !== 'number') {
+        errors.push(`outcomes[${i}] is missing the windowId correlation identifier`);
+        break;
+      }
+      if (requiresSemanticContract) {
+        if (hasText(outcome.taskOutcome) && !hasText(outcome.taskOutcomeVocabularyVersion)) {
+          errors.push(
+            `outcomes[${i}].taskOutcome '${outcome.taskOutcome}' is missing taskOutcomeVocabularyVersion`
+          );
+          break;
+        }
+        if (outcome.taskOutcomeSource !== undefined && !hasText(outcome.taskOutcome)) {
+          errors.push(
+            `outcomes[${i}].taskOutcomeSource is present without a taskOutcome to describe`
+          );
+          break;
+        }
+      }
+    }
+  }
+}
+
+function validateTaskEventRecords(
+  trace: Partial<SerializableExperimentTrace>,
+  errors: string[],
+  requiresSemanticContract: boolean
+): void {
+  // Validate task-definition attribution (schema 1.4.0).
+  if (requiresSemanticContract && Array.isArray(trace.taskEvents)) {
+    for (let i = 0; i < trace.taskEvents.length; i++) {
+      const taskEvent = trace.taskEvents[i];
+      if (!taskEvent || typeof taskEvent !== 'object') {
+        errors.push(`taskEvents[${i}] must be an object`);
+        break;
+      }
+      if (!hasText(taskEvent.taskDefinitionVersion)) {
+        errors.push(
+          `taskEvents[${i}] is missing taskDefinitionVersion, which a 1.4.0 trace requires for every task event`
+        );
+        break;
+      }
+    }
+  }
+}
+
+function validatePolicyDecisionRecords(
+  trace: Partial<SerializableExperimentTrace>,
+  errors: string[]
+): void {
+  // Validate policy-decision attribution (F-07). Each decision must carry the policy
+  // verdict and its reason: a decision without a reason is the defect being removed.
+  if (Array.isArray(trace.policyDecisions)) {
+    for (let i = 0; i < trace.policyDecisions.length; i++) {
+      const pd = trace.policyDecisions[i];
+      if (!pd || typeof pd !== 'object') {
+        errors.push(`policyDecisions[${i}] must be an object`);
+        break;
+      }
+      if (typeof pd.policyDecision !== 'string') {
+        errors.push(`policyDecisions[${i}] is missing the policyDecision verdict`);
+        break;
+      }
+      if (typeof pd.policyReason !== 'string' || pd.policyReason.trim() === '') {
+        errors.push(`policyDecisions[${i}] is missing a non-empty policyReason`);
+        break;
+      }
+      if (typeof pd.timestamp !== 'number') {
+        errors.push(`policyDecisions[${i}] must carry a numeric timestamp`);
+        break;
+      }
+    }
+  }
+}
+
+function validatePredictionRecords(
+  trace: Partial<SerializableExperimentTrace>,
+  errors: string[],
+  requiresSemanticContract: boolean
+): void {
+  // Validate prediction contract attribution (schema 1.4.0).
+  if (requiresSemanticContract && Array.isArray(trace.predictions)) {
+    for (let i = 0; i < trace.predictions.length; i++) {
+      const prediction = trace.predictions[i];
+      if (!prediction || typeof prediction !== 'object') {
+        errors.push(`predictions[${i}] must be an object`);
+        break;
+      }
+      if (hasText(prediction.predictedOutcome) && !hasText(prediction.predictionContractVersion)) {
+        errors.push(
+          `predictions[${i}].predictedOutcome '${prediction.predictedOutcome}' is missing predictionContractVersion`
+        );
+        break;
+      }
+    }
+  }
+}
+
+function validateTraceMetadata(
+  trace: Partial<SerializableExperimentTrace>,
+  errors: string[],
+  requiresCanonicalContract: boolean,
+  requiresSemanticContract: boolean
+): void {
+  // Validate metadata
+  if (!trace.metadata || typeof trace.metadata !== 'object') {
+    errors.push('Missing or invalid metadata object');
+  } else {
+    if (typeof trace.metadata.totalEvents !== 'number') {
+      errors.push('metadata.totalEvents must be a number');
+    }
+    if (typeof trace.metadata.durationMs !== 'number' || trace.metadata.durationMs < 0) {
+      errors.push('metadata.durationMs must be a non-negative number');
+    }
+    if (typeof trace.metadata.conditionId !== 'string') {
+      errors.push('metadata.conditionId must be a string for baseline/adaptive separation');
+    }
+    if (requiresCanonicalContract) {
+      if (trace.metadata.clock !== TRACE_CLOCK_MODE) {
+        errors.push(`metadata.clock must be '${TRACE_CLOCK_MODE}' for schema ${EXPERIMENT_TRACE_SCHEMA_VERSION}`);
+      }
+      if (trace.metadata.provenance !== 'scripted' && trace.metadata.provenance !== 'participant') {
+        errors.push("metadata.provenance must be 'scripted' or 'participant'");
+      }
+      if (typeof trace.metadata.applicationVersion !== 'string' || trace.metadata.applicationVersion === '') {
+        errors.push('metadata.applicationVersion must be a non-empty string');
+      }
+      if (typeof trace.metadata.policyVersion !== 'string' || trace.metadata.policyVersion === '') {
+        errors.push('metadata.policyVersion must be a non-empty string');
+      }
+    }
+
+    if (requiresSemanticContract) {
+      validateVersionAttribution(trace, errors);
+    }
+  }
+}
+
+/**
  * Validates whether an unknown object conforms to the SerializableExperimentTrace contract.
  */
 export function validateExperimentTrace(data: unknown): TraceValidationResult {
@@ -231,6 +426,19 @@ export function validateExperimentTrace(data: unknown): TraceValidationResult {
   const requiresCanonicalContract =
     typeof trace.schemaVersion === 'string' &&
     trace.schemaVersion.localeCompare(EXPERIMENT_TRACE_SCHEMA_VERSION, undefined, { numeric: true }) >= 0;
+
+  /**
+   * Requirements introduced by 1.4.0.
+   *
+   * The 1.4.0 change is additive, so a record that does not use a new field is not required
+   * to carry it. What *is* required is internal consistency: a semantic outcome always
+   * names its vocabulary version, a prediction always names its contract version, and the
+   * metadata always agrees with the records it describes. That keeps a framework-only
+   * deployment (no semantic vocabulary, no application task model) exportable and valid.
+   */
+  const requiresSemanticContract =
+    typeof trace.schemaVersion === 'string' &&
+    trace.schemaVersion.localeCompare('1.4.0', undefined, { numeric: true }) >= 0;
 
   if (!isCurrentVersion && !isSupportedLegacy) {
     errors.push(
@@ -285,106 +493,63 @@ export function validateExperimentTrace(data: unknown): TraceValidationResult {
     errors.push('policyDecisions must be an array when present');
   }
 
-  // Validate MicroTensor window format
-  if (Array.isArray(trace.microTensors)) {
-    for (let i = 0; i < trace.microTensors.length; i++) {
-      const mt = trace.microTensors[i];
-      if (!mt || typeof mt !== 'object') {
-        errors.push(`microTensors[${i}] must be an object`);
-        break;
-      }
-      if (typeof mt.windowStart !== 'number' || typeof mt.windowEnd !== 'number') {
-        errors.push(`microTensors[${i}] has invalid windowStart/windowEnd timestamps`);
-        break;
-      }
-      if (typeof mt.windowId !== 'number') {
-        errors.push(`microTensors[${i}] is missing the windowId correlation identifier`);
-        break;
-      }
-      if (!Array.isArray(mt.values) || mt.values.length !== 18) {
-        errors.push(`microTensors[${i}].values must be an 18-element numeric array, found length ${mt.values?.length}`);
-        break;
-      }
-    }
-  }
-
-  // Validate outcome correlation identity (assessment §16.3)
-  if (Array.isArray(trace.outcomes)) {
-    for (let i = 0; i < trace.outcomes.length; i++) {
-      const outcome = trace.outcomes[i];
-      if (!outcome || typeof outcome !== 'object') {
-        errors.push(`outcomes[${i}] must be an object`);
-        break;
-      }
-      if (typeof outcome.outcome !== 'string') {
-        errors.push(`outcomes[${i}] is missing an outcome label`);
-        break;
-      }
-      if (typeof outcome.windowId !== 'number') {
-        errors.push(`outcomes[${i}] is missing the windowId correlation identifier`);
-        break;
-      }
-    }
-  }
-
-  // Validate policy-decision attribution (F-07). Each decision must carry the policy
-  // verdict and its reason: a decision without a reason is the defect being removed.
-  if (Array.isArray(trace.policyDecisions)) {
-    for (let i = 0; i < trace.policyDecisions.length; i++) {
-      const pd = trace.policyDecisions[i];
-      if (!pd || typeof pd !== 'object') {
-        errors.push(`policyDecisions[${i}] must be an object`);
-        break;
-      }
-      if (typeof pd.policyDecision !== 'string') {
-        errors.push(`policyDecisions[${i}] is missing the policyDecision verdict`);
-        break;
-      }
-      if (typeof pd.policyReason !== 'string' || pd.policyReason.trim() === '') {
-        errors.push(`policyDecisions[${i}] is missing a non-empty policyReason`);
-        break;
-      }
-      if (typeof pd.timestamp !== 'number') {
-        errors.push(`policyDecisions[${i}] must carry a numeric timestamp`);
-        break;
-      }
-    }
-  }
-
-  // Validate metadata
-  if (!trace.metadata || typeof trace.metadata !== 'object') {
-    errors.push('Missing or invalid metadata object');
-  } else {
-    if (typeof trace.metadata.totalEvents !== 'number') {
-      errors.push('metadata.totalEvents must be a number');
-    }
-    if (typeof trace.metadata.durationMs !== 'number' || trace.metadata.durationMs < 0) {
-      errors.push('metadata.durationMs must be a non-negative number');
-    }
-    if (typeof trace.metadata.conditionId !== 'string') {
-      errors.push('metadata.conditionId must be a string for baseline/adaptive separation');
-    }
-    if (requiresCanonicalContract) {
-      if (trace.metadata.clock !== TRACE_CLOCK_MODE) {
-        errors.push(`metadata.clock must be '${TRACE_CLOCK_MODE}' for schema ${EXPERIMENT_TRACE_SCHEMA_VERSION}`);
-      }
-      if (trace.metadata.provenance !== 'scripted' && trace.metadata.provenance !== 'participant') {
-        errors.push("metadata.provenance must be 'scripted' or 'participant'");
-      }
-      if (typeof trace.metadata.applicationVersion !== 'string' || trace.metadata.applicationVersion === '') {
-        errors.push('metadata.applicationVersion must be a non-empty string');
-      }
-      if (typeof trace.metadata.policyVersion !== 'string' || trace.metadata.policyVersion === '') {
-        errors.push('metadata.policyVersion must be a non-empty string');
-      }
-    }
-  }
+  // Per-record-shape validation lives in one place per record type, so each rule can be
+  // read (and tested) without the whole trace contract in view.
+  validateMicroTensorRecords(trace, errors);
+  validateOutcomeRecords(trace, errors, requiresSemanticContract);
+  validateTaskEventRecords(trace, errors, requiresSemanticContract);
+  validatePolicyDecisionRecords(trace, errors);
+  validatePredictionRecords(trace, errors, requiresSemanticContract);
+  validateTraceMetadata(trace, errors, requiresCanonicalContract, requiresSemanticContract);
 
   return {
     valid: errors.length === 0,
     errors,
     isLegacyVersion: isSupportedLegacy
   };
+}
+
+function hasText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
+/**
+ * Cross-checks the metadata version fields against the records they describe.
+ *
+ * The version is what makes an outcome or prediction interpretable: an `apply_filter`
+ * without the vocabulary version that defines it cannot be joined to a target generator.
+ */
+function validateVersionAttribution(
+  trace: Partial<SerializableExperimentTrace>,
+  errors: string[]
+): void {
+  const metadata = trace.metadata;
+  if (!metadata) return;
+
+  const carriesSemanticOutcome = (trace.outcomes ?? []).some((o) => hasText(o.taskOutcome));
+  if (carriesSemanticOutcome && !hasText(metadata.semanticOutcomeVocabularyVersion)) {
+    errors.push(
+      'metadata.semanticOutcomeVocabularyVersion is required when outcomes carry taskOutcome'
+    );
+  }
+
+  const carriesTaskDefinition = (trace.taskEvents ?? []).some((t) =>
+    hasText(t.taskDefinitionVersion)
+  );
+  if (carriesTaskDefinition && !hasText(metadata.taskDefinitionVersion)) {
+    errors.push(
+      'metadata.taskDefinitionVersion is required when task events carry a taskDefinitionVersion'
+    );
+  }
+
+  const carriesPredictionContract = (trace.predictions ?? []).some((p) =>
+    hasText(p.predictedOutcome)
+  );
+  if (carriesPredictionContract && !hasText(metadata.predictionContractVersion)) {
+    errors.push(
+      'metadata.predictionContractVersion is required when predictions carry a predictedOutcome'
+    );
+  }
 }
 
 export type ReplayEventCategory =

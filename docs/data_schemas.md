@@ -10,7 +10,7 @@ The table below indexes every versioned schema and interface in the framework, a
 
 | Index | Schema / Contract | Version | Declaring File | Primary TypeScript Interface | Purpose |
 |---|---|---|---|---|---|
-| **1** | **Experiment Trace Schema** | `1.3.0` | `src/telemetry/traceSchema.ts` | `SerializableExperimentTrace` | Chronological session replay on a single canonical clock, containing telemetry, MicroTensors, outcomes, predictions, policy decisions, interventions (with episode attribution) and provenance. (Legacy `1.2.0` / `1.1.0` readable.) |
+| **1** | **Experiment Trace Schema** | `1.4.0` | `src/telemetry/traceSchema.ts` | `SerializableExperimentTrace` | Chronological session replay on a single canonical clock, containing telemetry, MicroTensors, outcomes (generic + semantic), predictions (normalized outcome + contract version), policy decisions, interventions (with episode attribution) and provenance. (Legacy `1.3.0` / `1.2.0` / `1.1.0` readable.) |
 | **2** | **MicroTensor Feature Schema** | `1.0.0` | `src/microtensor/window.ts` | `MicroTensorWindow` | 18-D feature vector representation (`[X ⊙ M, M]`: 9 kinematic features + 9 binary modality masks) over 500 ms windows. |
 | **3** | **Runtime Configuration Schema**| `1.0.0` | `src/config/runtimeConfig.ts` | `RuntimeConfig` | Layer 2 configuration spanning 9 parameter groups with default initialization and invariant validation. |
 | **4** | **Synced Pipeline Configuration**| `1.0.0` | `src/config/pipelineConfig.ts` | `PipelineConfig` | Layer 1 cross-repo hyperparameters synchronized from `model-preparation/src/config.yaml`. |
@@ -21,10 +21,10 @@ The table below indexes every versioned schema and interface in the framework, a
 
 ## 2. Detailed Schema Specifications
 
-### Schema 1: Experiment Trace Schema (`v1.3.0`)
+### Schema 1: Experiment Trace Schema (`v1.4.0`)
 - **Owning File:** [`src/telemetry/traceSchema.ts`](../src/telemetry/traceSchema.ts)
-- **Constant:** `EXPERIMENT_TRACE_SCHEMA_VERSION = '1.3.0'`
-- **Supported Versions:** `SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.3.0', '1.2.0', '1.1.0']`
+- **Constant:** `EXPERIMENT_TRACE_SCHEMA_VERSION = '1.4.0'`
+- **Supported Versions:** `SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS = ['1.4.0', '1.3.0', '1.2.0', '1.1.0']`
 - **Clock:** `TRACE_CLOCK_MODE = 'epoch_ms'` — every record `timestamp` is epoch milliseconds
 - **Validation:** `validateExperimentTrace(trace: unknown): TraceValidationResult`
 - **Specification:**
@@ -32,7 +32,7 @@ The table below indexes every versioned schema and interface in the framework, a
 
 ```typescript
 export interface SerializableExperimentTrace {
-  schemaVersion: '1.3.0';
+  schemaVersion: '1.4.0';
   exportedAt: string; // ISO 8601 UTC timestamp
   session: SessionContext;
   task: UiTaskStateSnapshot;
@@ -58,6 +58,25 @@ export interface SerializableExperimentTrace {
 - **Provenance (1.3.0):** `metadata.provenance` is `'scripted'` or `'participant'`, defaulting to `'scripted'`. It is the switch that decides whether a trace may be uploaded, and it exists so synthetic and participant data can never be pooled by accident (ADR-018).
 - **Version identity (1.3.0):** `applicationVersion`, `policyVersion`, `modelVersion` and `executionProvider` record what actually ran. `executionProvider` is the provider the ONNX session reported, not the one requested (assessment F-10, F-19).
 - **Bounded execution and truncation (1.3.0):** `metadata.mining` counts `executed` / `skipped` / `superseded` / `timedOut` / `droppedWindows`; `metadata.evictions` proves whether any buffer discarded records; `metadata.integrityWarnings` lists orphaned windows, unterminated episodes and truncation. Silence is never used to mean "nothing happened" (assessment F-02, F-16).
+
+**Added in 1.4.0 (additive; a 1.3.0 capture stays readable):**
+
+- **Semantic outcome (1.4.0):** `OutcomeEvent.taskOutcome` carries the application semantic
+  outcome (`apply_filter`, `select_report`, …) derived from the window's source event,
+  alongside the generic seven-class `outcome`. `taskOutcomeVocabularyVersion` names the
+  vocabulary, `taskOutcomeSource` is `backtrack` | `application_rule` | `none`, and
+  `taskOutcomeRuleId` names the rule that matched. Both labels describe the same event.
+- **Task-definition version (1.4.0):** `TaskEvent.taskDefinitionVersion` records which task
+  model the event refers to, and `TaskEvent.reason` accepts the failure reasons
+  (`wrong_action`, `state_mismatch`, `step_exhausted`) so a `task_fail` says why.
+- **Normalized prediction (1.4.0):** `PredictionEvent.predictedOutcome`,
+  `predictedOutcomeVocabularyVersion`, `predictionContractVersion` and `targetContext`
+  record the application outcome the gates asserted and the UI context it was computed
+  against. `PredictionEvent.outcome` remains the generic label.
+- **Version attribution (1.4.0):** `metadata.taskDefinitionVersion`,
+  `metadata.semanticOutcomeVocabularyVersion` and `metadata.predictionContractVersion`.
+  Validation requires each version exactly when a record of the corresponding kind is
+  present, so a deployment without a semantic vocabulary still exports a valid trace.
 - `microTensors.values` is serialized from native `Float32Array` to standard `number[]`; `windowStart`/`windowEnd` are translated to the canonical epoch clock at export.
 - `metadata.durationMs` is computed on the canonical clock only.
 - `effectiveConfig` captures the exact Layer 2 configuration active during the session, allowing reproducible evaluation runs.

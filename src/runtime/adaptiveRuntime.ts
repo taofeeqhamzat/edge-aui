@@ -60,7 +60,7 @@ import {
 } from '../telemetry/events';
 import type { MiningCounters } from '../telemetry/traceSchema';
 import { InferenceResult } from '../gates/arbitration';
-import { nextPredictionId } from '../gates/contracts';
+import { nextPredictionId, PREDICTION_CONTRACT_VERSION } from '../gates/contracts';
 import { InterventionCommand, InterventionType } from '../intervention/types';
 import { UIContext } from '../types/uiContext.js';
 import {
@@ -296,6 +296,12 @@ export class AdaptiveRuntime {
     this.outcomeDeriver = new OutcomeDeriver({
       semanticOutcomes: options.semanticOutcomes
     });
+    // The versions that make the 1.4.0 records interpretable travel in metadata.
+    experimentRecorder.setVersionAttribution({
+      semanticOutcomeVocabularyVersion: options.semanticOutcomes?.vocabulary.version ?? null,
+      predictionContractVersion: PREDICTION_CONTRACT_VERSION,
+      taskDefinitionVersion: this.adapter.getTaskDefinitionVersion?.() ?? null
+    });
 
     this.workerClient = new RuntimeWorkerClient({
       useFallback: options.forceInProcessWorker ?? false,
@@ -495,6 +501,7 @@ export class AdaptiveRuntime {
             errors: event.errors ?? taskSnapshot?.errors ?? 0,
             durationMs: event.durationMs,
             reason: event.reason as any,
+            taskDefinitionVersion: event.taskDefinitionVersion,
             sessionId: sessionManager.getActiveSession()?.sessionId,
             experimentId: this.options.experimentId,
             conditionId: this.conditionId
@@ -831,7 +838,8 @@ export class AdaptiveRuntime {
 
       // Arbitration is the single producer of prediction identity, so the trace event and
       // the prediction it describes cannot disagree (Task 20.1).
-      const predictionId = result.prediction?.predictionId ?? nextPredictionId();
+      const prediction = result.prediction;
+      const predictionId = prediction?.predictionId ?? nextPredictionId();
 
       // Fold the worker's bounded-execution counters in before the prediction is recorded.
       const workerDiagnostics = (result as InferenceResult & {
@@ -849,6 +857,10 @@ export class AdaptiveRuntime {
         evaluatedWindowIds,
         matchedGate: result.matchedGate,
         outcome: result.slowResult?.outcome,
+        predictedOutcome: prediction?.outcomeId,
+        predictionContractVersion: prediction?.contractVersion,
+        predictedOutcomeVocabularyVersion: prediction?.vocabularyVersion,
+        targetContext: prediction?.target,
         interventionType: result.intervention?.type,
         mappingSource: resolvedMappingSource,
         confidence: result.intervention?.confidence ?? result.slowResult?.confidence,

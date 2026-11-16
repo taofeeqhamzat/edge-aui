@@ -64,6 +64,8 @@ export interface UiTaskLifecycleEvent {
   errors?: number;
   durationMs?: number;
   reason?: 'reset' | 'timeout' | 'navigation' | string;
+  /** Version of the task definition this event refers to (schema 1.4.0, Task 20.5). */
+  taskDefinitionVersion?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -122,6 +124,12 @@ export interface UiAdapter {
    * Requests abandonment of the currently active task with a given reason.
    */
   abandonTask?(reason: string): void;
+
+  /**
+   * Version of the task definition this adapter serves, when it has one.
+   * Recorded in trace metadata so an outcome can be interpreted against the tasks in force.
+   */
+  getTaskDefinitionVersion?(): string | undefined;
 
   // ---------------------------------------------------------------------------
   // Semantic Action Mapping Port
