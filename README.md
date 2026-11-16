@@ -149,11 +149,12 @@ origin and a live Supabase project — is recorded as `NOT VERIFIED` in
 | [`docs/deploy/supabase-setup.md`](docs/deploy/supabase-setup.md) | Database setup and the RLS security model |
 | [`docs/architecture.md`](docs/architecture.md) | Implemented architecture, contracts and schemas |
 | [`docs/assessments/`](docs/assessments/) | The audits, the implementation record, and the deployment report |
-| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 … ADR-023) |
+| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 … ADR-029) |
 | [`docs/testbed/prd.md`](docs/testbed/prd.md) | Product requirements for the target UI |
 | [`AGENTS.md`](AGENTS.md) | Architectural constraints and engineering guidance |
 
-`docs/plan/` is gitignored and kept as a local working document rather than part of the repository
+`docs/plan/` is gitignored for historical plans and kept as a local working record. The plan 3
+implementation package under `docs/plan/3/` is explicitly unignored and is part of the repository
 record.
 
 ## Service payload note
