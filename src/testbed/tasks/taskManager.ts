@@ -14,6 +14,7 @@ import {
 } from './taskModel';
 import { evaluateTaskCompletion } from './completion';
 import { getWallClockTimestamp } from '../../telemetry/normalizer';
+import { isCompanionAction, CanonicalActionKind } from '../../outcome/canonical';
 
 type StateChangeListener = (state: TaskState) => void;
 
@@ -398,10 +399,11 @@ function cloneUiState(state: TaskUiState): TaskUiState {
 
 function isBenignCompanion(expectedAction: string | undefined, action: string): boolean {
   // The observer emits native click/input/change for a checkbox and click/submit for a form.
-  // Only the committed event should count; the companions are not errors.
-  if (expectedAction === 'change' && (action === 'click' || action === 'input')) return true;
-  if (expectedAction === 'click' && action === 'submit') return true;
-  return false;
+  // Only the committed event counts; the companions are not errors. The rule lives in the
+  // canonical action layer so the task bridge and semantic derivation cannot disagree
+  // about which event is the committed act (Task 20.4).
+  if (!expectedAction) return false;
+  return isCompanionAction(expectedAction as CanonicalActionKind, action as CanonicalActionKind);
 }
 
 export const taskManager = new TaskManager();

@@ -12,6 +12,11 @@ import {
 } from './testbed/config/fastGatePatterns';
 import { TESTBED_EXPERIMENT_CONFIG } from './testbed/config/experiment';
 import { createTestbedCandidateResolver } from './testbed/config/policyAdapter';
+import { SemanticOutcomeDeriver } from './outcome/semantic';
+import {
+  TESTBED_SEMANTIC_VOCABULARY,
+  createTestbedSemanticRules
+} from './testbed/config/semanticOutcomes';
 import { startRuntimeDiagnostics } from './runtime/diagnostics';
 
 /**
@@ -27,6 +32,12 @@ registerRuntimeDefaults({
   fastGatePatterns: TESTBED_FAST_GATE_PATTERNS,
   fastGatePatternVersion: TESTBED_FAST_GATE_PATTERN_VERSION,
   candidateResolver: createTestbedCandidateResolver(),
+  // Semantic outcomes are application vocabulary: the testbed supplies its own rules and
+  // the framework records whatever it derives (Task 20.4).
+  semanticOutcomes: new SemanticOutcomeDeriver({
+    vocabulary: TESTBED_SEMANTIC_VOCABULARY,
+    rules: createTestbedSemanticRules()
+  }),
   experiment: TESTBED_EXPERIMENT_CONFIG
 });
 

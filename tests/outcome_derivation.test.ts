@@ -15,7 +15,7 @@ describe('Outcome derivation (model-preparation parity)', () => {
     const r = deriveOutcomeForWindow({
       windowEndMs: 0,
       futureEvents: [
-        ev(1900, 'click', { componentId: 'btn-apply-filters' }),  // FORM_SUBMIT, later
+        ev(1900, 'click', { componentId: 'btn-apply-filters', componentRole: 'submit-action' }),  // FORM_SUBMIT, later
         ev(700, 'mouseover'), ev(750, 'mouseover')                 // HOVER_DWELL, earlier
       ]
     });
@@ -27,7 +27,7 @@ describe('Outcome derivation (model-preparation parity)', () => {
       windowEndMs: 0,
       futureEvents: [
         ev(700, 'click', { componentId: 'filter-Region' }),
-        ev(700, 'click', { componentId: 'btn-apply-filters' })
+        ev(700, 'click', { componentId: 'btn-apply-filters', componentRole: 'submit-action' })
       ]
     });
     expect(r.outcome).toBe('FORM_SUBMIT');
@@ -57,10 +57,19 @@ describe('Outcome derivation (model-preparation parity)', () => {
     expect(four.outcome).toBe('RAPID_SCROLL');
   });
 
-  it('maps blur and popstate to BACKTRACK', () => {
-    const b = deriveOutcomeForWindow({ windowEndMs: 0, futureEvents: [ev(600, 'blur')] });
-    const p = deriveOutcomeForWindow({ windowEndMs: 0, futureEvents: [ev(600, 'popstate')] });
-    expect(b.outcome).toBe('BACKTRACK');
-    expect(p.outcome).toBe('BACKTRACK');
+  /**
+   * Changed by Task 20.4 (was: blur and popstate map to BACKTRACK).
+   *
+   * Backtracking is a property of the route sequence, not of an event type. `blur` is a
+   * focus change and `popstate` is the browser reporting a route the participant may have
+   * been sent to; neither is a reversal on its own. The route tracker in
+   * `outcome/backtracking.ts` decides, and `OutcomeDeriver` promotes a settled outcome to
+   * BACKTRACK when it does. `tests/semantic_outcomes.test.ts` covers that path.
+   */
+  it('does not infer BACKTRACK from blur, popstate or hashchange', () => {
+    for (const type of ['blur', 'popstate', 'hashchange'] as const) {
+      const result = deriveOutcomeForWindow({ windowEndMs: 0, futureEvents: [ev(600, type)] });
+      expect(result.outcome, type).not.toBe('BACKTRACK');
+    }
   });
 });

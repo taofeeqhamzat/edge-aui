@@ -76,6 +76,13 @@ export interface BehaviourEvent {
   componentId?: string;
   componentRole?: string;
 
+  /**
+   * True when the framework or host application performed the act itself — a programmatic
+   * route change, a restored state, a scripted preset. Such an act is recorded as evidence
+   * but is never a participant outcome (Task 20.4).
+   */
+  systemInitiated?: boolean;
+
   route?: string;
   action?: string;
 
@@ -188,6 +195,22 @@ export interface OutcomeEvent {
   lookaheadComplete?: boolean;
   /** Deterministic derivation metadata for auditability. */
   derivation?: OutcomeDerivationMetadata;
+
+  // ---------------------------------------------------------------------------
+  // Semantic outcome (Task 20.4)
+  //
+  // The generic `outcome` above is the model's seven-class foundation label. The semantic
+  // outcome is the application vocabulary (`apply_filter`, `select_report`, …) describing
+  // what the participant actually did. Both are recorded: neither replaces the other.
+  // ---------------------------------------------------------------------------
+  /** Application-supplied semantic outcome identifier; `NO_OUTCOME` when no rule matched. */
+  taskOutcome?: string;
+  /** Version of the semantic vocabulary `taskOutcome` belongs to. */
+  taskOutcomeVocabularyVersion?: string;
+  /** How the semantic outcome was derived. */
+  taskOutcomeSource?: 'backtrack' | 'application_rule' | 'none';
+  /** Rule that produced the semantic outcome, when an application rule did. */
+  taskOutcomeRuleId?: string;
 }
 
 /** Closed taxonomy of generative mechanisms that can produce an intervention command (ADR-006 / Task 5.3). */

@@ -28,6 +28,7 @@ import { debugBus } from '../debug/debugBus';
 import { getRuntimeDiagnostics, startRuntimeDiagnostics } from './diagnostics';
 import { UiAdapter, DefaultUiAdapter, type UiTaskLifecycleEvent } from '../integration/index';
 import type { MacroMapper } from '../macro/mapper';
+import type { SemanticOutcomeDeriver } from '../outcome/semantic';
 import type { ContextEncodingConfig } from '../types/contextVector';
 
 export interface BootOptions extends AdaptiveRuntimeOptions {
@@ -53,6 +54,8 @@ export interface RegisteredRuntimeDefaults {
   fastGatePatternVersion?: string;
   /** Predicted outcome → candidate adaptation. */
   candidateResolver?: CandidateResolver;
+  /** Application semantic outcome derivation (Task 20.4). */
+  semanticOutcomes?: SemanticOutcomeDeriver;
   /** Study schedule: trial order and per-task timeouts. */
   experiment?: {
     trialOrder?: string[];
@@ -142,6 +145,7 @@ export async function bootRuntime(
       ? { experiment: registeredDefaults.experiment, ...options.config }
       : options.config,
     candidateResolver: registeredDefaults.candidateResolver,
+    semanticOutcomes: registeredDefaults.semanticOutcomes,
     macroMapper: registeredDefaults.macroMapper,
     contextEncoding: registeredDefaults.contextEncoding,
     // support=1: the deterministic Fast Gate observes each frequent sequence from its

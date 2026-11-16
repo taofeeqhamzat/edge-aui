@@ -34,6 +34,7 @@ import { TelemetryObserver } from '../telemetry/observer';
 import { RollingWindowBuffer } from '../microtensor/window';
 import { MacroInteractionStream } from '../macro/sequence';
 import { OutcomeDeriver } from '../outcome/derive';
+import type { SemanticOutcomeDeriver } from '../outcome/semantic';
 import { RuntimeWorkerClient } from '../runtime/workerClient';
 import {
   InstrumentationCollector,
@@ -123,6 +124,13 @@ export interface AdaptiveRuntimeOptions {
   forceInProcessWorker?: boolean;
   /** Auto-start on construction. Default false; call start(). */
   autoStart?: boolean;
+  /**
+   * Application semantic outcome derivation (Task 20.4).
+   *
+   * When supplied, every settled outcome carries both the generic seven-class label and the
+   * application semantic outcome of its source event.
+   */
+  semanticOutcomes?: SemanticOutcomeDeriver;
   /** Toggle runtime stage timing instrumentation. Defaults to true. */
   enableInstrumentation?: boolean;
   /** Custom instrumentation collector instance. Defaults to defaultCollector. */
@@ -285,7 +293,9 @@ export class AdaptiveRuntime {
       maxCapacity: this.config.macro.maxHistoryLength,
       macroMapper: options.macroMapper
     });
-    this.outcomeDeriver = new OutcomeDeriver();
+    this.outcomeDeriver = new OutcomeDeriver({
+      semanticOutcomes: options.semanticOutcomes
+    });
 
     this.workerClient = new RuntimeWorkerClient({
       useFallback: options.forceInProcessWorker ?? false,
@@ -493,7 +503,11 @@ export class AdaptiveRuntime {
       );
     }
 
-    // 7. Start observation and the monotonic window driver.
+    // 7. Seed route-level backtracking with the page this session starts on, so a return to
+    // it is a reversal and the starting page is in the visited set (Task 20.4).
+    this.seedSemanticRoute();
+
+    // 8. Start observation and the monotonic window driver.
     this.observer.start();
     this.startTickLoop();
   }
@@ -509,11 +523,17 @@ export class AdaptiveRuntime {
    */
   public rebindSession(session: SessionContext): void {
     experimentRecorder.bindSession(session);
+    this.seedSemanticRoute();
     this.macroStream.setContext({
       sessionId: session.sessionId,
       experimentId: session.experimentId,
       conditionId: session.conditionId
     });
+  }
+
+  /** Seeds route-level backtracking from the page the session starts on. */
+  private seedSemanticRoute(): void {
+    this.options.semanticOutcomes?.reset(this.resolveUIContext().route);
   }
 
   /** Requested Slow Gate implementation for this environment. */
