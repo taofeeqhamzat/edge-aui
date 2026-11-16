@@ -37,7 +37,7 @@
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Full suite | `npm test -- --reporter=dot` | **421 passed, 1 skipped, 56 files** |
+| Full suite | `npm test -- --reporter=dot` | **428 passed, 1 skipped, 56 files** |
 | Typecheck | `npm run typecheck` | **Pass** |
 | TD1 UI path | `tests/task_wiring.test.tsx` | Completed, 18 rows, errors 0 |
 | TD2 UI path | `tests/task_wiring.test.tsx` | Completed, 5 rows, errors 0 |
@@ -61,3 +61,25 @@
 
 All verification above is engineering/automated-test evidence. No participant, usability,
 model-performance or deployment measurement is claimed from WS10.
+
+
+## WS10 hardening pass
+
+A second review pass used the installed quality tools:
+
+- **crapper (complexity):** split `evaluateCompletion` into named predicates, split
+  `recordInteraction`/evidence/step lookup helpers, extracted the filter-draft hook and filter
+  field components, and extracted trial-action/status components. The worst remaining function in
+  the WS10 source is CC 9 (under the CRAP 10 target).
+- **dryer:** no duplicate candidates above the 0.8 threshold remain in the WS10 source.
+- **mutator:** completion predicates reached **42/42 mutants killed**; task-manager mutants reached
+  **56/74 killed** (75.7%), with the remaining survivors in timeout/no-op guards that do not change
+  observable behaviour. Removing the redundant `hasCompletedStep` path reduced the survivor set.
+- **subtract:** removed the redundant completed-step lookup; its condition could not change the
+  observable outcome.
+
+Additional tests added for: form-submit-only Apply, non-Apply evidence, submit companions on click
+targets, empty-before-Apply TD3 evidence, completion duration/terminal step, reset-after-completed,
+replacement and wrong-action errors.
+
+The full suite after hardening is **428 passed, 1 skipped**; typecheck and `build:ci` pass.
