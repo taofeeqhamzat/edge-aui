@@ -37,13 +37,14 @@
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Full suite | `npm test -- --reporter=dot` | **419 passed, 1 skipped, 56 files** |
+| Full suite | `npm test -- --reporter=dot` | **421 passed, 1 skipped, 56 files** |
 | Typecheck | `npm run typecheck` | **Pass** |
 | TD1 UI path | `tests/task_wiring.test.tsx` | Completed, 18 rows, errors 0 |
 | TD2 UI path | `tests/task_wiring.test.tsx` | Completed, 5 rows, errors 0 |
 | TD3 UI path | `tests/task_wiring.test.tsx` | 0 rows → 50 rows, completed, errors 0 |
 | TD4 UI path | `tests/task_wiring.test.tsx` | 3 → 6 rows, Europe Books active, completed |
 | Timeout | `tests/task_diversification.test.tsx` | `task_fail`/`Failed`; reset clears timer |
+| Replacement/wrong action | `tests/task_diversification.test.tsx` | Replaced trial abandons; wrong required-control action counts an error |
 | Reports/reset/consistency | `tests/task_wiring.test.tsx` | Presets sync; 50 rows restored; drawer/table agree |
 
 ## Deliberate follow-ups (not WS10)
