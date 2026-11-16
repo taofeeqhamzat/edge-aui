@@ -83,3 +83,25 @@ targets, empty-before-Apply TD3 evidence, completion duration/terminal step, res
 replacement and wrong-action errors.
 
 The full suite after hardening is **428 passed, 1 skipped**; typecheck and `build:ci` pass.
+
+
+## Root-cause fix: task state visibility in TrialControls
+
+Reported symptom: TrialControls lagged one step behind (for example TD1-2 remained visible after
+opening Region, or TD2-1 remained visible after opening Date Range) and completion was not shown
+after Export/Apply until another view change forced a render. The debug panel usually caught up
+because its 250 ms polling re-rendered it.
+
+**Cause:** `completeStep`, `checkCompletion` and `recordError` mutated the existing `TaskState`
+object in place and passed the same reference to subscribers. React's `useState` bails out when the
+reference is unchanged, so TrialControls did not re-render; a later `updateUiState` happened to
+create a new object and exposed the mutation.
+
+**Fix:** task transitions now replace the state object and the `completedSteps` array immutably.
+No in-place `TaskState` mutation remains. Behavior is otherwise unchanged.
+
+**Regression tests:** `tests/task_wiring.test.tsx` now asserts the visible TrialControls step text
+after every TD1 and TD2 transition, and asserts `Completed` is visible immediately after
+Export/Apply. This specifically covers TD1-3, TD1-5, TD2-2, TD2-3 and TD2-5.
+
+**Verification after fix:** 428 passed, 1 skipped; typecheck and `build:ci` pass.

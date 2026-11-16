@@ -199,7 +199,7 @@ export class TaskManager {
   }
 
   private recordError(stepId: string, definitionVersion: 'TD-v2'): void {
-    this.state.errors++;
+    this.state = { ...this.state, errors: this.state.errors + 1 };
     this.notify();
     this.emitLifecycle({
       timestamp: getWallClockTimestamp(),
@@ -213,8 +213,12 @@ export class TaskManager {
   }
 
   private completeStep(stepId: string) {
-    this.state.completedSteps.push(stepId);
-    this.state.currentStepIndex = this.state.completedSteps.length;
+    const completedSteps = [...this.state.completedSteps, stepId];
+    this.state = {
+      ...this.state,
+      completedSteps,
+      currentStepIndex: completedSteps.length
+    };
     this.notify();
     this.emitLifecycle({
       timestamp: getWallClockTimestamp(),
@@ -234,8 +238,11 @@ export class TaskManager {
     if (!evaluateTaskCompletion(this.state.currentTaskId, uiState, this.evidence)) return;
 
     this.clearTimeout();
-    this.state.status = 'Completed';
-    this.state.endTime = getWallClockTimestamp();
+    this.state = {
+      ...this.state,
+      status: 'Completed',
+      endTime: getWallClockTimestamp()
+    };
     this.notify();
 
     const durationMs =

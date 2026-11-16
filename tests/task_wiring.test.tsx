@@ -32,6 +32,10 @@ function navigate(page: 'Analytics' | 'Reports' | 'Overview'): void {
   click(`[data-aui-component="nav-${page}"]`);
 }
 
+function trialText(): string {
+  return document.querySelector('[data-aui-component="trial-status"]')?.textContent ?? '';
+}
+
 function openSection(componentId: string): void {
   const section = document.querySelector(`[data-aui-component="${componentId}"]`);
   if (section?.getAttribute('aria-expanded') !== 'true') {
@@ -129,13 +133,19 @@ describe('Task model / DOM annotation contract', () => {
     render(<App />);
 
     click('[data-aui-component="btn-start-TD1"]');
+    expect(trialText()).toContain('TD1-1');
     navigate('Analytics');
+    expect(trialText()).toContain('TD1-2');
     click('[data-aui-component="filter-section-region"]');
+    expect(trialText()).toContain('TD1-3');
     select('[data-aui-component="filter-Region-select"]', 'Europe');
+    expect(trialText()).toContain('TD1-4');
     click('[data-aui-component="btn-apply-filters"]');
+    expect(trialText()).toContain('TD1-5');
     click('[data-aui-component="btn-export"]');
 
     const state = taskManager.getState();
+    expect(trialText()).toContain('Completed');
     expect(state.status).toBe('Completed');
     expect(state.errors).toBe(0);
     expect(state.completedSteps).toEqual(['TD1-1', 'TD1-2', 'TD1-3', 'TD1-4', 'TD1-5']);
@@ -196,19 +206,25 @@ describe('Task model / DOM annotation contract', () => {
   it('completes TD2 with the correct date/category state and no spurious errors', () => {
     render(<App />);
     click('[data-aui-component="btn-start-TD2"]');
+    expect(trialText()).toContain('TD2-1');
     openSection('filter-section-date-range');
+    expect(trialText()).toContain('TD2-2');
     const dateInput = document.querySelector('[data-aui-component="filter-date-input"]') as HTMLInputElement;
     act(() => {
       fireEvent.change(dateInput, { target: { value: '2025-06-01' } });
     });
+    expect(trialText()).toContain('TD2-3');
     openSection('filter-section-product-category');
+    expect(trialText()).toContain('TD2-4');
     const books = document.querySelector('[data-aui-component="filter-category-books"]') as HTMLInputElement;
     act(() => {
       fireEvent.click(books);
     });
+    expect(trialText()).toContain('TD2-5');
     click('[data-aui-component="btn-apply-filters"]');
 
     expect(screen.getByText('Results (5)')).not.toBeNull();
+    expect(trialText()).toContain('Completed');
     expect(taskManager.getState().status).toBe('Completed');
     expect(taskManager.getState().errors).toBe(0);
   });
