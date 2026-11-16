@@ -175,6 +175,23 @@ describe('Task lifecycle, timeout, and canonical interactions', () => {
     expect(taskManager.getState().status).toBe('Completed');
   });
 
+  it('records a replaced trial when a new task starts mid-trial', () => {
+    taskManager.startTask('TD1');
+    taskManager.startTask('TD2');
+
+    expect(lifecycle.some((event) => event.type === 'task_abandon' && event.reason === 'replaced')).toBe(true);
+    expect(taskManager.getState().currentTaskId).toBe('TD2');
+    expect(taskManager.getState().status).toBe('In Progress');
+  });
+
+  it('counts a wrong action on a required control as a task error', () => {
+    taskManager.startTask('TD1');
+    taskManager.recordInteraction('filter-Region-select', 'submit');
+
+    expect(taskManager.getState().errors).toBe(1);
+    expect(taskManager.getState().status).toBe('In Progress');
+  });
+
   it('clears the timeout when a trial is reset', () => {
     vi.useFakeTimers();
     taskManager.startTask('TD1');
