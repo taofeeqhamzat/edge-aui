@@ -516,7 +516,7 @@ function hasText(value: unknown): value is string {
 /**
  * Cross-checks the metadata version fields against the records they describe.
  *
- * The version is what makes an outcome or prediction interpretable: an `apply_filter`
+ * The version is what makes an outcome or prediction interpretable: a semantic outcome
  * without the vocabulary version that defines it cannot be joined to a target generator.
  */
 function validateVersionAttribution(

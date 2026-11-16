@@ -50,6 +50,9 @@ const ROUTE_TOKENS = /['"`](Analytics|Reports|Customers|Settings|Overview)['"`]/
 const TASK_TOKENS = /['"`]TD[1-4](?:-[^'"`]*)?['"`]/;
 /** Testbed component identifiers. */
 const COMPONENT_TOKENS = /['"`](btn-export|filter-drawer)['"`]/;
+/** The approved testbed semantic outcomes (Task 20.4). Core must never require one. */
+const SEMANTIC_OUTCOME_TOKENS =
+  /['"`](navigate_overview|navigate_analytics|navigate_reports|select_report|inspect_help|open_filter_section|close_filter_section|select_region|select_date_range|select_category|apply_filter|reset_filter|export_report)['"`]/;
 /** Testbed macro symbol names. `BACKTRACK`/`RAPID_SCROLL`/`IDLE_DWELL` stay: they are
  * framework-detected behavioural markers, not application vocabulary. */
 const SYMBOL_TOKENS =
@@ -96,6 +99,12 @@ describe('framework core carries no application vocabulary', () => {
 
   it('has no testbed macro symbol vocabulary in core source', () => {
     expect(scan(SYMBOL_TOKENS).map((v) => `${v.file}:${v.line} ${v.text}`)).toEqual([]);
+  });
+
+  it('has no application semantic outcome IDs in core source', () => {
+    // The exit criterion is "no semantic outcome ID as a required value". The framework
+    // vocabulary it does own — the generic seven-class taxonomy — is not in this list.
+    expect(scan(SEMANTIC_OUTCOME_TOKENS).map((v) => `${v.file}:${v.line} ${v.text}`)).toEqual([]);
   });
 
   it('declares no application Fast Gate patterns in the framework defaults', () => {

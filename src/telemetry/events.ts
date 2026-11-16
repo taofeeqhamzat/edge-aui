@@ -200,7 +200,7 @@ export interface OutcomeEvent {
   // Semantic outcome (Task 20.4)
   //
   // The generic `outcome` above is the model's seven-class foundation label. The semantic
-  // outcome is the application vocabulary (`apply_filter`, `select_report`, …) describing
+  // outcome is the application vocabulary describing
   // what the participant actually did. Both are recorded: neither replaces the other.
   // ---------------------------------------------------------------------------
   /** Application-supplied semantic outcome identifier; `NO_OUTCOME` when no rule matched. */

@@ -3,8 +3,7 @@
  *
  * The framework predicts *observable interaction outcomes*. The generic seven-class taxonomy
  * (`CLICK`, `FORM_SUBMIT`, …) is the model's foundation vocabulary; the semantic vocabulary
- * (`apply_filter`, `select_report`, …) is the application's, and describes what the
- * participant actually did.
+ * is the application's, and describes what the participant actually did.
  *
  * This module supplies the contract and the derivation mechanics:
  *
@@ -14,7 +13,7 @@
  *   sequence rather than of any one application's pages;
  * - a system-initiated act is never a participant outcome.
  *
- * Nothing here names an application outcome: core has no `apply_filter`.
+ * Nothing here names an application outcome; core requires no particular one.
  */
 
 import type { BehaviourEvent } from '../telemetry/events';
