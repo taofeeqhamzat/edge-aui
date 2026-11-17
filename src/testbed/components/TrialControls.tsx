@@ -19,6 +19,9 @@ import { bootTestbed, getRuntime, pendingTrialFinalization, switchCondition } fr
 import { ExperimentalCondition } from "../../telemetry/events";
 import { sessionManager } from "../../telemetry/session";
 
+/** Shared between the locked controls and the explanation they point at. */
+const LOCK_NOTE_ID = "trial-lock-note";
+
 export interface TrialControlsProps {
   /** Initial condition. */
   initialCondition?: ExperimentalCondition;
@@ -32,13 +35,21 @@ interface ConditionSelectorProps {
   condition: ExperimentalCondition;
   disabled: boolean;
   onChange: (condition: ExperimentalCondition) => void;
+  /** Id of the visible explanation for the locked state, when the controls are locked. */
+  describedBy?: string;
 }
 
-function ConditionSelector({ condition, disabled, onChange }: ConditionSelectorProps) {
+function ConditionSelector({
+  condition,
+  disabled,
+  onChange,
+  describedBy,
+}: ConditionSelectorProps) {
   return (
     <div
       role="radiogroup"
       aria-label="Experimental condition"
+      aria-describedby={describedBy}
       data-aui-component="condition-selector"
       data-aui-role="condition-selector"
       className="condition-selector"
@@ -69,11 +80,19 @@ interface TaskButtonsProps {
   resetDisabled: boolean;
   onStart: (taskId: TaskId) => void;
   onReset: () => void;
+  /** Id of the visible explanation for the locked state, when the controls are locked. */
+  describedBy?: string;
 }
 
-function TaskButtons({ startDisabled, resetDisabled, onStart, onReset }: TaskButtonsProps) {
+function TaskButtons({
+  startDisabled,
+  resetDisabled,
+  onStart,
+  onReset,
+  describedBy,
+}: TaskButtonsProps) {
   return (
-    <div className="trial-actions">
+    <div className="trial-actions" aria-describedby={describedBy}>
       {(Object.keys(EXPERIMENTAL_TASKS) as TaskId[]).map((taskId) => (
         <button
           key={taskId}
@@ -125,7 +144,9 @@ function TrialStatus({ taskState, activeTask, currentStep }: TrialStatusProps) {
         <strong>Step:</strong>{" "}
         {currentStep
           ? `${currentStep.stepId} (${taskState.completedSteps.length + 1}/${activeTask!.steps.length}) — ${currentStep.description}`
-          : "N/A"}
+          : taskState.status === "In Progress"
+            ? "All steps visited — the task's required state is not met yet."
+            : "N/A"}
       </div>
       <div>
         <strong>Errors:</strong>{" "}
@@ -257,6 +278,7 @@ export function TrialControls({
           condition={condition}
           disabled={busy || inProgress}
           onChange={handleCondition}
+          describedBy={inProgress ? LOCK_NOTE_ID : undefined}
         />
       </div>
 
@@ -265,7 +287,31 @@ export function TrialControls({
         resetDisabled={busy}
         onStart={handleStart}
         onReset={handleReset}
+        describedBy={inProgress ? LOCK_NOTE_ID : undefined}
       />
+
+      {activeTask && (
+        <p
+          className="trial-instruction"
+          data-aui-component="trial-instruction"
+          data-aui-role="status"
+        >
+          <strong>Task:</strong> {activeTask.description}
+        </p>
+      )}
+
+      {inProgress && (
+        <p
+          id={LOCK_NOTE_ID}
+          className="trial-lock-note"
+          data-aui-component="trial-lock-note"
+          data-aui-role="status"
+          aria-live="polite"
+        >
+          Task and condition controls are locked until this trial ends. Reset Trial ends the
+          current trial early and records it as abandoned.
+        </p>
+      )}
 
       <TrialStatus
         taskState={taskState}

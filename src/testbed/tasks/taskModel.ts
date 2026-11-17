@@ -112,7 +112,7 @@ export const EXPERIMENTAL_TASKS: Record<TaskId, TargetTask> = {
     steps: [
       { stepId: 'TD1-1', description: 'Navigate to Analytics', expectedComponentId: 'nav-Analytics', expectedAction: 'click' },
       { stepId: 'TD1-2', description: 'Open Region filter', expectedComponentId: 'filter-section-region', expectedAction: 'click' },
-      { stepId: 'TD1-3', description: 'Select Europe', expectedComponentId: 'filter-Region-select', expectedAction: 'change' },
+      { stepId: 'TD1-3', description: 'Select the Europe region', expectedComponentId: 'filter-Region-select', expectedAction: 'change' },
       { stepId: 'TD1-4', description: 'Apply filters', expectedComponentId: 'btn-apply-filters', expectedAction: 'click' },
       { stepId: 'TD1-5', description: 'Export report', expectedComponentId: 'btn-export', expectedAction: 'click' }
     ]
@@ -120,16 +120,16 @@ export const EXPERIMENTAL_TASKS: Record<TaskId, TargetTask> = {
   TD2: {
     id: 'TD2',
     name: 'Date and category filter',
-    description: 'Show Books sold on or after 1 June 2025 and apply the filters.',
+    description: 'Set the start date to 1 June 2025, select only Books, and apply the filters.',
     startingPage: 'Analytics',
     definitionVersion: 'TD-v2',
     timeoutMs: timeoutFor('TD2'),
     completionId: 'td2-date-category',
     steps: [
       { stepId: 'TD2-1', description: 'Open Date Range', expectedComponentId: 'filter-section-date-range', expectedAction: 'click' },
-      { stepId: 'TD2-2', description: 'Set start date', expectedComponentId: 'filter-date-input', expectedAction: 'change' },
+      { stepId: 'TD2-2', description: 'Set the start date to 1 June 2025', expectedComponentId: 'filter-date-input', expectedAction: 'change' },
       { stepId: 'TD2-3', description: 'Open Product Category', expectedComponentId: 'filter-section-product-category', expectedAction: 'click' },
-      { stepId: 'TD2-4', description: 'Select Books', expectedComponentId: 'filter-category-books', expectedAction: 'change' },
+      { stepId: 'TD2-4', description: 'Select only Books', expectedComponentId: 'filter-category-books', expectedAction: 'change' },
       { stepId: 'TD2-5', description: 'Apply filters', expectedComponentId: 'btn-apply-filters', expectedAction: 'click' }
     ]
   },
@@ -143,11 +143,11 @@ export const EXPERIMENTAL_TASKS: Record<TaskId, TargetTask> = {
     completionId: 'td3-empty-recovery',
     steps: [
       { stepId: 'TD3-1', description: 'Open Region filter', expectedComponentId: 'filter-section-region', expectedAction: 'click' },
-      { stepId: 'TD3-2', description: 'Select Europe', expectedComponentId: 'filter-Region-select', expectedAction: 'change' },
+      { stepId: 'TD3-2', description: 'Select the Europe region', expectedComponentId: 'filter-Region-select', expectedAction: 'change' },
       { stepId: 'TD3-3', description: 'Open Product Category', expectedComponentId: 'filter-section-product-category', expectedAction: 'click' },
-      { stepId: 'TD3-4', description: 'Select Books', expectedComponentId: 'filter-category-books', expectedAction: 'change' },
+      { stepId: 'TD3-4', description: 'Select only Books', expectedComponentId: 'filter-category-books', expectedAction: 'change' },
       { stepId: 'TD3-5', description: 'Open Date Range', expectedComponentId: 'filter-section-date-range', expectedAction: 'click' },
-      { stepId: 'TD3-6', description: 'Set 1 September 2025', expectedComponentId: 'filter-date-input', expectedAction: 'change' },
+      { stepId: 'TD3-6', description: 'Set the start date to 1 September 2025', expectedComponentId: 'filter-date-input', expectedAction: 'change' },
       { stepId: 'TD3-7', description: 'Apply filters', expectedComponentId: 'btn-apply-filters', expectedAction: 'click' },
       { stepId: 'TD3-8', description: 'Reset filters', expectedComponentId: 'btn-reset-filters', expectedAction: 'click' }
     ]

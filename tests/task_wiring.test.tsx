@@ -229,6 +229,79 @@ describe('Task model / DOM annotation contract', () => {
     expect(taskManager.getState().errors).toBe(0);
   });
 
+  it('shows the task brief and the exact value each step expects', () => {
+    // The task description was never rendered, so participants only saw a short name and a
+    // step label. TD2's prose ("on or after 1 June") also admitted a later date that the
+    // completion predicate rejects. Both the brief and the step now name the exact target.
+    render(<App />);
+    click('[data-aui-component="btn-start-TD2"]');
+
+    const brief = document.querySelector('[data-aui-component="trial-instruction"]');
+    expect(brief?.textContent).toContain('Set the start date to 1 June 2025');
+    expect(brief?.textContent).toContain('select only Books');
+
+    openSection('filter-section-date-range');
+    // Opening the section completes TD2-1, so the step shown is the exact date instruction.
+    expect(trialText()).toContain('Set the start date to 1 June 2025');
+    const dateInput = document.querySelector('[data-aui-component="filter-date-input"]') as HTMLInputElement;
+    act(() => {
+      fireEvent.change(dateInput, { target: { value: '2025-06-01' } });
+    });
+    openSection('filter-section-product-category');
+    expect(trialText()).toContain('Select only Books');
+  });
+
+  it('explains locked controls while a trial is incomplete and restores them on completion', () => {
+    render(<App />);
+    click('[data-aui-component="btn-start-TD2"]');
+    openSection('filter-section-date-range');
+    const dateInput = document.querySelector('[data-aui-component="filter-date-input"]') as HTMLInputElement;
+    act(() => {
+      fireEvent.change(dateInput, { target: { value: '2025-07-01' } });
+    });
+    openSection('filter-section-product-category');
+    act(() => {
+      fireEvent.click(
+        document.querySelector('[data-aui-component="filter-category-books"]') as HTMLInputElement
+      );
+    });
+    click('[data-aui-component="btn-apply-filters"]');
+
+    // The later start date is a reasonable reading of the old prose but not the task's
+    // required state, so the trial stays open. The locked controls must say why.
+    expect(taskManager.getState().status).toBe('In Progress');
+    const note = document.querySelector('[data-aui-component="trial-lock-note"]');
+    expect(note).not.toBeNull();
+    expect(note?.textContent).toContain('locked until this trial ends');
+    expect(note?.getAttribute('aria-live')).toBe('polite');
+    // Every step has been visited, so the step line must not read "N/A" while the trial is
+    // still open: that is the state that looked inexplicable to a participant.
+    expect(trialText()).toContain("the task's required state is not met yet");
+    expect(
+      document.querySelector('[data-aui-component="condition-selector"]')?.getAttribute('aria-describedby')
+    ).toBe('trial-lock-note');
+    expect(
+      (document.querySelector('[data-aui-component="btn-start-TD3"]') as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(
+      (document.querySelector('[data-aui-component="condition-adaptive"]') as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(
+      (document.querySelector('[data-aui-component="btn-reset-trial"]') as HTMLButtonElement).disabled
+    ).toBe(false);
+
+    // Correcting the date completes the trial; the explanation disappears with the lock.
+    act(() => {
+      fireEvent.change(dateInput, { target: { value: '2025-06-01' } });
+    });
+    click('[data-aui-component="btn-apply-filters"]');
+    expect(taskManager.getState().status).toBe('Completed');
+    expect(document.querySelector('[data-aui-component="trial-lock-note"]')).toBeNull();
+    expect(
+      (document.querySelector('[data-aui-component="btn-start-TD3"]') as HTMLButtonElement).disabled
+    ).toBe(false);
+  });
+
   it('completes TD3 from the empty state and a Reset Filters recovery', () => {
     render(<App />);
     click('[data-aui-component="btn-start-TD3"]');
