@@ -57,7 +57,7 @@ node scripts/compare-condition-traces.mjs \
 
 # 4. Cross-repository ingestion
 cd ../model-preparation
-.venv-314/bin/python -m pytest tests/test_trace_ingestion.py -q
+python3 -m pytest tests/test_trace_ingestion.py -q
 # -> 17 passed
 ```
 
