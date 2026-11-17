@@ -270,6 +270,40 @@ describe('Task model / DOM annotation contract', () => {
     expect(taskManager.getState().errors).toBe(0);
   });
 
+  it('normalizes filter disclosure when the next trial starts', () => {
+    // The drawer keeps its open sections in local state. A participant who finishes TD2 with
+    // the date and category sections open must not start TD3 with them already expanded,
+    // because TD3's canonical path asks them to open those sections themselves.
+    render(<App />);
+    click('[data-aui-component="btn-start-TD2"]');
+    openSection('filter-section-date-range');
+    openSection('filter-section-product-category');
+    const dateInput = document.querySelector('[data-aui-component="filter-date-input"]') as HTMLInputElement;
+    act(() => {
+      fireEvent.change(dateInput, { target: { value: '2025-06-01' } });
+    });
+    act(() => {
+      fireEvent.click(
+        document.querySelector('[data-aui-component="filter-category-books"]') as HTMLInputElement
+      );
+    });
+    click('[data-aui-component="btn-apply-filters"]');
+    expect(taskManager.getState().status).toBe('Completed');
+    expect(
+      document.querySelector('[data-aui-component="filter-section-date-range"]')?.getAttribute('aria-expanded')
+    ).toBe('true');
+
+    click('[data-aui-component="btn-start-TD3"]');
+
+    expect(taskManager.getState().status).toBe('In Progress');
+    expect(
+      document.querySelector('[data-aui-component="filter-section-date-range"]')?.getAttribute('aria-expanded')
+    ).toBe('false');
+    expect(
+      document.querySelector('[data-aui-component="filter-section-product-category"]')?.getAttribute('aria-expanded')
+    ).toBe('false');
+  });
+
   it('records abandonment when Reset Trial is used mid-task', () => {
     const lifecycle: TaskLifecycleEvent[] = [];
     const unsubscribe = taskManager.onLifecycle((event) => lifecycle.push(event));

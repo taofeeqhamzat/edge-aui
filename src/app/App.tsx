@@ -27,6 +27,15 @@ export function App() {
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(createEmptyFilterState);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [visitedReportIds, setVisitedReportIds] = useState<string[]>([]);
+  /**
+   * Bumped whenever a trial boundary is crossed.
+   *
+   * The drawer keeps its open/closed sections in local state, so resetting the filter values
+   * is not enough: a task that begins after another task's disclosure would start with that
+   * task's sections open (Workstream 10 exit criterion: sections reset too). Remounting the
+   * drawer through this key restores the declared "all sections collapsed" start state.
+   */
+  const [trialKey, setTrialKey] = useState(0);
 
   // Passive UI-context tracking (hover/focus) so `getActiveUIContext` is populated.
   useEffect(() => initUIContextTracker(document), []);
@@ -67,6 +76,7 @@ export function App() {
 
     const snapshot = makeUiState(task.startingPage, empty, null, []);
     taskManager.updateUiState(snapshot);
+    setTrialKey((key) => key + 1);
     return snapshot;
   };
 
@@ -76,6 +86,7 @@ export function App() {
     setAppliedFilters(empty);
     setCurrentReportId(null);
     setVisitedReportIds([]);
+    setTrialKey((key) => key + 1);
     taskManager.updateUiState(makeUiState(currentPage, empty, null, []));
   };
 
@@ -135,6 +146,7 @@ export function App() {
           {currentPage === 'Analytics' ? (
             <div className="analytics-layout">
               <FilterDrawer
+                key={trialKey}
                 value={filters}
                 onChange={setFilters}
                 onApply={handleApply}
