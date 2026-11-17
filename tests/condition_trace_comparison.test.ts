@@ -13,8 +13,15 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { compareConditionTraces } from '../scripts/compare-condition-traces.mjs';
-import { verifyTraceCompleteness } from '../src/telemetry/traceAttributionVerifier';
+import {
+  canonicalContractApplies,
+  verifyTraceCompleteness
+} from '../src/telemetry/traceAttributionVerifier';
+import { isInterventionType } from '../src/intervention/types';
 import type { SerializableExperimentTrace } from '../src/telemetry/traceSchema';
+
+/** The framework's own contracts, supplied exactly as the CLI supplies them. */
+const contracts = { verifyTraceCompleteness, canonicalContractApplies, isInterventionType };
 
 describe('Task 6.2: Controlled Baseline vs Adaptive Trace Comparison (Brief §14)', () => {
   const baselinePath = path.resolve(__dirname, '../docs/experiments/baseline-trace.json');
@@ -48,7 +55,7 @@ describe('Task 6.2: Controlled Baseline vs Adaptive Trace Comparison (Brief §14
     const bData = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
     const aData = JSON.parse(fs.readFileSync(adaptivePath, 'utf8'));
 
-    const comparison = compareConditionTraces(bData, aData);
+    const comparison = compareConditionTraces(bData, aData, contracts);
     expect(comparison.passed).toBe(true);
     expect(comparison.issues).toHaveLength(0);
 
@@ -61,10 +68,13 @@ describe('Task 6.2: Controlled Baseline vs Adaptive Trace Comparison (Brief §14
     expect(comparison.engineeringChecks.baselineZeroMutation).toBe(true);
     expect(comparison.baseline.interventionsApplied).toBe(0);
 
-    // Adaptive distinctiveness: active adaptations
+    // Adaptive distinctiveness: the baseline was inert and the adaptive run actuated a
+    // configured intervention.
     expect(comparison.engineeringChecks.adaptiveInterventionActive).toBe(true);
+    expect(comparison.engineeringChecks.adaptiveInterventionsConfigured).toBe(true);
+    expect(comparison.engineeringChecks.adaptiveInterventionsAttributed).toBe(true);
     expect(comparison.adaptive.interventionsApplied).toBeGreaterThan(0);
-    expect(comparison.adaptive.interventionsBySource['learned_head']).toBe(1);
+    expect(Object.keys(comparison.adaptive.interventionsByType).length).toBeGreaterThan(0);
   });
 
   it('rejects comparison if baseline contains actuator mutations', () => {
@@ -84,22 +94,50 @@ describe('Task 6.2: Controlled Baseline vs Adaptive Trace Comparison (Brief §14
       }
     ];
 
-    const comparison = compareConditionTraces(bData, aData);
+    const comparison = compareConditionTraces(bData, aData, contracts);
     expect(comparison.passed).toBe(false);
     expect(comparison.engineeringChecks.baselineZeroMutation).toBe(false);
     expect(comparison.issues.some((i: string) => i.includes('Baseline violation'))).toBe(true);
   });
 
-  it('rejects comparison if adaptive condition fails to apply any intervention', () => {
+  it('reports a declined adaptive policy without failing condition integrity', () => {
+    // A policy that never crosses its confidence/persistence thresholds is a legitimate
+    // research outcome, and a scripted canonical run may produce it. The comparison must say
+    // so rather than treat "no actuation" as a broken capture.
     const bData = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
     const aData = JSON.parse(fs.readFileSync(adaptivePath, 'utf8'));
 
     aData.interventions = [];
 
-    const comparison = compareConditionTraces(bData, aData);
-    expect(comparison.passed).toBe(false);
+    const comparison = compareConditionTraces(bData, aData, contracts);
+    expect(comparison.passed).toBe(true);
     expect(comparison.engineeringChecks.adaptiveInterventionActive).toBe(false);
-    expect(comparison.issues.some((i: string) => i.includes('0 applied interventions'))).toBe(true);
+    expect(comparison.adaptive.interventionsApplied).toBe(0);
+  });
+
+  it('rejects an adaptive intervention outside the configured vocabulary', () => {
+    const bData = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+    const aData = JSON.parse(fs.readFileSync(adaptivePath, 'utf8'));
+
+    aData.interventions = [
+      {
+        timestamp: 1500,
+        type: 'applied',
+        intervention: 'recolour_the_page',
+        source: 'slow',
+        interventionEpisodeId: 'ep-unconfigured',
+        predictionId: 'pred-1',
+        sessionId: aData.session.sessionId,
+        conditionId: 'adaptive'
+      }
+    ];
+
+    const comparison = compareConditionTraces(bData, aData, contracts);
+    expect(comparison.passed).toBe(false);
+    expect(comparison.engineeringChecks.adaptiveInterventionsConfigured).toBe(false);
+    expect(
+      comparison.issues.some((issue: string) => issue.includes('unconfigured intervention'))
+    ).toBe(true);
   });
 
   it('rejects comparison on schema version mismatch', () => {
@@ -108,7 +146,7 @@ describe('Task 6.2: Controlled Baseline vs Adaptive Trace Comparison (Brief §14
 
     aData.schemaVersion = '1.1.0';
 
-    const comparison = compareConditionTraces(bData, aData);
+    const comparison = compareConditionTraces(bData, aData, contracts);
     expect(comparison.passed).toBe(false);
     expect(comparison.engineeringChecks.schemaParity).toBe(false);
     expect(comparison.issues.some((i: string) => i.includes('Schema mismatch'))).toBe(true);

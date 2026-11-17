@@ -27,37 +27,12 @@ import {
 } from './traceSchema.js';
 import { PIPELINE_CONFIG } from '../config/pipelineConfig';
 import { DEFAULT_RUNTIME_CONFIG } from '../config/runtimeConfig';
-export type TaskId = 'T1' | 'T2' | 'T3' | string;
 
-export interface ExpectedTaskDefinition {
-  id?: string;
-  steps: Array<{ stepId: string } | string>;
+/** A non-empty string, used to decide whether an attribution field is present. */
+function hasText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
 }
-
-export const KNOWN_TASK_DEFINITIONS: Record<string, ExpectedTaskDefinition> = {
-  T1: {
-    steps: [
-      { stepId: 'T1-1' },
-      { stepId: 'T1-2' },
-      { stepId: 'T1-3' },
-      { stepId: 'T1-4' }
-    ]
-  },
-  T2: {
-    steps: [
-      { stepId: 'T2-1' },
-      { stepId: 'T2-2' }
-    ]
-  },
-  T3: {
-    steps: [
-      { stepId: 'T3-1' },
-      { stepId: 'T3-2' },
-      { stepId: 'T3-3' },
-      { stepId: 'T3-4' }
-    ]
-  }
-};
+export type TaskId = string;
 
 export interface TraceCheckResult {
   check: string;
@@ -194,54 +169,116 @@ export function verifyTraceCompleteness(data: unknown): TraceVerificationReport 
     corrErrors.length === 0 ? undefined : corrErrors.join('; ')
   );
 
-  // 3. Task lifecycle completeness
+  // 3. Task lifecycle consistency
+  //
+  // The expected step ids belong to the application's task model, not to the framework
+  // (Workstream 20 boundary). What the verifier can decide without that model is whether the
+  // recorded lifecycle is internally consistent: one start, one terminal event matching the
+  // declared status, no step after the terminal event, and metadata that agrees with it.
   const taskEvents = trace.taskEvents ?? [];
-  const taskId = (trace.task?.currentTaskId ?? trace.session?.taskId) as TaskId | undefined;
-  const isCompleted = trace.task?.status === 'Completed' || trace.metadata?.finalTaskStatus === 'Completed';
-  const isAbandoned = trace.task?.status === 'Abandoned' || trace.metadata?.finalTaskStatus === 'Abandoned';
+  const declaredTaskId = (trace.task?.currentTaskId ?? trace.session?.taskId) as TaskId | undefined;
+  const taskStatus = trace.task?.status ?? trace.metadata?.finalTaskStatus;
+  const lifecycleErrors: string[] = [];
 
-  if (taskId && KNOWN_TASK_DEFINITIONS[taskId]) {
-    const expectedTask = KNOWN_TASK_DEFINITIONS[taskId];
-    const hasStart = taskEvents.some(
-      (e) => e.type === 'task_start' && e.taskId === taskId
+  if (declaredTaskId) {
+    const eventsForTask = taskEvents.filter((event) => event.taskId === declaredTaskId);
+    const otherTasks = new Set(
+      taskEvents.map((event) => event.taskId).filter((id) => id && id !== declaredTaskId)
     );
-    const hasComplete = taskEvents.some(
-      (e) => e.type === 'task_complete' && e.taskId === taskId
-    );
-    const hasAbandonOrReset = taskEvents.some(
-      (e) => (e.type === 'task_abandon' || e.type === 'task_reset') && e.taskId === taskId
-    );
+    const starts = eventsForTask.filter((event) => event.type === 'task_start');
+    const completes = eventsForTask.filter((event) => event.type === 'task_complete');
+    const abandons = eventsForTask.filter((event) => event.type === 'task_abandon');
+    const failures = eventsForTask.filter((event) => event.type === 'task_fail');
 
-    const stepEvents = taskEvents
-      .filter((e) => e.type === 'task_step' && e.taskId === taskId)
-      .map((e) => e.taskStepId);
-
-    const missingLifecycle: string[] = [];
-    if (!hasStart) {
-      missingLifecycle.push(`Missing 'task_start' event for task ${taskId}`);
+    if (otherTasks.size > 0) {
+      lifecycleErrors.push(
+        `taskEvents reference other tasks (${[...otherTasks].join(', ')}) besides ${declaredTaskId}`
+      );
     }
-    if (isCompleted) {
-      if (!hasComplete) {
-        missingLifecycle.push(`Task marked Completed but missing 'task_complete' event`);
+    if (starts.length !== 1) {
+      lifecycleErrors.push(
+        `expected exactly one 'task_start' for ${declaredTaskId}, found ${starts.length}`
+      );
+    }
+
+    if (taskStatus === 'Completed') {
+      if (completes.length !== 1) {
+        lifecycleErrors.push(
+          `task ${declaredTaskId} is Completed but has ${completes.length} 'task_complete' event(s)`
+        );
       }
-      for (const step of expectedTask.steps) {
-        const stepId = typeof step === 'string' ? step : step.stepId;
-        if (!stepEvents.includes(stepId)) {
-          missingLifecycle.push(`Missing step event '${stepId}' for completed task ${taskId}`);
+      if (abandons.length > 0 || failures.length > 0) {
+        lifecycleErrors.push(
+          `task ${declaredTaskId} is Completed but also records abandonment/failure`
+        );
+      }
+      const completedAt = completes[0]?.timestamp;
+      if (typeof completedAt === 'number') {
+        const stepsAfterCompletion = eventsForTask.filter(
+          (event) => event.type === 'task_step' && event.timestamp > completedAt
+        );
+        if (stepsAfterCompletion.length > 0) {
+          lifecycleErrors.push(
+            `${stepsAfterCompletion.length} 'task_step' event(s) recorded after 'task_complete'`
+          );
         }
       }
-    } else if (isAbandoned && !hasAbandonOrReset) {
-      missingLifecycle.push(`Task marked Abandoned but missing 'task_abandon' or 'task_reset' event`);
+      const durationMs = completes[0]?.durationMs;
+      if (typeof durationMs === 'number' && durationMs < 0) {
+        lifecycleErrors.push(`'task_complete' carries a negative durationMs (${durationMs})`);
+      }
+    } else if (taskStatus === 'Abandoned') {
+      if (abandons.length !== 1) {
+        lifecycleErrors.push(
+          `task ${declaredTaskId} is Abandoned but has ${abandons.length} 'task_abandon' event(s)`
+        );
+      }
+      if (completes.length > 0 || failures.length > 0) {
+        lifecycleErrors.push(
+          `task ${declaredTaskId} is Abandoned but also records completion/failure`
+        );
+      }
+    } else if (taskStatus === 'Failed') {
+      if (failures.length !== 1) {
+        lifecycleErrors.push(
+          `task ${declaredTaskId} is Failed but has ${failures.length} 'task_fail' event(s)`
+        );
+      }
+      if (completes.length > 0 || abandons.length > 0) {
+        lifecycleErrors.push(`task ${declaredTaskId} is Failed but also records completion/abandonment`);
+      }
+      if (failures[0]?.reason !== 'timeout') {
+        lifecycleErrors.push(
+          `'task_fail' reason must be 'timeout' for a Failed trial, received '${String(
+            failures[0]?.reason
+          )}'`
+        );
+      }
+    } else if (completes.length > 0 || abandons.length > 0 || failures.length > 0) {
+      lifecycleErrors.push(
+        `task status '${String(taskStatus)}' is not terminal but a terminal task event was recorded`
+      );
     }
 
-    addCheck(
-      'task_lifecycle_completeness',
-      missingLifecycle.length === 0,
-      missingLifecycle.length === 0 ? undefined : missingLifecycle.join('; ')
-    );
-  } else {
-    addCheck('task_lifecycle_completeness', true, 'No specific task asserted or free-form trial');
+    if (
+      trace.metadata?.finalTaskStatus &&
+      trace.task?.status &&
+      trace.metadata.finalTaskStatus !== trace.task.status
+    ) {
+      lifecycleErrors.push(
+        `metadata.finalTaskStatus ('${trace.metadata.finalTaskStatus}') disagrees with ` +
+          `task.status ('${trace.task.status}')`
+      );
+    }
+  } else if (taskEvents.length > 0) {
+    lifecycleErrors.push('taskEvents are present but no current task id is declared');
   }
+
+  addCheck(
+    'task_lifecycle_consistency',
+    lifecycleErrors.length === 0,
+    lifecycleErrors.length === 0 ? undefined : lifecycleErrors.join('; ')
+  );
 
   // 4. Window-to-outcome mapping completeness
   //
@@ -352,6 +389,54 @@ export function verifyTraceCompleteness(data: unknown): TraceVerificationReport 
     );
   }
 
+  // 5b-2. Prediction → window attribution (F-18)
+  //
+  // A prediction that names a window it did not evaluate, or an evaluated window the trace
+  // does not contain, cannot be replayed: the sequence the model saw is not recoverable from
+  // the record. The 1.2.0 format predates `evaluatedWindowIds`, so legacy traces are reported
+  // rather than failed.
+  if (canonicalContractApplies(trace)) {
+    const windowIds = new Set((trace.microTensors ?? []).map((window) => window.windowId));
+    const attributionErrors: string[] = [];
+    for (let index = 0; index < predictions.length; index += 1) {
+      const prediction = predictions[index];
+      if (typeof prediction.windowId !== 'number' || !windowIds.has(prediction.windowId)) {
+        attributionErrors.push(
+          `predictions[${index}] names window '${String(prediction.windowId)}', which is not in microTensors`
+        );
+      }
+      if (!Array.isArray(prediction.evaluatedWindowIds) || prediction.evaluatedWindowIds.length === 0) {
+        attributionErrors.push(`predictions[${index}] has no evaluatedWindowIds`);
+        continue;
+      }
+      const unknown = prediction.evaluatedWindowIds.filter((id) => !windowIds.has(id));
+      if (unknown.length > 0) {
+        attributionErrors.push(
+          `predictions[${index}] evaluated window(s) ${unknown.slice(0, 5).join(', ')} that are not in microTensors`
+        );
+      }
+      if (
+        typeof prediction.windowId === 'number' &&
+        !prediction.evaluatedWindowIds.includes(prediction.windowId)
+      ) {
+        attributionErrors.push(
+          `predictions[${index}] evaluatedWindowIds does not contain its own windowId '${prediction.windowId}'`
+        );
+      }
+    }
+    addCheck(
+      'prediction_window_attribution',
+      attributionErrors.length === 0,
+      attributionErrors.length === 0 ? undefined : attributionErrors.slice(0, 8).join('; ')
+    );
+  } else {
+    addCheck(
+      'prediction_window_attribution',
+      true,
+      `Legacy schema ${trace.schemaVersion} predates evaluatedWindowIds; the evaluated sequence cannot be recovered.`
+    );
+  }
+
   // 5c. Episode attribution: every applied episode must trace back to a prediction (F-05)
   const episodePrediction = new Map<string, string>();
   const episodeIssued = new Set<string>();
@@ -412,6 +497,98 @@ export function verifyTraceCompleteness(data: unknown): TraceVerificationReport 
   } else {
     addCheck('baseline_zero_mutations', true, 'Not baseline condition');
   }
+
+  // 6b. Semantic-outcome and task-definition attribution
+  //
+  // The verifier does not know the application's vocabulary, but it can require that every
+  // record agrees with the version declared in metadata. A trace whose outcomes name two
+  // vocabularies, or whose events name a task version the metadata denies, cannot be joined
+  // to a target generator or replayed against a task model.
+  if (canonicalContractApplies(trace)) {
+    const semanticErrors: string[] = [];
+    const metadataVocabulary = trace.metadata?.semanticOutcomeVocabularyVersion;
+    const outcomeVocabularyVersions = new Set(
+      (trace.outcomes ?? [])
+        .filter((outcome) => hasText(outcome.taskOutcome))
+        .map((outcome) => outcome.taskOutcomeVocabularyVersion)
+    );
+    if (outcomeVocabularyVersions.size > 1) {
+      semanticErrors.push(
+        `outcomes name more than one semantic vocabulary version: ${[...outcomeVocabularyVersions]
+          .map((version) => `'${String(version)}'`)
+          .join(', ')}`
+      );
+    }
+    if (
+      metadataVocabulary &&
+      outcomeVocabularyVersions.size === 1 &&
+      !outcomeVocabularyVersions.has(metadataVocabulary)
+    ) {
+      semanticErrors.push(
+        `metadata.semanticOutcomeVocabularyVersion ('${metadataVocabulary}') disagrees with the outcomes`
+      );
+    }
+
+    const metadataTaskVersion = trace.metadata?.taskDefinitionVersion;
+    const taskVersions = new Set(
+      (trace.taskEvents ?? [])
+        .map((event) => event.taskDefinitionVersion)
+        .filter((version): version is string => hasText(version))
+    );
+    if (taskVersions.size > 1) {
+      semanticErrors.push(
+        `taskEvents name more than one task-definition version: ${[...taskVersions]
+          .map((version) => `'${version}'`)
+          .join(', ')}`
+      );
+    }
+    if (metadataTaskVersion && taskVersions.size === 1 && !taskVersions.has(metadataTaskVersion)) {
+      semanticErrors.push(
+        `metadata.taskDefinitionVersion ('${metadataTaskVersion}') disagrees with the task events`
+      );
+    }
+
+    addCheck(
+      'semantic_outcome_contract',
+      semanticErrors.length === 0,
+      semanticErrors.length === 0 ? undefined : semanticErrors.join('; ')
+    );
+  } else {
+    addCheck(
+      'semantic_outcome_contract',
+      true,
+      `Legacy schema ${trace.schemaVersion} predates semantic outcomes and task-definition attribution.`
+    );
+  }
+
+  // 6c. Condition and provenance consistency
+  //
+  // Baseline/adaptive separation and scripted/participant separation are only reliable if the
+  // session and the metadata cannot disagree about them.
+  const consistencyErrors: string[] = [];
+  if (
+    trace.session?.conditionId &&
+    trace.metadata?.conditionId &&
+    trace.session.conditionId !== trace.metadata.conditionId
+  ) {
+    consistencyErrors.push(
+      `session.conditionId ('${trace.session.conditionId}') disagrees with metadata.conditionId ('${trace.metadata.conditionId}')`
+    );
+  }
+  if (
+    trace.session?.provenance &&
+    trace.metadata?.provenance &&
+    trace.session.provenance !== trace.metadata.provenance
+  ) {
+    consistencyErrors.push(
+      `session.provenance ('${trace.session.provenance}') disagrees with metadata.provenance ('${trace.metadata.provenance}')`
+    );
+  }
+  addCheck(
+    'condition_provenance_consistency',
+    consistencyErrors.length === 0,
+    consistencyErrors.length === 0 ? undefined : consistencyErrors.join('; ')
+  );
 
   // 7. Provenance presence (ADR-018)
   //
