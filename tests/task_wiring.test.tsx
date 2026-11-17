@@ -229,16 +229,11 @@ describe('Task model / DOM annotation contract', () => {
     expect(taskManager.getState().errors).toBe(0);
   });
 
-  it('shows the task brief and the exact value each step expects', () => {
-    // The task description was never rendered, so participants only saw a short name and a
-    // step label. TD2's prose ("on or after 1 June") also admitted a later date that the
-    // completion predicate rejects. Both the brief and the step now name the exact target.
+  it('shows the exact value each step expects', () => {
+    // TD2's old prose ("on or after 1 June") admitted a later date that the completion
+    // predicate rejects. The step labels now name the exact target the predicate checks.
     render(<App />);
     click('[data-aui-component="btn-start-TD2"]');
-
-    const brief = document.querySelector('[data-aui-component="trial-instruction"]');
-    expect(brief?.textContent).toContain('Set the start date to 1 June 2025');
-    expect(brief?.textContent).toContain('select only Books');
 
     openSection('filter-section-date-range');
     // Opening the section completes TD2-1, so the step shown is the exact date instruction.
@@ -272,7 +267,8 @@ describe('Task model / DOM annotation contract', () => {
     expect(taskManager.getState().status).toBe('In Progress');
     const note = document.querySelector('[data-aui-component="trial-lock-note"]');
     expect(note).not.toBeNull();
-    expect(note?.textContent).toContain('locked until this trial ends');
+    expect(note?.textContent).toContain('Trial controls are disabled while a task is in progress');
+    expect(note?.textContent).toContain('Reset Trial');
     expect(note?.getAttribute('aria-live')).toBe('polite');
     // Every step has been visited, so the step line must not read "N/A" while the trial is
     // still open: that is the state that looked inexplicable to a participant.

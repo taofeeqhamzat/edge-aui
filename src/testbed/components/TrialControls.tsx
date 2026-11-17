@@ -290,16 +290,6 @@ export function TrialControls({
         describedBy={inProgress ? LOCK_NOTE_ID : undefined}
       />
 
-      {activeTask && (
-        <p
-          className="trial-instruction"
-          data-aui-component="trial-instruction"
-          data-aui-role="status"
-        >
-          <strong>Task:</strong> {activeTask.description}
-        </p>
-      )}
-
       {inProgress && (
         <p
           id={LOCK_NOTE_ID}
@@ -308,8 +298,8 @@ export function TrialControls({
           data-aui-role="status"
           aria-live="polite"
         >
-          Task and condition controls are locked until this trial ends. Reset Trial ends the
-          current trial early and records it as abandoned.
+          Trial controls are disabled while a task is in progress. Complete the task to
+          unlock them, or click <strong>Reset Trial</strong> to start over.
         </p>
       )}
 
