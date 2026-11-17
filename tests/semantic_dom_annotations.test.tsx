@@ -6,6 +6,13 @@ import { FilterDrawer } from '../src/testbed/components/FilterDrawer';
 import { ResultsTable } from '../src/testbed/components/ResultsTable';
 import { KPICards } from '../src/testbed/components/KPICards';
 import { App } from '../src/app/App';
+import { createTelemetryObserver } from '../src/telemetry/observer';
+import { SemanticOutcomeDeriver } from '../src/outcome/semantic';
+import {
+  TESTBED_SEMANTIC_VOCABULARY,
+  createTestbedSemanticRules
+} from '../src/testbed/config/semanticOutcomes';
+import type { BehaviourEvent } from '../src/telemetry/events';
 
 describe('Task 3.1: Semantic DOM Annotation Contract (data-aui-*)', () => {
   it('annotates navigation buttons with stable component IDs and roles', () => {
@@ -72,6 +79,35 @@ describe('Task 3.1: Semantic DOM Annotation Contract (data-aui-*)', () => {
     // The inert Customer Segment control has been removed.
     expect(container.querySelector('[data-aui-component="filter-segment-select"]')).toBeNull();
     expect(container.querySelector('[data-aui-component="filter-Advanced Options"]')).toBeNull();
+  });
+
+  it('records an accordion click as the disclosure state it produced', () => {
+    // The observer listens in the capture phase, so it reads `aria-expanded` before React has
+    // committed the toggle. Recording that raw value labelled every opening click as
+    // `close_filter_section`, which is wrong about what the participant did.
+    const { container } = render(<FilterDrawer />);
+    const observer = createTelemetryObserver();
+    const captured: BehaviourEvent[] = [];
+    observer.subscribe((event) => captured.push(event));
+    observer.start(container);
+
+    const accordion = container.querySelector(
+      '[data-aui-component="filter-section-region"]'
+    ) as HTMLElement;
+    act(() => accordion.click());
+    observer.stop();
+
+    expect(accordion.getAttribute('aria-expanded')).toBe('true');
+    const click = captured.find(
+      (event) => event.type === 'click' && event.componentId === 'filter-section-region'
+    );
+    expect(click?.ariaExpanded).toBe(true);
+
+    const deriver = new SemanticOutcomeDeriver({
+      vocabulary: TESTBED_SEMANTIC_VOCABULARY,
+      rules: createTestbedSemanticRules()
+    });
+    expect(deriver.observe(click!).outcomeId).toBe('open_filter_section');
   });
 
   it('annotates ResultsTable actions, tooltips, and table rows', () => {

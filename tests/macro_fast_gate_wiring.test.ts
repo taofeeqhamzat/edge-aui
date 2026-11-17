@@ -25,12 +25,22 @@ function renderAnnotatedDom(): HTMLElement {
   root.innerHTML = `
     <button data-aui-component="nav-Analytics" data-aui-role="navigation" data-aui-action="click">Analytics</button>
     <form data-aui-component="filter-drawer" data-aui-role="filter">
-      <button type="button" data-aui-component="filter-Region" data-aui-role="accordion" aria-expanded="true">Region</button>
+      <button type="button" data-aui-component="filter-Region" data-aui-role="accordion" aria-expanded="false">Region</button>
       <select data-aui-component="filter-Region-select" data-aui-role="filter" data-aui-action="change"><option>Europe</option></select>
       <button type="submit" data-aui-component="btn-apply-filters" data-aui-role="submit-action" data-aui-action="click">Apply</button>
     </form>
   `;
   document.body.appendChild(root);
+  // The observer reads disclosure state in the capture phase, then records the state the
+  // click produced. A fixture that never toggles `aria-expanded` cannot express "opened",
+  // so simulate the host's click handler here.
+  const accordion = root.querySelector('[data-aui-component="filter-Region"]') as HTMLElement;
+  accordion.addEventListener('click', () => {
+    accordion.setAttribute(
+      'aria-expanded',
+      accordion.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'
+    );
+  });
   return root;
 }
 
