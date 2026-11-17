@@ -80,6 +80,17 @@ the research panel, and reports `collection: local_only` instead of attempting a
   committed as a build input.
 - Supabase is optional and not required to run or verify the testbed.
 
+## Supported devices and input
+
+Participation requires a desktop or laptop browser with a mouse, trackpad or other fine,
+hover-capable pointer. Touch and mobile devices are refused **before** a participant session or
+behavioural trace is created; they see a one-line notice instead of the testbed.
+
+The exact block rule, the pre-session enforcement point and the re-evaluation behaviour are
+documented in [`docs/testbed/device-support.md`](docs/testbed/device-support.md). The rule uses
+pointer capability and mobile-context signals, not viewport width, so a narrow desktop window is
+still supported and a responsive layout or orientation change cannot bypass the restriction.
+
 ## Getting started
 
 ```bash
@@ -151,6 +162,7 @@ origin and a live Supabase project — is recorded as `NOT VERIFIED` in
 | [`docs/assessments/`](docs/assessments/) | The audits, the implementation record, and the deployment report |
 | [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 … ADR-029) |
 | [`docs/testbed/prd.md`](docs/testbed/prd.md) | Product requirements for the target UI |
+| [`docs/testbed/device-support.md`](docs/testbed/device-support.md) | Supported-device rule and pre-session entry gate |
 | [`AGENTS.md`](AGENTS.md) | Architectural constraints and engineering guidance |
 
 `docs/plan/` is gitignored for historical plans and kept as a local working record. The plan 3

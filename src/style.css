@@ -805,3 +805,26 @@ body {
 .report-row-current td {
   background-color: #f0f9ff;
 }
+
+/* ==========================================================================
+   Testbed Entry Gate (outside the behavioural pipeline)
+   ==========================================================================
+   Rendered in place of the application shell when the supported-device rule
+   refuses access. One paragraph, no controls, no testbed regions.
+   Must not be hidden or bypassed by a responsive breakpoint. */
+
+.testbed-entry-gate {
+  margin: 12vh auto 0;
+  max-width: 900px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-surface);
+}
+
+.testbed-entry-gate-message {
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
