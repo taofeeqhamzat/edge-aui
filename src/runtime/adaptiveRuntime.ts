@@ -263,8 +263,10 @@ export class AdaptiveRuntime {
       },
       experiment: {
         ...(options.experimentId ? { experimentId: options.experimentId } : {}),
-        ...(options.conditionId ? { conditionId: options.conditionId } : {}),
-        ...options.config?.experiment
+        ...options.config?.experiment,
+        // An explicit condition is the runtime's actual condition. A nested config value
+        // must not silently override the condition resolved for the participant session.
+        ...(options.conditionId ? { conditionId: options.conditionId } : {})
       }
     });
 

@@ -121,14 +121,18 @@ export class SessionManager {
   }
 
   /**
-   * Updates the experimental condition for the active session
-   * (e.g. switching between a baseline and an adaptive run).
+   * Initializes the experimental condition for the active session.
+   *
+   * The condition is the independent variable of the baseline/adaptive contrast, so it is
+   * immutable once set. This method is kept for call sites that establish a session before
+   * the composition root boots the runtime; a later call with a different value is a no-op.
+   * Changing a condition mid-session would make the trace describe a condition the
+   * participant did not run under.
    */
   public setCondition(conditionId: ExperimentalCondition): void {
-    if (this.currentSession) {
-      this.currentSession.conditionId = conditionId;
-      this.notify();
-    }
+    if (!this.currentSession || this.currentSession.conditionId !== undefined) return;
+    this.currentSession.conditionId = conditionId;
+    this.notify();
   }
 
   public getCondition(): ExperimentalCondition | undefined {

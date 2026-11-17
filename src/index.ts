@@ -49,5 +49,6 @@ export * from './runtime/instrumentation.js';
 
 // Configuration and UI context
 export * from './config/pipelineConfig.js';
+export * from './config/experimentCondition.js';
 export * from './types/uiContext.js';
 export * from './types/contextVector.js';
