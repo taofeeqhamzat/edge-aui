@@ -15,7 +15,7 @@ import {
   TaskState,
   TaskUiState,
 } from "../tasks/taskModel";
-import { bootTestbed, getRuntime, switchCondition } from "../../runtime/boot";
+import { bootTestbed, getRuntime, pendingTrialFinalization, switchCondition } from "../../runtime/boot";
 import { ExperimentalCondition } from "../../telemetry/events";
 import { sessionManager } from "../../telemetry/session";
 
@@ -173,6 +173,10 @@ function useTrialActions({
   const handleStart = async (taskId: TaskId) => {
     setBusy(true);
     try {
+      // A finished trial is still settling and uploading when the participant reaches for the
+      // next task. Crossing the boundary first keeps the old events out of the new record.
+      const pending = pendingTrialFinalization();
+      if (pending) await pending;
       const runtime = getRuntime();
       if (runtime) await runtime.resetTrial();
       const task = EXPERIMENTAL_TASKS[taskId];
@@ -186,6 +190,10 @@ function useTrialActions({
     setBusy(true);
     try {
       taskManager.resetTask();
+      // Reset records an abandonment, so the trial that just ended has to be snapshotted
+      // before `resetTrial()` clears the recorder for the next one.
+      const pending = pendingTrialFinalization();
+      if (pending) await pending;
       onResetTaskUi?.();
       const runtime = getRuntime();
       if (runtime) await runtime.resetTrial();
@@ -197,6 +205,10 @@ function useTrialActions({
   const handleCondition = async (next: ExperimentalCondition) => {
     setBusy(true);
     try {
+      // A condition switch rebuilds the runtime and clears the recorder, so the finished
+      // trial must be snapshotted and closed first.
+      const pending = pendingTrialFinalization();
+      if (pending) await pending;
       onConditionChange(next);
       await switchCondition(next);
     } finally {

@@ -594,6 +594,19 @@ export class AdaptiveRuntime {
     }
   }
 
+  /**
+   * Declares the current trial's observation stream ended and labels its pending windows.
+   *
+   * Called when a task reaches a terminal state, before the trial is exported. Without it the
+   * windows that closed in the last lookahead horizon of the trial would stay unlabelled until
+   * the idle grace period expired — after the export had already been taken. `resetTrial()`
+   * clears the flag for the next trial.
+   */
+  public endTrialStream(): void {
+    this.streamEnded = true;
+    this.flushPendingOutcomes();
+  }
+
   /** Resolves the current UIContext using the injected adapter or default DOM queries. */
   private resolveUIContext(): UIContext {
     return this.adapter.getActiveContext ? this.adapter.getActiveContext() : getActiveUIContext();
@@ -635,6 +648,10 @@ export class AdaptiveRuntime {
     // Close any episode still visible before the trial boundary, so a reset cannot leave an
     // adaptation applied with no terminal event in the record (F-03).
     this.actuator.clear(undefined, 'session_end');
+    // A trial boundary is a trace boundary. The window buffer restarts its `windowId`
+    // sequence here, so keeping the previous windows would put two different windows under
+    // one id and make the trace's primary correlation key ambiguous.
+    experimentRecorder.clear();
     experimentRecorder.setMiningCounters(this.miningCounters);
     debugBus.reset();
     try {

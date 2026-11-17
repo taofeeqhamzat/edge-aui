@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import './style.css';
-import { bootRuntime, registerRuntimeDefaults } from './runtime/boot';
+import { bootRuntime, getLastCompletedTrialTrace, registerRuntimeDefaults } from './runtime/boot';
 import { testbedAdapter } from './testbed/adapter';
 import { TESTBED_MACRO_MAPPER } from './testbed/config/macroVocabulary';
 import { TESTBED_CONTEXT_ENCODING_CONFIG } from './testbed/config/contextEncoding';
@@ -69,7 +69,7 @@ async function start(): Promise<void> {
     });
 
     // Development diagnostics: proves the pipeline produces telemetry end to end.
-    startRuntimeDiagnostics(runtime);
+    startRuntimeDiagnostics(runtime, { getCompletedTrace: getLastCompletedTrialTrace });
   } catch (err) {
     console.error('[Edge-AUI] Failed to start the adaptive runtime:', err);
   }

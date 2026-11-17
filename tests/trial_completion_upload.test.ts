@@ -21,7 +21,14 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { bootTestbed, getCollection, getRuntime, registerRuntimeDefaults } from '../src/runtime/boot';
+import {
+  bootTestbed,
+  clearLastCompletedTrialTrace,
+  getCollection,
+  getLastCompletedTrialTrace,
+  getRuntime,
+  registerRuntimeDefaults
+} from '../src/runtime/boot';
 import { testbedAdapter } from '../src/testbed/adapter';
 import { taskManager } from '../src/testbed/tasks/taskManager';
 import { type TaskId } from '../src/testbed/tasks/taskModel';
@@ -143,6 +150,7 @@ describe('Trial completion uploads the trace', () => {
 
   afterEach(() => {
     getRuntime()?.stop();
+    clearLastCompletedTrialTrace();
     taskManager.resetTask();
     sessionManager.resetSession();
     experimentRecorder.clear();
@@ -212,5 +220,34 @@ describe('Trial completion uploads the trace', () => {
     // and it must be recorded under its own id rather than merged into the next trial.
     expect(trace.task.status).toBe('Abandoned');
     expect(sessionManager.getActiveSession()!.sessionId).not.toBe(abandonedSessionId);
+  });
+
+  it('retains the finished trial export across the session rotation', async () => {
+    // Completion rotates the session and clears the recorder, so the live recorder stops
+    // describing the trial that just ended. The retained export is what makes a scripted
+    // capture retrievable without racing the rotation.
+    expect(getLastCompletedTrialTrace()).toBeNull();
+
+    const completedSessionId = sessionManager.getActiveSession()!.sessionId;
+    completeTask('TD1');
+
+    // Settlement (one window plus its delay) runs before the snapshot is taken.
+    await waitFor(() => getLastCompletedTrialTrace() !== null, { label: 'the retained export' });
+    const retained = getLastCompletedTrialTrace();
+    expect(retained).not.toBeNull();
+    const trace = JSON.parse(retained!) as {
+      session: { sessionId: string };
+      task: { currentTaskId: string; status: string };
+      taskEvents: Array<{ type: string }>;
+    };
+    expect(trace.session.sessionId).toBe(completedSessionId);
+    expect(trace.task.currentTaskId).toBe('TD1');
+    expect(trace.task.status).toBe('Completed');
+    // The trial's own ending must be inside the snapshot, not only in the uploaded copy.
+    expect(trace.taskEvents.some((event) => event.type === 'task_complete')).toBe(true);
+
+    // The next trial must not resolve to this one.
+    taskManager.startTask('TD2');
+    expect(getLastCompletedTrialTrace()).toBeNull();
   });
 });

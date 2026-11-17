@@ -172,7 +172,7 @@ export async function bootRuntime(
   const previousHandle = getRuntimeDiagnostics();
   if (previousHandle) {
     previousHandle.stop();
-    startRuntimeDiagnostics(runtime);
+    startRuntimeDiagnostics(runtime, { getCompletedTrace: getLastCompletedTrialTrace });
   }
 
   // Start (or re-point) research collection for this session. Collection is owned by the
@@ -185,8 +185,88 @@ export async function bootRuntime(
 }
 
 let currentCollection: ResearchCollection | null = null;
-let trialCompletionAdapter: UiAdapter | null = null;
 let trialCompletionUnsubscribe: (() => void) | null = null;
+
+/**
+ * The exported trace of the most recently finished trial.
+ *
+ * `closeTrial()` rotates the session and clears the recorder as soon as a trial reaches a
+ * terminal state, so the live recorder stops describing the trial that just ended. Keeping
+ * the export here makes the finished trial retrievable through the diagnostics handle
+ * instead of forcing a caller to race the rotation. It is cleared when the next trial
+ * starts, so "last completed" can never name a different task.
+ */
+let lastCompletedTrialTrace: string | null = null;
+
+/** Exported trace of the last completed or abandoned trial, or `null`. */
+export function getLastCompletedTrialTrace(): string | null {
+  return lastCompletedTrialTrace;
+}
+
+/** Clears the retained completed-trial snapshot. Used when a new trial begins. */
+export function clearLastCompletedTrialTrace(): void {
+  lastCompletedTrialTrace = null;
+}
+
+/**
+ * How long a finished trial keeps observing before it is closed.
+ *
+ * A trial's last action lands in a window that is still open when the task reaches its
+ * terminal state: the buffer emits a window 250 ms settlement delay after the window closes,
+ * and the tick loop runs at 125 ms. Ending the stream immediately would therefore settle
+ * every window except the one that contains the completing action, and that action's
+ * semantic outcome — the export, in TD1 and TD4 — would never be recorded. One window
+ * duration plus the settlement delay plus a tick covers it.
+ */
+const TRIAL_SETTLE_MS = 750;
+
+let trialFinalizePromise: Promise<void> | null = null;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Settles, snapshots and closes the finished trial.
+ *
+ * Idempotent: concurrent callers share one finalisation.
+ */
+function finishTrial(): Promise<void> {
+  if (!trialFinalizePromise) {
+    trialFinalizePromise = (async () => {
+      await delay(TRIAL_SETTLE_MS);
+      // Declare the stream ended so the last emitted window is labelled now instead of
+      // waiting out the idle grace period, then export before `closeTrial()` clears the
+      // recorder. The recorder has frozen the terminal task state, so the export still
+      // describes this trial even if a reset already moved the adapter back to `Idle`.
+      currentRuntime?.endTrialStream();
+      lastCompletedTrialTrace = experimentRecorder.exportJSON();
+      await closeTrial();
+    })()
+      .catch((err) => {
+        console.error('[Edge-AUI] Failed to finalise the finished trial:', err);
+      })
+      .finally(() => {
+        trialFinalizePromise = null;
+      });
+  }
+  return trialFinalizePromise;
+}
+
+/**
+ * The in-flight finalisation of a finished trial, or `null` when there is none.
+ *
+ * Returning `null` rather than a resolved promise matters: a caller that has nothing to wait
+ * for must not be suspended, or every trial start would move a microtask later than the
+ * interaction that triggered it.
+ *
+ * Starting, resetting or switching a trial while its predecessor is still settling would
+ * fold the old events into the new record (or clear the recorder mid-snapshot). The trial
+ * controls await this before crossing the boundary.
+ */
+export function pendingTrialFinalization(): Promise<void> | null {
+  return trialFinalizePromise;
+}
 
 /**
  * Points collection at the active session and schedules periodic local persistence.
@@ -281,20 +361,26 @@ async function closeTrial(): Promise<void> {
  * the pipeline host-agnostic. An adapter that does not expose task lifecycle (such as
  * `DefaultUiAdapter`) is left unwired, which is correct for a host with no task model.
  *
- * Ordering is significant. `AdaptiveRuntime.start()` subscribes to the same lifecycle before this
- * runs, so the terminal task event is already inside the trace when the snapshot is taken.
- * Subscribing earlier would upload a trace missing its own ending. The same reasoning is why the
- * adapter is tracked: re-subscribing on a condition switch would close every trial twice.
+ * Ordering is significant, and it is why this re-subscribes on every boot rather than once per
+ * adapter. The terminal event must already be inside the trace when the snapshot is taken, so the
+ * runtime's own subscription has to run first. A condition switch rebuilds the runtime, and its
+ * fresh subscription is appended *after* this one; keeping the old subscription would invert the
+ * order and every later trial would be captured without its own ending.
  */
 function wireTrialCompletion(adapter: UiAdapter): void {
-  if (trialCompletionAdapter === adapter) return;
-
   trialCompletionUnsubscribe?.();
-  trialCompletionAdapter = adapter;
   trialCompletionUnsubscribe =
     adapter.onTaskLifecycle?.((event: UiTaskLifecycleEvent) => {
+      if (event.type === 'task_start') {
+        // A new trial must not resolve to the previous trial's export.
+        lastCompletedTrialTrace = null;
+        return;
+      }
       if (event.type !== 'task_complete' && event.type !== 'task_abandon') return;
-      void closeTrial();
+      // The runtime has already recorded the terminal event. Settlement, snapshot and
+      // rotation continue asynchronously; `finalizePendingTrial()` is what the trial
+      // controls await before starting the next trial.
+      void finishTrial();
     }) ?? null;
 }
 
