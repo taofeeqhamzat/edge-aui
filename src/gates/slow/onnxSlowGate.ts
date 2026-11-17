@@ -336,19 +336,6 @@ function assertVocabularyDimension(
   }
 }
 
-/** Argmax over the raw scores, following the configured class order by index. */
-function argmaxOutcome(scores: Float32Array): { index: number; confidence: number } {
-  return argmax(scores);
-}
-
-/**
- * The intervention head's logits are passed through the same argmax. Kept as a named
- * function so the call site states which head it is ranking.
- */
-function logitsAsProbabilities(logits: Float32Array): Float32Array {
-  return logits;
-}
-
 /** True when `label` belongs to the generic foundation taxonomy. */
 function isFoundationOutcome(label: string | undefined): label is OutcomeType {
   return label !== undefined && (OUTCOME_CLASS_ORDER as string[]).includes(label);
@@ -534,7 +521,10 @@ export class OnnxSlowGate implements SlowGate {
       const fndLogits = foundationOutputs[fndOutputName].data as Float32Array;
       assertVocabularyDimension('Foundation', vocabulary, fndLogits.length);
       outcomeProbabilities = softmax(fndLogits);
-      const ranked = argmaxOutcome(fndLogits);
+      // `argmax` reports the winning class's confidence, so it must rank the softmax
+      // probabilities, not the raw logits. Ranking logits made every reported confidence a
+      // logit (often > 1), which the policy then compared against a probability threshold.
+      const ranked = argmax(outcomeProbabilities);
       outcomeLabel = vocabulary.outcomes[ranked.index];
       outcomeConfidence = ranked.confidence;
       outcomeIndex = ranked.index;
@@ -558,7 +548,7 @@ export class OnnxSlowGate implements SlowGate {
       }
       assertVocabularyDimension('Intervention', vocabulary, intLogits.length);
       interventionProbabilities = softmax(intLogits);
-      const ranked = argmaxOutcome(logitsAsProbabilities(intLogits));
+      const ranked = argmax(interventionProbabilities);
       const label = vocabulary.outcomes[ranked.index];
       predictedInterventionType = isInterventionTypeString(label) ? label : 'no_op';
       interventionIndex = ranked.index;
