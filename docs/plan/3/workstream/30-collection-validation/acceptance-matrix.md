@@ -122,7 +122,7 @@ above covers only canonical completion.
 | Fixture | Where | What it proves | Label |
 | --- | --- | --- | --- |
 | Timeout → `Failed` | [task_diversification.test.tsx:137](../../../../../tests/task_diversification.test.tsx#L137) | Expiry emits `task_fail` with reason `timeout`, status `Failed`, not `Abandoned` | **Verified** |
-| Reset mid-task → abandonment | [task_wiring.test.tsx:307](../../../../../tests/task_wiring.test.tsx#L307) | Reset Trial records `task_abandon` reason `reset` and returns to `Idle` | **Verified** |
+| Reset mid-task → abandonment | [task_wiring.test.tsx:376](../../../../../tests/task_wiring.test.tsx#L376) | Reset Trial records `task_abandon` reason `reset` and returns to `Idle` | **Verified** |
 | Reset after completion | [task_diversification.test.tsx:288](../../../../../tests/task_diversification.test.tsx#L288) | A completed trial is not re-labelled as abandoned by a later reset | **Verified** |
 | Replacement by a new task | [task_diversification.test.tsx:308](../../../../../tests/task_diversification.test.tsx#L308) | Starting another task mid-trial abandons the first with reason `replaced` | **Verified** |
 | Reset clears the timeout | [task_diversification.test.tsx:325](../../../../../tests/task_diversification.test.tsx#L325) | A reset trial cannot later fail on the previous trial's timer | **Verified** |
@@ -132,9 +132,9 @@ above covers only canonical completion.
 | Wrong action on a required control | [task_diversification.test.tsx:317](../../../../../tests/task_diversification.test.tsx#L317) | A genuinely wrong action increments `errors` exactly once | **Verified** |
 | TD3 completion without pre-Apply empty state | [task_diversification.test.tsx:230](../../../../../tests/task_diversification.test.tsx#L230) | An empty state observed before Apply is not recovery evidence | **Verified** |
 | Non-Apply interaction as apply evidence | [task_diversification.test.tsx:254](../../../../../tests/task_diversification.test.tsx#L254) | A region change does not satisfy TD2's Apply evidence | **Verified** |
-| Filter disclosure reset at trial boundary | [task_wiring.test.tsx:273](../../../../../tests/task_wiring.test.tsx#L273) | A trial cannot inherit the previous trial's open filter sections | **Verified** |
-| Locked-state explanation during an incomplete trial | [task_wiring.test.tsx:254](../../../../../tests/task_wiring.test.tsx#L254) | A later TD2 start date leaves the trial open; the lock note explains the frozen task/condition controls and Reset Trial stays available; completion removes the note | **Verified** |
-| Task brief and exact step targets rendered | [task_wiring.test.tsx:232](../../../../../tests/task_wiring.test.tsx#L232) | The participant sees the full brief and the exact date/category values the predicate checks | **Verified** |
+| Filter disclosure reset at trial boundary | [task_wiring.test.tsx:342](../../../../../tests/task_wiring.test.tsx#L342) | A trial cannot inherit the previous trial's open filter sections | **Verified** |
+| Locked-state explanation during an incomplete trial | [task_wiring.test.tsx:249](../../../../../tests/task_wiring.test.tsx#L249) | A later TD2 start date leaves the trial open; an `aria-live` note explains the disabled controls and names Reset Trial, which stays available; completion removes the note | **Verified** |
+| Exact step targets rendered | [task_wiring.test.tsx:232](../../../../../tests/task_wiring.test.tsx#L232) | The participant sees the exact date/category values the predicate checks; the panel does not repeat the full brief | **Verified** |
 | Scripted captures duplicate-action check | `record_scripted_traces.py` assertion | Every capture: `task.errors = 0` and zero `task_error` events | **Verified** |
 
 ---
@@ -172,4 +172,4 @@ metadata repeats both. The verifier rejects a trace whose records and metadata d
 | Participant collection | **Blocked** | Study protocol (consent, counterbalancing, participant counts) is out of scope for this milestone |
 | First-action semantic outcome | **Inferred limitation** | No preceding window to carry the horizon label |
 | Multiple trials per condition | Not run | One trial per task/condition pair is the 30.1 acceptance requirement; repeat runs are a study-protocol decision |
-| Participant-facing wording | **Inferred** | The lock explanation and exact step labels should be confirmed in the study-protocol review; no task definition or predicate changed |
+| Participant-facing wording | **Inferred** | The refined lock note and exact step labels should be confirmed in the study-protocol review; no step id, component, action or completion predicate changed |

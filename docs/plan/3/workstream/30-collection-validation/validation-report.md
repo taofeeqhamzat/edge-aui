@@ -234,23 +234,24 @@ brief itself was also never rendered; participants saw only a short name and a s
 state, and accepting a date range would make the row count (and every downstream target)
 non-deterministic. Instead the interface now says what the task expects:
 
-- the active task's full brief is rendered above the status row
-  (`data-aui-component="trial-instruction"`);
 - step labels name the exact targets: "Set the start date to 1 June 2025",
   "Select only Books", "Select the Europe region";
 - while a trial is in progress, a visible note
-  (`data-aui-component="trial-lock-note"`) explains that task and condition controls are
-  locked until the trial ends and that Reset Trial ends it early; the note is an
-  `aria-live="polite"` region and is referenced by `aria-describedby` from both control
-  groups;
+  (`data-aui-component="trial-lock-note"`) reads "Trial controls are disabled while a task
+  is in progress. Complete the task to unlock them, or click Reset Trial to start over."
+  It is an `aria-live="polite"` region and is referenced by `aria-describedby` from both
+  control groups;
 - when every step has been visited but the required state is still not met, the step line
   says so ("All steps visited — the task's required state is not met yet") instead of
   reading `N/A`.
 
+The panel does not repeat the full task brief; the step labels and the lock note carry the
+instruction, which keeps the trial panel compact.
+
 **Proof.** `tests/task_wiring.test.tsx` starts TD2, applies a later start date, asserts the
 trial stays incomplete with the explanation visible and Reset Trial still available, then
 corrects the date and asserts completion removes the explanation and unlocks the controls.
-A second test asserts the brief and the exact step instruction are rendered
+A second test asserts the exact step instruction is rendered
 (`528 passed` framework suite).
 
 **Inferred.** The wording is participant-facing; it should be confirmed in the study-protocol

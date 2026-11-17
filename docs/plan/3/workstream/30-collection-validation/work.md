@@ -30,6 +30,10 @@ described as participant evidence.
 - Ingestion accepts `1.4.0`, and a real exported capture is ingested in the tests.
 - Five defects were found and fixed during validation (finished-trial destruction, duplicate
   window ids, inverted disclosure semantics, the stale CLI verifier, logit-as-confidence).
+- A post-validation review of TD2 surfaced a participant-facing gap: the old prose admitted
+  a later start date that the predicate rejects, and the resulting frozen controls were
+  unexplained. Exact step labels and an `aria-live` lock note now explain the state; the
+  completion predicate is unchanged.
 - Evidence: [validation-report.md](validation-report.md),
   [acceptance-matrix.md](acceptance-matrix.md),
   [collection-readiness.md](collection-readiness.md).
