@@ -20,7 +20,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
   ];
 
   return (
-    <nav className="dashboard-nav" aria-label="Main Navigation">
+    <nav className="dashboard-nav" data-aui-region="navigation" aria-label="Main Navigation">
       <h2 className="nav-title">Dashboard</h2>
       <ul className="nav-list">
         {pages.map((page) => (

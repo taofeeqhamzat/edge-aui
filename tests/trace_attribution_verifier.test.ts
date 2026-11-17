@@ -201,15 +201,53 @@ describe('Trace Attribution and Completeness Verifier', () => {
     expect(check?.passed).toBe(false);
   });
 
-  it('fails when completed task lacks intermediate step events', () => {
+  it('does not require application-specific step ids; the task model owns them', () => {
+    // Workstream 20 moved the task definitions out of framework core. The verifier can check
+    // that the recorded lifecycle is internally consistent, but it cannot know whether a
+    // particular step id belongs to the task; the scripted driver and the acceptance matrix
+    // assert that against the application's task model.
     const trace = createValidBaseTrace();
-    // Remove step T2-2
     trace.taskEvents = trace.taskEvents.filter((e) => e.taskStepId !== 'T2-2');
     const result = verifyTraceCompleteness(trace);
+    const check = result.checks.find((c) => c.check === 'task_lifecycle_consistency');
+    expect(check?.passed).toBe(true);
+    expect(result.valid).toBe(true);
+  });
+
+  it('fails when a Completed task has no task_complete event', () => {
+    const trace = createValidBaseTrace();
+    trace.taskEvents = trace.taskEvents.filter((e) => e.type !== 'task_complete');
+    const result = verifyTraceCompleteness(trace);
     expect(result.valid).toBe(false);
-    const check = result.checks.find((c) => c.check === 'task_lifecycle_completeness');
+    const check = result.checks.find((c) => c.check === 'task_lifecycle_consistency');
     expect(check?.passed).toBe(false);
-    expect(check?.message).toContain('T2-2');
+    expect(check?.message).toContain('task_complete');
+  });
+
+  it('fails when a Completed task also records abandonment', () => {
+    const trace = createValidBaseTrace();
+    trace.taskEvents.push({
+      timestamp: 500,
+      type: 'task_abandon',
+      taskId: 'T2',
+      status: 'Abandoned',
+      errors: 0,
+      reason: 'reset'
+    });
+    const result = verifyTraceCompleteness(trace);
+    expect(result.valid).toBe(false);
+    const check = result.checks.find((c) => c.check === 'task_lifecycle_consistency');
+    expect(check?.passed).toBe(false);
+  });
+
+  it('fails when metadata.finalTaskStatus disagrees with the task status', () => {
+    const trace = createValidBaseTrace();
+    trace.metadata.finalTaskStatus = 'Abandoned';
+    const result = verifyTraceCompleteness(trace);
+    expect(result.valid).toBe(false);
+    const check = result.checks.find((c) => c.check === 'task_lifecycle_consistency');
+    expect(check?.passed).toBe(false);
+    expect(check?.message).toContain('disagrees');
   });
 
   it('fails when a microTensor window outlives its settlement allowance with no outcome record', () => {

@@ -19,7 +19,8 @@ export * from './microtensor/schema.js';
 export * from './microtensor/features.js';
 export * from './microtensor/window.js';
 export * from './microtensor/sequence.js';
-export * from './macro/symbols.js';
+export * from './macro/mapper.js';
+export * from './macro/sequence.js';
 export * from './outcome/derive.js';
 
 // Gates, policy and actuation

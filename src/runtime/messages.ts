@@ -8,6 +8,7 @@
 
 import { MacroInteraction } from '../telemetry/events';
 import { UIContext } from '../types/uiContext.js';
+import type { ContextEncodingConfig } from '../types/contextVector';
 import { InferenceResult } from '../gates/arbitration';
 import { SequenceConfig } from '../microtensor/schema';
 import { PatternIntervention } from '../gates/fast/mockFastGate';
@@ -49,6 +50,8 @@ export interface RuntimeInitRequest {
     sequenceConfig?: Partial<SequenceConfig>;
     /** Declared pattern → intervention map for the Fast Gate. */
     fastGatePatterns?: Record<string, PatternIntervention>;
+    /** Version of the declared pattern set, reported on every Fast Gate prediction. */
+    fastGatePatternVersion?: string;
     /** Which Fast Gate implementation to construct. Default 'mock'. */
     fastGateMode?: FastGateMode;
     /** Minimum support passed to the PrefixSpan miner. */
@@ -67,6 +70,11 @@ export interface RuntimeInitRequest {
     minOutcomeConfidence?: number;
     /** Context vector dimension expected by the Slow Gate head. */
     contextDim?: number;
+    /**
+     * Application route/action/task vocabulary used to encode UIContext.
+     * Omitted means the framework default, which declares no application vocabulary.
+     */
+    contextEncoding?: ContextEncodingConfig;
     enableFastGate?: boolean;
     enableSlowGate?: boolean;
     /**

@@ -85,6 +85,9 @@ export const TRACE_BUFFER_NAMES = [
 
 export type TraceBufferName = (typeof TRACE_BUFFER_NAMES)[number];
 
+/** Task lifecycle events that end a trial, so its task state must be frozen. */
+const TERMINAL_TASK_EVENT_TYPES = new Set(['task_complete', 'task_abandon', 'task_fail']);
+
 export interface ExperimentRecorderOptions {
   maxBufferSize?: number;
 }
@@ -124,9 +127,15 @@ export class ExperimentRecorder {
    */
   private sessionSnapshot: SessionContext | null = null;
   private taskStateProvider: (() => UiTaskStateSnapshot | undefined) | null = null;
+  /** The task state as of the trial's terminal event; `null` while no trial has ended. */
+  private terminalTaskState: UiTaskStateSnapshot | null = null;
   private effectiveConfig: RuntimeConfig | null = null;
   /** Model provenance as actually reported by the runtime, not as requested (F-10, F-19). */
   private modelVersion: string | null = null;
+  /** Version attribution for schema 1.4.0 records (Task 20.5). */
+  private taskDefinitionVersion?: string;
+  private semanticOutcomeVocabularyVersion?: string;
+  private predictionContractVersion?: string;
   private executionProvider: string | null = null;
   private miningCounters: MiningCounters | null = null;
 
@@ -153,6 +162,29 @@ export class ExperimentRecorder {
   public setModelProvenance(modelVersion: string | null, executionProvider: string | null): void {
     if (modelVersion !== null) this.modelVersion = modelVersion;
     if (executionProvider !== null) this.executionProvider = executionProvider;
+  }
+
+  /**
+   * Records the vocabulary/contract versions the trace's records refer to (schema 1.4.0).
+   *
+   * The versions are what make the new fields interpretable: a semantic outcome without the
+   * vocabulary version it belongs to cannot be joined to a target generator.
+   */
+  public setVersionAttribution(attribution: {
+    taskDefinitionVersion?: string | null;
+    semanticOutcomeVocabularyVersion?: string | null;
+    predictionContractVersion?: string | null;
+  }): void {
+    if (attribution.taskDefinitionVersion !== undefined) {
+      this.taskDefinitionVersion = attribution.taskDefinitionVersion ?? undefined;
+    }
+    if (attribution.semanticOutcomeVocabularyVersion !== undefined) {
+      this.semanticOutcomeVocabularyVersion =
+        attribution.semanticOutcomeVocabularyVersion ?? undefined;
+    }
+    if (attribution.predictionContractVersion !== undefined) {
+      this.predictionContractVersion = attribution.predictionContractVersion ?? undefined;
+    }
   }
 
   /** Records bounded Fast Gate execution counters for the exported trace (F-02). */
@@ -238,6 +270,20 @@ export class ExperimentRecorder {
 
   public recordTaskEvent(event: TaskEvent): void {
     defaultCollector.timeSync('trace recording', 'main', () => {
+      // The task-definition version belongs to the trial, so the adapter cannot supply it when
+      // the runtime starts (no task is active yet). Taking it from the event keeps the metadata
+      // in agreement with the records it describes.
+      if (event.taskDefinitionVersion) {
+        this.taskDefinitionVersion = event.taskDefinitionVersion;
+      }
+      // Freeze the state a terminal event described. A reset moves the adapter to `Idle`
+      // immediately afterwards, so reading it at export time would describe a later state than
+      // the trial the trace contains.
+      if (event.type === 'task_start') {
+        this.terminalTaskState = null;
+      } else if (TERMINAL_TASK_EVENT_TYPES.has(event.type)) {
+        this.terminalTaskState = this.taskStateProvider?.() ?? null;
+      }
       this.append('taskEvents', this.taskEvents, event);
     });
   }
@@ -360,7 +406,13 @@ export class ExperimentRecorder {
    */
   public exportSerializable(): SerializableExperimentTrace {
     const activeSession = this.resolveSession();
-    const taskState = this.taskStateProvider ? (this.taskStateProvider() ?? DEFAULT_TASK_STATE) : DEFAULT_TASK_STATE;
+    // A closed trial is exported after its session state has already moved on (a reset sets
+    // `Idle` immediately). The terminal snapshot recorded with the terminal task event is what
+    // describes the trial that was actually run.
+    const liveTaskState = this.taskStateProvider
+      ? (this.taskStateProvider() ?? DEFAULT_TASK_STATE)
+      : DEFAULT_TASK_STATE;
+    const taskState = this.terminalTaskState ?? liveTaskState;
     // durationMs is measured on the canonical clock. Subtracting the monotonic
     // `startedAt` from `Date.now()` produced a meaningless value (assessment §16.4).
     const now = getWallClockTimestamp();
@@ -402,6 +454,9 @@ export class ExperimentRecorder {
       modelVersion: this.modelVersion ?? undefined,
       executionProvider: this.executionProvider ?? undefined,
       policyVersion: POLICY_VERSION,
+      taskDefinitionVersion: this.taskDefinitionVersion,
+      semanticOutcomeVocabularyVersion: this.semanticOutcomeVocabularyVersion,
+      predictionContractVersion: this.predictionContractVersion,
       mining: this.miningCounters ?? undefined,
       evictions: this.getEvictionCounters(),
       integrityWarnings
@@ -489,6 +544,7 @@ export class ExperimentRecorder {
    * is still attributable to the session it belongs to.
    */
   public clear(): void {
+    this.terminalTaskState = null;
     this.behaviourEvents = [];
     this.microTensors = [];
     this.macroInteractions = [];

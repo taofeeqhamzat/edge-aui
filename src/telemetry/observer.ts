@@ -20,6 +20,26 @@ import {
 import { getActiveUIContext } from './contextProvider';
 import { defaultCollector } from '../runtime/instrumentation';
 
+/**
+ * The disclosure state after the action, given the state observed at capture time.
+ *
+ * The observer listens in the capture phase, so it always reads the pre-action value. A
+ * control that declares the `accordion` role toggles its disclosed section on click, so the
+ * post-action value is the negation of the observed one. Leaving it unflipped labelled every
+ * opening click as a closing one, which is a semantic-outcome defect rather than a cosmetic
+ * one: the trace then says the participant collapsed the filter they had just opened.
+ */
+function toDisclosureStateAfter(
+  observed: boolean | undefined,
+  componentRole: string | undefined,
+  eventType: BehaviourEventType | undefined
+): boolean | undefined {
+  if (observed === undefined) return undefined;
+  if (eventType !== 'click') return observed;
+  if (componentRole !== 'accordion') return observed;
+  return !observed;
+}
+
 export type TelemetryEventListener = (event: BehaviourEvent) => void;
 
 export interface TelemetryObserverOptions {
@@ -237,7 +257,10 @@ export class TelemetryObserver {
     }
   }
 
-  private extractElementMetadata(target: EventTarget | null): {
+  private extractElementMetadata(
+    target: EventTarget | null,
+    eventType?: BehaviourEventType
+  ): {
     componentId?: string;
     componentRole?: string;
     action?: string;
@@ -252,12 +275,12 @@ export class TelemetryObserver {
     const annotatedEl = target.closest ? target.closest('[data-aui-component]') : null;
 
     /**
-     * Reads the post-action disclosure state.
+     * Reads the disclosure state as it stands when the event is observed.
      *
-     * The observer listens in the bubble phase, so by the time a click is handled React has
-     * already committed the state change: `aria-expanded` reflects what the element became,
-     * not what it was. That is why a click can be classified as opening or closing an
-     * accordion without the interface having to declare it.
+     * The observer listens in the capture phase, so this is always the state *before* the
+     * action: neither React's handler nor a plain listener on the target has run yet. A
+     * disclosure control toggles on click, so `toDisclosureStateAfter` negates it for the
+     * accordion role rather than recording an opening click as a close.
      */
     const readAriaExpanded = (el: Element | null): boolean | undefined => {
       const raw = el?.getAttribute('aria-expanded');
@@ -273,22 +296,25 @@ export class TelemetryObserver {
     };
 
     if (annotatedEl) {
+      const componentRole = annotatedEl.getAttribute('data-aui-role') || undefined;
+      const observedDisclosure = readAriaExpanded(target) ?? readAriaExpanded(annotatedEl);
       return {
         componentId: annotatedEl.getAttribute('data-aui-component') || undefined,
-        componentRole: annotatedEl.getAttribute('data-aui-role') || undefined,
+        componentRole,
         action: annotatedEl.getAttribute('data-aui-action') || undefined,
         targetTag,
-        ariaExpanded: readAriaExpanded(target) ?? readAriaExpanded(annotatedEl)
+        ariaExpanded: toDisclosureStateAfter(observedDisclosure, componentRole, eventType)
       };
     }
 
     // Check direct attributes if closest didn't match
+    const componentRole = target.getAttribute?.('data-aui-role') || undefined;
     return {
       componentId: target.getAttribute?.('data-aui-component') || undefined,
-      componentRole: target.getAttribute?.('data-aui-role') || undefined,
+      componentRole,
       action: target.getAttribute?.('data-aui-action') || undefined,
       targetTag,
-      ariaExpanded: readAriaExpanded(target)
+      ariaExpanded: toDisclosureStateAfter(readAriaExpanded(target), componentRole, eventType)
     };
   }
 
@@ -313,7 +339,7 @@ export class TelemetryObserver {
         this.cachedViewport.height
       );
 
-      const elemMeta = this.extractElementMetadata(e.target);
+      const elemMeta = this.extractElementMetadata(e.target, type);
       const uiContext = getActiveUIContext({ targetElement: e.target as Element });
       const geometry = this.captureGeometry();
 
@@ -371,7 +397,7 @@ export class TelemetryObserver {
 
   private recordFormEvent(type: 'input' | 'change' | 'submit', e: Event): void {
     defaultCollector.timeSync('event normalisation', 'main', () => {
-      const elemMeta = this.extractElementMetadata(e.target);
+      const elemMeta = this.extractElementMetadata(e.target, type);
       const uiContext = getActiveUIContext({ targetElement: e.target as Element });
       const geometry = this.captureGeometry();
 
@@ -396,7 +422,7 @@ export class TelemetryObserver {
 
   private recordLifecycleEvent(type: 'focus' | 'blur', e: Event): void {
     defaultCollector.timeSync('event normalisation', 'main', () => {
-      const elemMeta = this.extractElementMetadata(e.target);
+      const elemMeta = this.extractElementMetadata(e.target, type);
       const uiContext = getActiveUIContext({ targetElement: e.target as Element });
 
       const event: BehaviourEvent = {

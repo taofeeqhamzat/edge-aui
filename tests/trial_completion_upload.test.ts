@@ -21,10 +21,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { bootTestbed, getCollection, getRuntime, registerDefaultUiAdapter } from '../src/runtime/boot';
+import {
+  bootTestbed,
+  clearLastCompletedTrialTrace,
+  getCollection,
+  getLastCompletedTrialTrace,
+  getRuntime,
+  registerRuntimeDefaults
+} from '../src/runtime/boot';
 import { testbedAdapter } from '../src/testbed/adapter';
 import { taskManager } from '../src/testbed/tasks/taskManager';
-import { EXPERIMENTAL_TASKS, type TaskId } from '../src/testbed/tasks/taskModel';
+import { type TaskId } from '../src/testbed/tasks/taskModel';
 import { sessionManager } from '../src/telemetry/session';
 import { experimentRecorder } from '../src/telemetry/recorder';
 
@@ -47,12 +54,62 @@ async function waitFor(
   throw new Error(`Timed out after ${timeoutMs}ms waiting for ${label}`);
 }
 
-/** Drives a task to `Completed` exactly as the observer bridge does. */
+/** Drives a task to `Completed` through the same state/evidence path the UI uses. */
 function completeTask(taskId: TaskId): void {
   taskManager.startTask(taskId);
-  for (const step of EXPERIMENTAL_TASKS[taskId].steps) {
-    taskManager.recordInteraction(step.expectedComponentId!, step.expectedAction!);
+
+  if (taskId === 'TD1') {
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '', region: 'Europe', categories: [] },
+      visibleRowCount: 18,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('btn-apply-filters', 'click');
+    taskManager.recordInteraction('btn-export', 'click');
+  } else if (taskId === 'TD2') {
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '2025-06-01', region: 'All', categories: ['Books'] },
+      visibleRowCount: 5,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('btn-apply-filters', 'click');
+  } else if (taskId === 'TD3') {
+    taskManager.recordInteraction('btn-apply-filters', 'click');
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '2025-09-01', region: 'Europe', categories: ['Books'] },
+      visibleRowCount: 0,
+      empty: true,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+    taskManager.recordInteraction('btn-reset-filters', 'click');
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '', region: 'All', categories: [] },
+      visibleRowCount: 50,
+      empty: false,
+      currentReportId: null,
+      visitedReportIds: []
+    });
+  } else {
+    taskManager.updateUiState({
+      page: 'Analytics',
+      appliedFilters: { dateFrom: '', region: 'Europe', categories: ['Books'] },
+      visibleRowCount: 6,
+      empty: false,
+      currentReportId: 'eu-books',
+      visitedReportIds: ['eu-electronics', 'eu-books']
+    });
+    taskManager.recordInteraction('btn-export', 'click');
   }
+
   expect(taskManager.getState().status).toBe('Completed');
 }
 
@@ -80,7 +137,7 @@ describe('Trial completion uploads the trace', () => {
     // `main.tsx` registers the real testbed adapter before booting; without it the runtime falls
     // back to `DefaultUiAdapter`, whose `getTaskState()` is a constant, and every trace would
     // report the task status as `Idle`.
-    registerDefaultUiAdapter(() => testbedAdapter);
+    registerRuntimeDefaults({ adapter: testbedAdapter });
 
     // The Slow Gate is disabled so this test does not depend on worker/ONNX availability; the
     // upload path is independent of which gate produced the predictions.
@@ -93,6 +150,7 @@ describe('Trial completion uploads the trace', () => {
 
   afterEach(() => {
     getRuntime()?.stop();
+    clearLastCompletedTrialTrace();
     taskManager.resetTask();
     sessionManager.resetSession();
     experimentRecorder.clear();
@@ -103,7 +161,7 @@ describe('Trial completion uploads the trace', () => {
   it('uploads the completed trial, reports uploaded, and rotates the session', async () => {
     const firstSessionId = sessionManager.getActiveSession()!.sessionId;
 
-    completeTask('T1');
+    completeTask('TD1');
     await waitFor(() => calls.length >= 2, { label: 'the T1 upload' });
 
     const [sessionCall, traceCall] = calls;
@@ -135,7 +193,7 @@ describe('Trial completion uploads the trace', () => {
 
     // Second trial: it must reach the store under its *own* session id. Under the old wiring
     // this insert was a duplicate and was discarded with the panel still reporting `uploaded`.
-    completeTask('T2');
+    completeTask('TD2');
     await waitFor(() => calls.length >= 4, { label: 'the T2 upload' });
 
     const [secondSessionCall, secondTraceCall] = calls.slice(2);
@@ -144,13 +202,13 @@ describe('Trial completion uploads the trace', () => {
     expect((secondTraceCall.body.trace as { session: { sessionId: string } }).session.sessionId).toBe(
       secondSessionId
     );
-    expect(secondSessionCall.body.task_id).toBe('T2');
+    expect(secondSessionCall.body.task_id).toBe('TD2');
   });
 
   it('closes an abandoned trial instead of folding it into the next one', async () => {
     const abandonedSessionId = sessionManager.getActiveSession()!.sessionId;
 
-    taskManager.startTask('T3');
+    taskManager.startTask('TD3');
     taskManager.recordInteraction('nav-Analytics', 'click');
     taskManager.resetTask();
 
@@ -162,5 +220,34 @@ describe('Trial completion uploads the trace', () => {
     // and it must be recorded under its own id rather than merged into the next trial.
     expect(trace.task.status).toBe('Abandoned');
     expect(sessionManager.getActiveSession()!.sessionId).not.toBe(abandonedSessionId);
+  });
+
+  it('retains the finished trial export across the session rotation', async () => {
+    // Completion rotates the session and clears the recorder, so the live recorder stops
+    // describing the trial that just ended. The retained export is what makes a scripted
+    // capture retrievable without racing the rotation.
+    expect(getLastCompletedTrialTrace()).toBeNull();
+
+    const completedSessionId = sessionManager.getActiveSession()!.sessionId;
+    completeTask('TD1');
+
+    // Settlement (one window plus its delay) runs before the snapshot is taken.
+    await waitFor(() => getLastCompletedTrialTrace() !== null, { label: 'the retained export' });
+    const retained = getLastCompletedTrialTrace();
+    expect(retained).not.toBeNull();
+    const trace = JSON.parse(retained!) as {
+      session: { sessionId: string };
+      task: { currentTaskId: string; status: string };
+      taskEvents: Array<{ type: string }>;
+    };
+    expect(trace.session.sessionId).toBe(completedSessionId);
+    expect(trace.task.currentTaskId).toBe('TD1');
+    expect(trace.task.status).toBe('Completed');
+    // The trial's own ending must be inside the snapshot, not only in the uploaded copy.
+    expect(trace.taskEvents.some((event) => event.type === 'task_complete')).toBe(true);
+
+    // The next trial must not resolve to this one.
+    taskManager.startTask('TD2');
+    expect(getLastCompletedTrialTrace()).toBeNull();
   });
 });

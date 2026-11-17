@@ -60,6 +60,11 @@ models/
 docs/plan/**/*.md
 docs/plan/*.md
 !docs/plan/**/.gitkeep
+# The plan 3 implementation package is a committed planning deliverable.
+!docs/plan/3/
+!docs/plan/3/*.md
+!docs/plan/3/workstream/
+!docs/plan/3/workstream/**/*.md
 docs/conversation/
 docs/conversation/**
 clipboard*.md
@@ -93,3 +98,6 @@ docs/experiments/**
 supabase/.temp/
 supabase/.branches/
 
+
+# Quality-tool output (crapper/dryer/mutator)
+.metrics/

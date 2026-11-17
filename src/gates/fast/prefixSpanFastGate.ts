@@ -14,14 +14,20 @@
  */
 
 import { MacroInteraction } from '../../telemetry/events';
-import {
-  InterventionCommand,
-  InterventionType,
-  isInterventionType
-} from '../../intervention/types';
+import { InterventionType } from '../../intervention/types';
 import { FastGate, GateDecision } from './types';
+import {
+  PatternTarget,
+  assertOutcomeDeclared,
+  isPatternOutcomeMapping,
+  resolvePatternTarget
+} from './patternTarget';
+import { OutcomeVocabulary } from '../contracts';
+import { INTERVENTION_VOCABULARY } from '../../config/modelManifest';
 import { defaultCollector } from '../../runtime/instrumentation';
-import { getWallClockTimestamp } from '../../telemetry/normalizer';
+
+/** Provenance identity of this gate implementation, reported on every match. */
+const PREFIXSPAN_GATE_VERSION = 'prefixspan-wasm/1.0.0';
 
 /** Shape of a mined frequent pattern, mirroring the Rust `PrefixSpanPattern`. */
 export interface MinedPattern {
@@ -41,7 +47,7 @@ export type PatternMiner = (
   minSupport: number
 ) => Promise<MinedPattern[]>;
 
-export type PatternIntervention = InterventionType | Partial<InterventionCommand>;
+export type PatternIntervention = PatternTarget;
 
 export interface PrefixSpanFastGateOptions {
   /**
@@ -86,6 +92,13 @@ export interface PrefixSpanFastGateOptions {
   miningTimeoutMs?: number;
   /** Confidence reported on emitted decisions. Default 1.0. */
   defaultConfidence?: number;
+  /** Version of the declared pattern set, reported on every match. */
+  gateVersion?: string;
+  /**
+   * Vocabulary a declared pattern outcome must belong to.
+   * Defaults to the intervention vocabulary, which the legacy pattern form names.
+   */
+  outcomeVocabulary?: OutcomeVocabulary;
   /**
    * Invoked once per evaluation with the outcome, so bounded-execution counters can be
    * published without this gate depending on the diagnostics layer.
@@ -124,7 +137,10 @@ export class PrefixSpanFastGate implements FastGate {
     >
   > & PrefixSpanFastGateOptions;
 
+  private readonly vocabulary: OutcomeVocabulary;
+
   constructor(options: PrefixSpanFastGateOptions) {
+    this.vocabulary = options.outcomeVocabulary ?? INTERVENTION_VOCABULARY;
     this.options = {
       ...options,
       minSupport: options.minSupport ?? 2,
@@ -213,22 +229,52 @@ export class PrefixSpanFastGate implements FastGate {
 
       const patternKey = pattern.pattern.join(' > ');
       const resolver = this.options.resolveIntervention;
-      const resolvedIntervention = resolver
+      const declaredTarget: PatternTarget | null = resolver
         ? resolver(patternKey, pattern)
         : { type: 'no_op' as InterventionType };
 
-      // A mined pattern with no declared intervention is not an actionable match.
-      if (!resolvedIntervention) continue;
+      // A mined pattern with no declared target is not an actionable match.
+      if (!declaredTarget) continue;
 
-      const intervention = this.createIntervention(resolvedIntervention, patternKey, pattern);
+      // A pattern is configuration: an outcome outside the gate's vocabulary is a
+      // configuration error, reported with the pattern that declared it.
+      if (isPatternOutcomeMapping(declaredTarget)) {
+        assertOutcomeDeclared(
+          this.vocabulary,
+          declaredTarget.outcomeId,
+          patternKey,
+          'PrefixSpanFastGate'
+        );
+      }
+
+      const resolved = resolvePatternTarget(declaredTarget, {
+        patternKey,
+        defaultConfidence: this.options.defaultConfidence,
+        reason: `PrefixSpan match (support=${pattern.support}, confidence=${pattern.confidence.toFixed(2)}): ${patternKey}`
+      });
+      const outcomeIndex = this.vocabulary.outcomes.indexOf(resolved.outcomeId);
+      const targetComponentId =
+        resolved.targetComponentId ?? resolved.intervention?.targetComponentId;
 
       this.reportOutcome('executed');
       return {
         matched: true,
         source: 'fast',
-        confidence: intervention.confidence ?? this.options.defaultConfidence,
-        intervention,
-        matchedPattern: pattern.pattern
+        confidence: resolved.confidence,
+        intervention: resolved.intervention,
+        prediction: {
+          outcomeId: resolved.outcomeId,
+          vocabularyId: this.vocabulary.id,
+          vocabularyVersion: this.vocabulary.version,
+          outcomeIndex: outcomeIndex >= 0 ? outcomeIndex : undefined,
+          confidence: resolved.confidence,
+          matched: true,
+          source: 'fast',
+          mappingSource: 'fast_gate_pattern',
+          target: targetComponentId ? { componentId: targetComponentId } : undefined
+        },
+        matchedPattern: pattern.pattern,
+        gateVersion: this.options.gateVersion ?? PREFIXSPAN_GATE_VERSION
       };
     }
 
@@ -307,38 +353,6 @@ export class PrefixSpanFastGate implements FastGate {
       }
     }
     return false;
-  }
-
-  private createIntervention(
-    target: PatternIntervention,
-    patternKey: string,
-    pattern: MinedPattern
-  ): InterventionCommand {
-    const now = getWallClockTimestamp();
-    const reason = `PrefixSpan match (support=${pattern.support}, confidence=${pattern.confidence.toFixed(2)}): ${patternKey}`;
-
-    if (typeof target === 'string' && isInterventionType(target)) {
-      return {
-        type: target,
-        source: 'fast',
-        mappingSource: 'fast_gate_pattern',
-        confidence: this.options.defaultConfidence,
-        issuedAt: now,
-        reason
-      };
-    }
-
-    const command = target as Partial<InterventionCommand>;
-    return {
-      type: command.type ?? 'no_op',
-      source: 'fast',
-      mappingSource: 'fast_gate_pattern',
-      confidence: command.confidence ?? this.options.defaultConfidence,
-      issuedAt: command.issuedAt ?? now,
-      targetComponentId: command.targetComponentId,
-      ttlMs: command.ttlMs,
-      reason: command.reason ?? reason
-    };
   }
 }
 

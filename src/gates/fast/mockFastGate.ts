@@ -6,26 +6,47 @@
  */
 
 import { MacroInteraction } from '../../telemetry/events';
-import { InterventionCommand, InterventionType, isInterventionType } from '../../intervention/types';
 import { FastGate, GateDecision } from './types';
+import {
+  PatternTarget,
+  assertOutcomeDeclared,
+  isPatternOutcomeMapping,
+  resolvePatternTarget
+} from './patternTarget';
+import { OutcomeVocabulary } from '../contracts';
+import { INTERVENTION_VOCABULARY } from '../../config/modelManifest';
+
+/** Provenance identity of this gate implementation, reported on every match. */
+const MOCK_GATE_VERSION = 'mock-fast-gate/1.0.0';
 
 export type PatternDefinition = string | readonly string[];
-export type PatternIntervention = InterventionType | Partial<InterventionCommand>;
+export type PatternIntervention = PatternTarget;
 
 export interface MockFastGateOptions {
   patterns?: Record<string, PatternIntervention>;
   defaultConfidence?: number;
   exactMatchOnly?: boolean; // false: matches suffix of sequence (default); true: exact length match
+  /** Version of the declared pattern set, reported on every match. */
+  gateVersion?: string;
+  /**
+   * Vocabulary a declared pattern outcome must belong to.
+   * Defaults to the intervention vocabulary, which the legacy pattern form names.
+   */
+  outcomeVocabulary?: OutcomeVocabulary;
 }
 
 export class MockFastGate implements FastGate {
   private patterns: Map<string, PatternIntervention> = new Map();
   private defaultConfidence: number;
   private exactMatchOnly: boolean;
+  private readonly gateVersion: string;
+  private readonly vocabulary: OutcomeVocabulary;
 
   constructor(options: MockFastGateOptions = {}) {
     this.defaultConfidence = options.defaultConfidence ?? 1.0;
     this.exactMatchOnly = options.exactMatchOnly ?? false;
+    this.gateVersion = options.gateVersion ?? MOCK_GATE_VERSION;
+    this.vocabulary = options.outcomeVocabulary ?? INTERVENTION_VOCABULARY;
 
     if (options.patterns) {
       for (const [pattern, target] of Object.entries(options.patterns)) {
@@ -50,13 +71,32 @@ export class MockFastGate implements FastGate {
 
       const matches = this.checkMatch(currentSymbols, patternTokens);
       if (matches) {
-        const intervention = this.createIntervention(target, patternKey);
+        const resolved = resolvePatternTarget(target, {
+          patternKey,
+          defaultConfidence: this.defaultConfidence,
+          reason: `Matched fast pattern: ${patternKey}`
+        });
+        const outcomeIndex = this.vocabulary.outcomes.indexOf(resolved.outcomeId);
+        const targetComponentId =
+          resolved.targetComponentId ?? resolved.intervention?.targetComponentId;
         return {
           matched: true,
           source: 'fast',
-          confidence: intervention.confidence ?? this.defaultConfidence,
-          intervention,
-          matchedPattern: patternTokens
+          confidence: resolved.confidence,
+          intervention: resolved.intervention,
+          prediction: {
+            outcomeId: resolved.outcomeId,
+            vocabularyId: this.vocabulary.id,
+            vocabularyVersion: this.vocabulary.version,
+            outcomeIndex: outcomeIndex >= 0 ? outcomeIndex : undefined,
+            confidence: resolved.confidence,
+            matched: true,
+            source: 'fast',
+            mappingSource: 'fast_gate_pattern',
+            target: targetComponentId ? { componentId: targetComponentId } : undefined
+          },
+          matchedPattern: patternTokens,
+          gateVersion: this.gateVersion
         };
       }
     }
@@ -69,10 +109,13 @@ export class MockFastGate implements FastGate {
 
   /**
    * Registers or updates a pattern and its corresponding intervention.
-   * Example: "NAV_ANALYTICS > OPEN_FILTERS > SELECT_REGION" -> "highlight_primary_action"
+   * Example: "SYMBOL_A > SYMBOL_B > SYMBOL_C" -> "highlight_primary_action"
    */
   public setPattern(pattern: PatternDefinition, intervention: PatternIntervention): void {
     const key = this.normalizePatternKey(pattern);
+    if (isPatternOutcomeMapping(intervention)) {
+      assertOutcomeDeclared(this.vocabulary, intervention.outcomeId, key, 'MockFastGate');
+    }
     this.patterns.set(key, intervention);
   }
 
@@ -136,30 +179,5 @@ export class MockFastGate implements FastGate {
       }
     }
     return true;
-  }
-
-  private createIntervention(target: PatternIntervention, patternKey: string): InterventionCommand {
-    const now = Date.now();
-
-    if (typeof target === 'string' && isInterventionType(target)) {
-      return {
-        type: target,
-        source: 'fast',
-        confidence: this.defaultConfidence,
-        issuedAt: now,
-        reason: `Matched fast pattern: ${patternKey}`
-      };
-    }
-
-    const command = target as Partial<InterventionCommand>;
-    return {
-      type: command.type ?? 'no_op',
-      source: 'fast',
-      confidence: command.confidence ?? this.defaultConfidence,
-      issuedAt: command.issuedAt ?? now,
-      targetComponentId: command.targetComponentId,
-      ttlMs: command.ttlMs,
-      reason: command.reason ?? `Matched fast pattern: ${patternKey}`
-    };
   }
 }

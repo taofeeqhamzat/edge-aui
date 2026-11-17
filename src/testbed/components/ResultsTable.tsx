@@ -78,6 +78,7 @@ export function ResultsTable({ rows, filters, onExport }: ResultsTableProps) {
     <div
       data-aui-component="results-table"
       data-aui-role="table"
+      data-aui-region="results"
       className="results-table-card"
     >
       <div className="results-table-header">

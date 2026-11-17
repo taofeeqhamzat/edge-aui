@@ -23,6 +23,8 @@ import {
   OutcomeDerivationMetadata,
   ExperimentalCondition
 } from '../telemetry/events';
+import { canonicalActionFor, isSubmitControl } from './canonical';
+import type { SemanticOutcome, SemanticOutcomeDeriver } from './semantic';
 
 /** Priority hierarchy (highest first), from model-preparation/src/config.yaml. */
 export const PRIORITY_HIERARCHY: OutcomeType[] = [
@@ -97,11 +99,17 @@ interface Candidate {
   event: BehaviourEvent;
 }
 
-function isFormSubmitTarget(componentId: string | undefined, componentRole: string | undefined): boolean {
-  const haystack = `${componentId ?? ''} ${componentRole ?? ''}`.toLowerCase();
-  return ['submit', 'btn', 'button', 'input', 'form', 'primary-action'].some((term) =>
-    haystack.includes(term)
-  );
+/**
+ * Whether an event commits a form submission.
+ *
+ * Delegated to the canonical action layer, whose rule is annotation-based: a control is a
+ * submit control when its annotation says so, or when the event *is* a submit. The previous
+ * substring rule treated every component id containing "btn" as a submit, which labelled an
+ * export button `FORM_SUBMIT` (Task 20.4).
+ */
+function isFormSubmitTarget(event: BehaviourEvent): boolean {
+  const action = canonicalActionFor(event);
+  return action !== null && isSubmitControl(action);
 }
 
 /**
@@ -142,8 +150,11 @@ export function deriveOutcomeForWindow(
   for (const ev of inHorizon) {
     const type = ev.type;
 
-    if (type === 'click' || type === 'mousedown') {
-      const outcome: OutcomeType = isFormSubmitTarget(ev.componentId, ev.componentRole)
+    // A system-initiated act is evidence, never participant ground truth.
+    if (ev.systemInitiated) continue;
+
+    if (type === 'click' || type === 'mousedown' || type === 'submit' || type === 'change') {
+      const outcome: OutcomeType = isFormSubmitTarget(ev)
         ? 'FORM_SUBMIT'
         : 'CLICK';
       candidates.push({
@@ -167,16 +178,9 @@ export function deriveOutcomeForWindow(
       continue;
     }
 
-    if (type === 'blur' || type === 'popstate' || type === 'hashchange') {
-      candidates.push({
-        outcome: 'BACKTRACK',
-        timestamp: ev.timestamp,
-        rank: PRIORITY_RANK.BACKTRACK,
-        source: 'navigation_shift',
-        event: ev
-      });
-      continue;
-    }
+    // `blur`, `popstate` and `hashchange` are deliberately NOT backtrack candidates.
+    // Backtracking is a property of the route sequence, decided once by the route tracker
+    // and applied to the settled outcome below (Task 20.4).
 
     if (type === 'scroll' || type === 'wheel') {
       scrollEventsSeen += 1;
@@ -240,6 +244,12 @@ export interface OutcomeDeriverOptions extends DeriveOutcomeOptions {
   /** How long lookahead events are retained for outcome derivation. Default 10s. */
   retentionMs?: number;
   maxBufferedEvents?: number;
+  /**
+   * Application semantic derivation (Task 20.4). When supplied, every settled outcome also
+   * carries the semantic outcome of its source event, so the trace holds both the generic
+   * class and what the participant actually did.
+   */
+  semanticOutcomes?: SemanticOutcomeDeriver;
 }
 
 export interface OutcomeDeriverContext {
@@ -260,8 +270,10 @@ export class OutcomeDeriver {
   private lastKnownTimestamp = 0;
   /** True once the stream is known to have ended; see endSession(). */
   private streamEnded = false;
+  private readonly semanticOutcomes?: SemanticOutcomeDeriver;
 
   constructor(options: OutcomeDeriverOptions = {}) {
+    this.semanticOutcomes = options.semanticOutcomes;
     this.retentionMs = options.retentionMs ?? 10_000;
     this.maxBufferedEvents = options.maxBufferedEvents ?? 5_000;
     this.options = {
@@ -273,6 +285,8 @@ export class OutcomeDeriver {
   }
 
   public push(event: BehaviourEvent): void {
+    // Observe in stream order: route history must advance once per event.
+    this.semanticOutcomes?.observe(event);
     this.buffer.push(event);
     if (event.timestamp > this.lastKnownTimestamp) {
       this.lastKnownTimestamp = event.timestamp;
@@ -298,12 +312,14 @@ export class OutcomeDeriver {
     const lookaheadMin = this.options.lookaheadMinMs ?? DEFAULT_LOOKAHEAD_MIN_MS;
     const lookaheadMax = this.options.lookaheadMaxMs ?? DEFAULT_LOOKAHEAD_MAX_MS;
     const windowEndMs = window.windowEnd;
+    const lookaheadStartMs = windowEndMs + lookaheadMin;
+    const lookaheadEndMs = windowEndMs + lookaheadMax;
 
     // A window's lookahead horizon is only settled once the stream has advanced past it.
     const lookaheadComplete =
       this.streamEnded || this.lastKnownTimestamp >= windowEndMs + lookaheadMax;
 
-    const { outcome, metadata, sourceEvent } = deriveOutcomeForWindow(
+    const { outcome: genericOutcome, metadata, sourceEvent } = deriveOutcomeForWindow(
       {
         windowEndMs,
         futureEvents: this.buffer,
@@ -312,26 +328,75 @@ export class OutcomeDeriver {
       this.options
     );
 
+    // The semantic outcome decides which participant act this window describes. It is
+    // attached to the generic source event when that event has one; otherwise (a route
+    // reversal, or a navigation the generic taxonomy does not name) the earliest event with
+    // a semantic outcome supplies the reference, so the record still points at a real act.
+    const genericSemantic = this.semanticOutcomes?.outcomeFor(sourceEvent);
+    const horizonSemantic =
+      genericSemantic && genericSemantic.source !== 'none'
+        ? undefined
+        : this.earliestSemanticEventInHorizon(this.buffer, lookaheadStartMs, lookaheadEndMs);
+    const semantic =
+      genericSemantic && genericSemantic.source !== 'none'
+        ? genericSemantic
+        : horizonSemantic?.outcome;
+    const semanticSourceEvent = horizonSemantic?.event ?? sourceEvent;
+
+    // One route tracker, two layers: a reversal is BACKTRACK generically and `backtrack`
+    // semantically, so the two labels can never disagree about the same event.
+    const outcome: OutcomeType =
+      semantic?.source === 'backtrack' ? 'BACKTRACK' : genericOutcome;
+
     const outcomeEvent: OutcomeEvent = {
-      timestamp: sourceEvent ? sourceEvent.timestamp : windowEndMs,
+      timestamp: semanticSourceEvent ? semanticSourceEvent.timestamp : windowEndMs,
       outcome,
       lookaheadComplete,
       sessionId: context.sessionId,
       windowId: window.windowId,
       experimentId: context.experimentId,
       conditionId: context.conditionId,
-      sourceEventTimestamp: sourceEvent?.timestamp,
-      sourceEventType: sourceEvent?.type,
-      componentId: sourceEvent?.componentId,
-      taskId: sourceEvent?.taskId,
-      taskStepId: sourceEvent?.taskStepId,
-      route: sourceEvent?.route,
-      derivation: metadata
+      sourceEventTimestamp: semanticSourceEvent?.timestamp,
+      sourceEventType: semanticSourceEvent?.type,
+      componentId: semanticSourceEvent?.componentId,
+      taskId: semanticSourceEvent?.taskId,
+      taskStepId: semanticSourceEvent?.taskStepId,
+      route: semanticSourceEvent?.route,
+      derivation: metadata,
+      taskOutcome: semantic?.outcomeId,
+      taskOutcomeVocabularyVersion: semantic?.vocabularyVersion,
+      taskOutcomeSource: semantic?.source,
+      taskOutcomeRuleId: semantic?.ruleId
     };
 
     // Events older than the lookahead horizon can no longer affect any future window.
     this.evictOlderThan(windowEndMs + lookaheadMin);
     return outcomeEvent;
+  }
+
+  /**
+   * Earliest event in the lookahead horizon whose semantic derivation asserted an outcome.
+   *
+   * Ordered by timestamp so the choice is deterministic and matches the generic deriver's
+   * earliest-event rule.
+   */
+  private earliestSemanticEventInHorizon(
+    events: BehaviourEvent[],
+    startMs: number,
+    endMs: number
+  ): { event: BehaviourEvent; outcome: SemanticOutcome } | undefined {
+    if (!this.semanticOutcomes) return undefined;
+
+    let earliest: { event: BehaviourEvent; outcome: SemanticOutcome } | undefined;
+    for (const event of events) {
+      if (event.timestamp < startMs || event.timestamp > endMs) continue;
+      const outcome = this.semanticOutcomes.outcomeFor(event);
+      if (outcome.source === 'none') continue;
+      if (!earliest || event.timestamp < earliest.event.timestamp) {
+        earliest = { event, outcome };
+      }
+    }
+    return earliest;
   }
 
   /**

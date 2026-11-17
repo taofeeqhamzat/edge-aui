@@ -139,7 +139,12 @@ Parity with the Python reference is verified two ways:
 
 ## 5. Macro interaction vocabulary
 
-Thirty symbols in `src/macro/symbols.ts`, derived from the semantic DOM annotations
+The **framework** defines a `MacroMapper` contract (`src/macro/mapper.ts`): an event in, one
+symbol out, or `null` when the event carries no macro intent. It buffers, orders and
+correlates symbols; it knows no symbol names.
+
+The **application** supplies the vocabulary. The testbed's thirty symbols live in
+`src/testbed/config/macroVocabulary.ts` and are derived from the semantic DOM annotations
 (`data-aui-component`, `data-aui-role`, `data-aui-action`):
 
 ```
@@ -151,6 +156,15 @@ Table        TABLE_PAGE_NEXT TABLE_PAGE_PREV TABLE_SORT TABLE_ROW_SELECT
 Help         HOVER_KPI HOVER_HELP EXPAND_TOOLTIP
 Behavioural  BACKTRACK IDLE_DWELL RAPID_SCROLL
 ```
+
+`BACKTRACK`, `RAPID_SCROLL` and `IDLE_DWELL` are framework-detected behavioural markers, so
+every integration shares them. The rest is application vocabulary: a second application
+supplies its own mapper, and `tests/framework_boundary.test.ts` proves a checkout flow can
+do so without importing a testbed module.
+
+When no mapper is registered, `createAnnotationMacroMapper()` derives mechanical symbols
+from the annotation contract (`CLICK_BTN_SUBMIT`, `SELECT_QUANTITY_INPUT`, …). That is a
+deterministic convention for an unconfigured application, not a curated vocabulary.
 
 Symbols are `string`s because that is the wire shape the Rust PrefixSpan miner consumes.
 
@@ -167,8 +181,9 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
 
 - Mines frequent symbol sequences with the Rust/WASM PrefixSpan implementation
   (`src/gates/fast/prefixSpanMiner.ts` — the single WASM boundary in the framework).
-- Resolves a mined pattern through a declared pattern → intervention map
-  (`TESTBED_FAST_GATE_PATTERNS` in `src/runtime/boot.ts`).
+- Resolves a mined pattern through the application's declared pattern → intervention map
+  (`TESTBED_FAST_GATE_PATTERNS` in `src/testbed/config/fastGatePatterns.ts`, injected at the
+  composition root). The framework default map is empty.
 - Ranks deterministically: support desc, then length desc, then lexicographic.
 - Matches a pattern as an **in-order subsequence** of the recent sequence
   (`suffixMatchOnly: false`). Strict suffix matching was tried first and proved too strict
@@ -231,11 +246,15 @@ closure, and enforces `ttlMs`:
 |---|---|---|
 | `no_op` | no DOM change; emits an event | n/a |
 | `highlight_primary_action` | `edge-aui-highlight` class + data attribute | restores the exact prior `class` |
-| `simplify_options` | collapses expanded accordions, tags the drawer | re-expands; restores focus and class |
+| `simplify_options` | collapses expanded accordions, tags the target surface | re-expands; restores focus and class |
 | `expand_tooltip` | inserts a `role="tooltip"` bubble, links `aria-describedby` | removes the bubble; restores attributes |
 | `offer_assistance` | appends a `role="status" aria-live="polite"` banner | removes the node and listeners |
 
 `targetComponentId` is escaped before selector interpolation, and focus is never stolen.
+A `targetResolver` supplied in `UIActuator` options is authoritative: it turns the declared
+target reference into an element, and a declared target it cannot resolve is a recorded
+actuation failure rather than a fallback to some other control (Task 20.5). Without a
+resolver the framework falls back to the `data-aui-component` annotation contract.
 
 ---
 
@@ -307,6 +326,11 @@ interface OutcomeEvent {
   componentId?: string; taskId?: string; taskStepId?: string; route?: string;
   lookaheadComplete?: boolean;      // false = label is still provisional
   derivation?: OutcomeDerivationMetadata;
+  // Schema 1.4.0: the application semantic outcome, alongside the generic class above.
+  taskOutcome?: string;                    // e.g. 'apply_filter'
+  taskOutcomeVocabularyVersion?: string;
+  taskOutcomeSource?: 'backtrack' | 'application_rule' | 'none';
+  taskOutcomeRuleId?: string;
 }
 
 interface PredictionEvent {
@@ -318,15 +342,23 @@ interface PredictionEvent {
   sessionId?: string; experimentId?: string; conditionId?: ExperimentalCondition;
   modelVersion?: string; contextEncodingVersion?: string;
   mappingSource?: 'learned_head' | 'deterministic_mapping' | 'fast_gate_pattern';
+  // Schema 1.4.0: the normalized prediction the gates asserted.
+  predictedOutcome?: string;
+  predictedOutcomeVocabularyVersion?: string;
+  predictionContractVersion?: string;
+  targetContext?: { route?: string; taskId?: string; taskStepId?: string; componentId?: string };
 }
 
 interface TaskEvent {
   timestamp: number;
   type: 'task_start' | 'task_step' | 'task_complete' | 'task_error'
-      | 'task_reset' | 'task_abandon';
+      | 'task_reset' | 'task_abandon' | 'task_fail';
   taskId: string | null; taskStepId?: string;
-  status: 'Idle' | 'In Progress' | 'Completed' | 'Abandoned';
-  errors: number; durationMs?: number; reason?: 'reset' | 'timeout' | 'navigation';
+  status: 'Idle' | 'In Progress' | 'Completed' | 'Abandoned' | 'Failed';
+  errors: number; durationMs?: number;
+  reason?: 'reset' | 'timeout' | 'navigation' | 'wrong_action' | 'state_mismatch'
+          | 'step_exhausted' | 'interrupted' | 'replaced' | 'condition_change';
+  taskDefinitionVersion?: string;   // schema 1.4.0
 }
 
 interface InterventionCommand {
@@ -340,20 +372,28 @@ interface InterventionCommand {
 }
 ```
 
-### Experiment trace (`schemaVersion 1.2.0`)
+### Experiment trace (`schemaVersion 1.4.0`)
 
-`ExperimentRecorder` produces one `SerializableExperimentTrace` per session conforming to Schema `1.2.0` (with backward compatibility for `1.1.0`):
+`ExperimentRecorder` produces one `SerializableExperimentTrace` per session conforming to
+Schema `1.4.0`. `1.3.0`, `1.2.0` and `1.1.0` remain readable; the 1.4.0 fields are additive
+(semantic outcome, task-definition version, normalized prediction, and their versions in
+`metadata`).
 
 ```typescript
 {
-  schemaVersion: '1.2.0';
+  schemaVersion: '1.4.0';
   exportedAt: string;                       // ISO 8601
   session: SessionContext;                  // sessionId, startedAt, startedAtEpochMs,
                                             // experimentId, conditionId, taskId
   task?: TaskState;
   metadata: { durationMs, totalEvents, behaviourCount, microTensorCount, macroCount,
               outcomeCount, predictionCount, interventionCount, taskEventCount,
-              finalTaskStatus, experimentId, conditionId, uiVersion };
+              finalTaskStatus, experimentId, conditionId, uiVersion,
+              // schema 1.4.0 version attribution
+              taskDefinitionVersion, semanticOutcomeVocabularyVersion,
+              predictionContractVersion,
+              clock, provenance, applicationVersion, policyVersion,
+              modelVersion, executionProvider, mining, evictions, integrityWarnings };
   behaviourEvents: BehaviourEvent[];
   microTensors: { windowId, windowStart, windowEnd, values: number[], eventCount?, inactive? }[];
   macroInteractions: MacroInteraction[];
@@ -366,8 +406,11 @@ interface InterventionCommand {
 
 - `metadata.durationMs` is derived from `startedAtEpochMs` only. Subtracting the monotonic
   `startedAt` from `Date.now()` produced meaningless values.
-- `validateExperimentTrace()` checks structure across schemas `1.2.0` and `1.1.0`, requiring
-  valid correlation IDs (`sessionId`, `experimentId`, `conditionId`, `windowId`) and task completeness.
+- `validateExperimentTrace()` checks structure across schemas `1.4.0`, `1.3.0`, `1.2.0` and
+  `1.1.0`, requiring valid correlation IDs (`sessionId`, `experimentId`, `conditionId`,
+  `windowId`) and task completeness. From 1.4.0 it also requires consistency between a record
+  and its versions: a semantic outcome names its vocabulary version, a normalized prediction
+  names its contract version, and `metadata` carries the version of every record kind present.
 - `reconstructReplayStream()` flattens behaviour, macro, outcome, prediction, intervention and
   task records into one chronological stream.
 - Export is a client-side `Blob` download. Nothing leaves the browser.
@@ -383,10 +426,36 @@ interface InterventionCommand {
 - the **earliest** qualifying event wins; the priority hierarchy
   (`FORM_SUBMIT > CLICK > BACKTRACK > RAPID_SCROLL > HOVER_DWELL > ABANDON > NO_OUTCOME`) is
   applied **only** to break ties within 1 ms;
-- a qualifying event is `click`/`mousedown` → `CLICK`/`FORM_SUBMIT`, a lifecycle event →
-  `ABANDON`, `blur`/`popstate`/`hashchange` → `BACKTRACK`, the 4th scroll → `RAPID_SCROLL`,
-  the 2nd `mouseover` → `HOVER_DWELL`;
+- a qualifying event is a committed `click`/`change`/`submit` → `CLICK`/`FORM_SUBMIT`, a
+  lifecycle event → `ABANDON`, the 4th scroll → `RAPID_SCROLL`, the 2nd `mouseover` →
+  `HOVER_DWELL`;
+- `FORM_SUBMIT` comes from the *canonical* classification of the control (its annotation
+  declares a submit action, or the event is a `submit`), not from an id substring, so an
+  export button is `CLICK`;
+- `BACKTRACK` is **not** inferred from `blur`, `popstate` or `hashchange`. It is decided by
+  the route tracker (below) and applied to the settled outcome;
 - `ABANDON` requires an observable termination signal, never mere absence of activity.
+
+### Canonical actions and semantic outcomes (Task 20.4)
+
+`src/outcome/canonical.ts` classifies every canonical event into one action
+(`click`, `change`, `input`, `submit`, `focus`, `blur`, `hover`, `scroll`, `navigate`,
+`lifecycle`) and owns the single *companion* rule: a `change` step is committed by `change`
+(its click/input are companions), and a submit control's click is committed by `click` (the
+form `submit` is its companion). The task bridge and semantic derivation both use that rule,
+so they cannot disagree about which event was the act. The raw event is never deleted; the
+action carries it as evidence.
+
+`src/outcome/semantic.ts` defines the application contract: an ordered
+`SemanticOutcomeRule[]` plus a `SemanticOutcomeVocabulary` (id, version, declared outcomes,
+backtrack ID, no-outcome ID). A rule receives a classified action and returns an outcome ID.
+`src/outcome/backtracking.ts` supplies route-level backtracking: the visited list is seeded
+with the session's starting page, and only a deliberate move to a previously visited,
+different page is a reversal.
+
+`src/testbed/config/semanticOutcomes.ts` is the testbed's implementation of that contract.
+Core imports none of its outcome IDs. The derived outcome is recorded next to the generic
+one on the same `OutcomeEvent` (`taskOutcome` + vocabulary version + source + rule id).
 
 **Derivation is deferred.** A window is queued on emission and settled only once the observed
 stream has advanced past its horizon, with a 2 s idle grace period. Labelling immediately

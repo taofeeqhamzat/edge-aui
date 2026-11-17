@@ -19,15 +19,22 @@ import {
   type SerializableExperimentTrace
 } from '../src/telemetry/traceSchema';
 import { ExperimentRecorder } from '../src/telemetry/recorder';
-import { OnnxSlowGate, resetOnnxSlowGateSession } from '../src/gates/slow/onnxSlowGate';
+import {
+  OnnxSlowGate,
+  resetOnnxSlowGateSession,
+  softmax
+} from '../src/gates/slow/onnxSlowGate';
 import { PrefixSpanFastGate } from '../src/gates/fast/prefixSpanFastGate';
 import { UIContext } from '../src/types/uiContext';
 import { MappingSource } from '../src/telemetry/events';
 
 describe('Task 5.3: Trace Mapping Attribution & Versioned Schema', () => {
-  it('declares the current schema version and supports the legacy 1.2.0 and 1.1.0 formats', () => {
-    expect(EXPERIMENT_TRACE_SCHEMA_VERSION).toBe('1.3.0');
+  it('declares the current schema version and supports the legacy formats', () => {
+    // 1.4.0 adds the semantic outcome, task-definition version and normalized prediction
+    // fields (Task 20.5). 1.3.0 remains readable, as do 1.2.0 and 1.1.0.
+    expect(EXPERIMENT_TRACE_SCHEMA_VERSION).toBe('1.4.0');
     expect(SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS).toContain(EXPERIMENT_TRACE_SCHEMA_VERSION);
+    expect(SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS).toContain('1.3.0');
     expect(SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS).toContain('1.2.0');
     expect(SUPPORTED_EXPERIMENT_TRACE_SCHEMA_VERSIONS).toContain('1.1.0');
   });
@@ -393,5 +400,58 @@ describe('Task 5.3: Trace Mapping Attribution & Versioned Schema', () => {
     if (deterministicRes.intervention) {
       expect(deterministicRes.intervention.mappingSource).toBe('deterministic_mapping');
     }
+  });
+
+  it('reports a softmax probability, not a raw logit, as the confidence', async () => {
+    // A raw logit of 5.0 is not a 5.0 confidence. Ranking logits produced confidences above 1
+    // in real captures, which the policy then compared against a 0.75 probability threshold.
+    resetOnnxSlowGateSession();
+    const logits = new Float32Array([0.0, 0.0, 5.0, 0.0, 0.0]);
+    const mockOrt = {
+      env: { wasm: { numThreads: 1, simd: true } },
+      Tensor: class MockTensor {
+        data: Float32Array;
+        dims: number[];
+        type: string;
+        constructor(type: string, data: Float32Array, dims: number[]) {
+          this.type = type;
+          this.data = data;
+          this.dims = dims;
+        }
+      },
+      InferenceSession: {
+        create: async () => ({
+          inputNames: ['sequence_input', 'context_input'],
+          outputNames: ['intervention_logits'],
+          run: async () => ({ intervention_logits: { data: logits } }),
+          executionProvider: 'mock-webgpu'
+        })
+      }
+    };
+
+    const gate = new OnnxSlowGate({
+      ortModule: mockOrt as never,
+      modelUrl: null,
+      interventionModelUrl: 'mock-head.onnx',
+      confidenceThreshold: 0.5,
+      useDeterministicMapping: false
+    });
+
+    const result = await gate.infer({
+      sequence: new Float32Array(8 * 18).fill(0.1),
+      shape: [1, 8, 18],
+      context: {
+        route: 'Settings',
+        primaryActionAvailable: true,
+        helpAvailable: false,
+        expandable: true,
+        availableActions: ['click']
+      }
+    });
+
+    expect(result.interventionConfidence).toBeGreaterThan(0);
+    expect(result.interventionConfidence).toBeLessThanOrEqual(1);
+    expect(result.interventionConfidence).toBeCloseTo(softmax(logits)[2], 6);
+    expect(result.intervention?.confidence).toBeCloseTo(softmax(logits)[2], 6);
   });
 });

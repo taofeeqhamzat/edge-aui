@@ -1,2 +1,4 @@
 export * from './types';
-export * from './mockFastGate';
+export { MockFastGate } from './mockFastGate';
+export type { MockFastGateOptions, PatternDefinition } from './mockFastGate';
+export * from './patternTarget';

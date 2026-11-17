@@ -80,9 +80,14 @@ export class TestbedUiAdapter implements UiAdapter {
         status: evt.status,
         errors: evt.errors,
         durationMs: evt.durationMs,
-        reason: evt.reason
+        reason: evt.reason,
+        taskDefinitionVersion: evt.definitionVersion
       });
     });
+  }
+
+  getTaskDefinitionVersion(): string | undefined {
+    return taskManager.getState()?.definitionVersion;
   }
 
   recordInteraction(componentId: string, action: string): void {
@@ -90,7 +95,17 @@ export class TestbedUiAdapter implements UiAdapter {
   }
 
   abandonTask(reason: string): void {
-    taskManager.abandonTask(reason as 'reset' | 'timeout' | 'navigation');
+    const mapped =
+      reason === 'timeout'
+        ? 'timeout'
+        : reason === 'reset'
+          ? 'reset'
+          : reason === 'replaced'
+            ? 'replaced'
+            : reason === 'condition_change'
+              ? 'condition_change'
+              : 'interrupted';
+    taskManager.abandonTask(mapped);
   }
 
   getTaskActionForEvent(eventType: string): string | undefined {

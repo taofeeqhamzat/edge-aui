@@ -26,6 +26,7 @@ import { OutcomeDeriver } from '../src/outcome/derive';
 import { ExperimentRecorder } from '../src/telemetry/recorder';
 import { createAdaptiveRuntime, AdaptiveRuntime } from '../src/runtime/adaptiveRuntime';
 import { encodeUIContext, CONTEXT_VECTOR_DIM, validateContextVector } from '../src/types/contextVector';
+import { TESTBED_CONTEXT_ENCODING_CONFIG } from '../src/testbed/config/contextEncoding';
 import { UIContext } from '../src/types/uiContext';
 
 const SENTINEL_PRIMARY = 'SENTINEL_SECRET_DO_NOT_LEAK_XYZ123';
@@ -77,11 +78,11 @@ describe('Task 5.2 / ADR-010: Context Redaction & Telemetry Privacy Guarantees',
       helpAvailable: true,
       expandable: false,
       availableActions: ['click', 'change', 'input'],
-      taskId: 'T1',
-      taskStepId: 'T1-2'
+      taskId: 'TD1',
+      taskStepId: 'TD1-2'
     };
 
-    const independentlyEncoded = encodeUIContext(context);
+    const independentlyEncoded = encodeUIContext(context, TESTBED_CONTEXT_ENCODING_CONFIG);
     expect(independentlyEncoded.length).toBe(CONTEXT_VECTOR_DIM);
     expect(independentlyEncoded.length).toBe(6);
 
@@ -94,7 +95,7 @@ describe('Task 5.2 / ADR-010: Context Redaction & Telemetry Privacy Guarantees',
       expect(independentlyEncoded[i]).toBeLessThanOrEqual(1.0);
     }
 
-    // Verify route index matches Settings (index 4 in ROUTE_VOCABULARY / 5.0 = 0.8)
+    // Verify route index matches Settings (index 4 of the 5 testbed routes = 0.8)
     expect(independentlyEncoded[0]).toBeCloseTo(4 / 5, 4);
     // primaryActionAvailable = 1.0
     expect(independentlyEncoded[1]).toBe(1.0);
@@ -102,8 +103,8 @@ describe('Task 5.2 / ADR-010: Context Redaction & Telemetry Privacy Guarantees',
     expect(independentlyEncoded[2]).toBe(1.0);
     // expandable = 0.0
     expect(independentlyEncoded[3]).toBe(0.0);
-    // taskProgress = (2 - 1) / 4 = 0.25
-    expect(independentlyEncoded[4]).toBeCloseTo(0.25, 4);
+    // taskProgress = (2 - 1) / 5 = 0.2 for TD1-2 (TD1 has five steps)
+    expect(independentlyEncoded[4]).toBeCloseTo(0.2, 4);
     // actionAvailability = 3 / 7
     expect(independentlyEncoded[5]).toBeCloseTo(3 / 7, 4);
   });
@@ -270,15 +271,15 @@ describe('Task 5.2 / ADR-010: Context Redaction & Telemetry Privacy Guarantees',
       helpAvailable: false,
       expandable: true,
       availableActions: ['click', 'toggle'],
-      taskId: 'T2',
-      taskStepId: 'T2-1',
+      taskId: 'TD2',
+      taskStepId: 'TD2-1',
       // Arbitrary fields that a compromised UI might attempt to attach:
       freeTextComment: 'SECRET_USER_INPUT_NOTES',
       passwordField: 'SUPER_SECRET_VALUE',
       userEmail: 'user@example.com'
     };
 
-    const vector = encodeUIContext(taintedContext);
+    const vector = encodeUIContext(taintedContext, TESTBED_CONTEXT_ENCODING_CONFIG);
 
     // Vector must strictly remain length 6 with only valid normalized numeric components
     expect(vector.length).toBe(6);

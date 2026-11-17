@@ -46,6 +46,7 @@ export interface LiveDebugMetrics {
     | 'BELOW THRESHOLD'
     | 'POLICY ACCEPTED'
     | 'POLICY ACCEPTED (BASELINE — NOT APPLIED)'
+    | 'NO ADAPTATION'
     | 'POLICY REJECTED'
     | 'ACTUATED'
     | 'EXPIRED'

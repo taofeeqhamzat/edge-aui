@@ -76,6 +76,13 @@ export interface BehaviourEvent {
   componentId?: string;
   componentRole?: string;
 
+  /**
+   * True when the framework or host application performed the act itself — a programmatic
+   * route change, a restored state, a scripted preset. Such an act is recorded as evidence
+   * but is never a participant outcome (Task 20.4).
+   */
+  systemInitiated?: boolean;
+
   route?: string;
   action?: string;
 
@@ -87,10 +94,10 @@ export interface BehaviourEvent {
   /**
    * Post-action disclosure state of the interaction target, when it declares one.
    *
-   * Captured because macro-symbol derivation previously inferred "opened the filters" from
-   * an `action` string containing "close", which nothing produced — so `CLOSE_FILTERS` was
-   * unreachable and every accordion interaction collapsed into `OPEN_FILTERS`. The observed
-   * `aria-expanded` value is the honest source for that distinction (assessment F-06).
+   * Captured because macro-symbol derivation previously inferred "opened" from an `action`
+   * string containing "close", which nothing produced — so the accordion *close* symbol was
+   * unreachable and every accordion interaction collapsed into the *open* symbol. The
+   * observed `aria-expanded` value is the honest source for that distinction (assessment F-06).
    */
   ariaExpanded?: boolean;
 
@@ -188,6 +195,22 @@ export interface OutcomeEvent {
   lookaheadComplete?: boolean;
   /** Deterministic derivation metadata for auditability. */
   derivation?: OutcomeDerivationMetadata;
+
+  // ---------------------------------------------------------------------------
+  // Semantic outcome (Task 20.4)
+  //
+  // The generic `outcome` above is the model's seven-class foundation label. The semantic
+  // outcome is the application vocabulary describing
+  // what the participant actually did. Both are recorded: neither replaces the other.
+  // ---------------------------------------------------------------------------
+  /** Application-supplied semantic outcome identifier; `NO_OUTCOME` when no rule matched. */
+  taskOutcome?: string;
+  /** Version of the semantic vocabulary `taskOutcome` belongs to. */
+  taskOutcomeVocabularyVersion?: string;
+  /** How the semantic outcome was derived. */
+  taskOutcomeSource?: 'backtrack' | 'application_rule' | 'none';
+  /** Rule that produced the semantic outcome, when an application rule did. */
+  taskOutcomeRuleId?: string;
 }
 
 /** Closed taxonomy of generative mechanisms that can produce an intervention command (ADR-006 / Task 5.3). */
@@ -233,6 +256,25 @@ export interface PredictionEvent {
   contextEncodingVersion?: string;
   /** True when both gates were evaluated and returned no intervention. */
   bothGatesEvaluated: boolean;
+
+  // ---------------------------------------------------------------------------
+  // Normalized prediction (schema 1.4.0, Task 20.5)
+  //
+  // `outcome` above is the generic seven-class label. `predictedOutcome` is the
+  // application-supplied outcome the gates actually asserted, together with the contract
+  // version that describes it and the UI target it was computed against. Additive: 1.3.0
+  // consumers ignore them.
+  // ---------------------------------------------------------------------------
+  predictedOutcome?: string;
+  predictionContractVersion?: string;
+  /** Vocabulary the predicted outcome belongs to. */
+  predictedOutcomeVocabularyVersion?: string;
+  targetContext?: {
+    route?: string;
+    taskId?: string;
+    taskStepId?: string;
+    componentId?: string;
+  };
 }
 
 /**
@@ -331,7 +373,7 @@ export interface InterventionEvent {
 export type ExperimentalCondition = 'baseline' | 'adaptive';
 
 /** Status of an experimental task trial. */
-export type TaskEventStatus = 'Idle' | 'In Progress' | 'Completed' | 'Abandoned';
+export type TaskEventStatus = 'Idle' | 'In Progress' | 'Completed' | 'Abandoned' | 'Failed';
 
 /**
  * Task lifecycle record. The assessment (§6.2) found that the testbed produced no
@@ -346,13 +388,30 @@ export interface TaskEvent {
     | 'task_complete'
     | 'task_error'
     | 'task_reset'
-    | 'task_abandon';
+    | 'task_abandon'
+    | 'task_fail';
   taskId: string | null;
   taskStepId?: string;
   status: TaskEventStatus;
   errors: number;
   durationMs?: number;
-  reason?: 'reset' | 'timeout' | 'navigation';
+  /**
+   * Abandonment/failure reason.
+   *
+   * 1.4.0 extends the vocabulary with the task state machine's own failure reasons, so a
+   * `task_fail` says *why* rather than only that it happened.
+   */
+  reason?:
+    | 'reset'
+    | 'replaced'
+    | 'condition_change'
+    | 'interrupted'
+    | 'timeout'
+    | 'wrong_action'
+    | 'state_mismatch'
+    | 'step_exhausted';
+  /** Version of the task definition this event refers to (schema 1.4.0). */
+  taskDefinitionVersion?: string;
   sessionId?: string;
   experimentId?: string;
   conditionId?: ExperimentalCondition;

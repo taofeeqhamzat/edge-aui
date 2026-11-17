@@ -10,65 +10,75 @@
  *
  * | Index | Field              | Encoding                                                        |
  * |-------|--------------------|-----------------------------------------------------------------|
- * | 0     | route              | Stable index into ROUTE_VOCABULARY, normalized by route count     |
+ * | 0     | route              | Stable index into the configured route vocabulary, / vocabulary   |
  * | 1     | primaryAction      | 1.0 when a primary action is available, else 0.0                 |
  * | 2     | helpAvailable      | 1.0 when contextual help/tooltip is available, else 0.0          |
  * | 3     | expandable         | 1.0 when an expandable/accordion surface is present, else 0.0    |
- * | 4     | taskProgress       | current step index / total steps (0.0 when no task is active)     |
- * | 5     | actionAvailability | available action count normalized by ACTION_VOCABULARY size       |
+ * | 4     | taskProgress       | current step index / configured total steps (0.0 when inactive)   |
+ * | 5     | actionAvailability | available action count normalized by the configured action count  |
  *
  * All components are bounded in [0, 1] to match the MicroTensor normalization contract.
  * `CONTEXT_VECTOR_DIM` is asserted against the model-preparation `context_dim`.
+ *
+ * The route, action and task vocabularies are application vocabulary (Task 20.2). The
+ * framework encodes whatever vocabulary it is given and holds no route names or task ids of
+ * its own; the testbed supplies its own in `src/testbed/config/contextEncoding.ts`.
  */
 
 import { UIContext } from './uiContext.js';
 
 export const CONTEXT_VECTOR_DIM = 6;
 
-/** Route vocabulary shared with the target UI's `data-aui-route` values. */
-export const ROUTE_VOCABULARY = [
-  'Overview',
-  'Analytics',
-  'Reports',
-  'Customers',
-  'Settings'
-] as const;
-
-/** Action vocabulary from the semantic DOM annotation contract. */
-export const ACTION_VOCABULARY = [
-  'click',
-  'change',
-  'toggle',
-  'hover',
-  'select',
-  'input',
-  'focus'
-] as const;
-
-/** Total step count per task id, used for the task-progress component. */
-export const TASK_STEP_COUNTS: Record<string, number> = {
-  T1: 4,
-  T2: 2,
-  T3: 4
-};
-
-export interface ContextVectorOptions {
-  /** Order of task steps used to derive progress; index within this list is used. */
-  taskStepOrder?: string[];
+/**
+ * Application-supplied vocabulary and task geometry for the context encoding.
+ *
+ * `version` is recorded with the prediction so a re-encoded context is distinguishable
+ * from a re-trained head.
+ */
+export interface ContextEncodingConfig {
+  /** Identity of this encoding configuration. */
+  id: string;
+  /** Version of the vocabulary; travels with the prediction. */
+  version: string;
+  /** Ordered route vocabulary; the index is normalized by its length. */
+  routeVocabulary: readonly string[];
+  /** Ordered action vocabulary; used to normalize action breadth. */
+  actionVocabulary: readonly string[];
+  /** Total step count per task id, used for the task-progress component. */
+  taskStepCounts: Readonly<Record<string, number>>;
 }
+
+/**
+ * Encoding used when an application supplies none.
+ *
+ * It declares the generic annotation action vocabulary — part of the semantic annotation
+ * contract, not application vocabulary — and no routes or tasks, so every route and task
+ * component encodes to 0 rather than to a guessed index.
+ */
+export const DEFAULT_CONTEXT_ENCODING_CONFIG: ContextEncodingConfig = {
+  id: 'annotation-default',
+  version: '1.0.0',
+  routeVocabulary: [],
+  actionVocabulary: ['click', 'change', 'toggle', 'hover', 'select', 'input', 'focus'],
+  taskStepCounts: {}
+};
 
 /**
  * Encodes a `UIContext` snapshot into the 6-dimensional context vector expected by
  * the target intervention head. Deterministic and pure.
  */
-export function encodeUIContext(context: UIContext): Float32Array {
+export function encodeUIContext(
+  context: UIContext,
+  config: ContextEncodingConfig = DEFAULT_CONTEXT_ENCODING_CONFIG
+): Float32Array {
   const vector = new Float32Array(CONTEXT_VECTOR_DIM);
 
   // 0. Route index, normalized by the vocabulary size.
-  const routeIndex = ROUTE_VOCABULARY.indexOf(
-    context.route as (typeof ROUTE_VOCABULARY)[number]
-  );
-  vector[0] = routeIndex >= 0 ? routeIndex / ROUTE_VOCABULARY.length : 0.0;
+  const routeIndex = config.routeVocabulary.indexOf(context.route);
+  vector[0] =
+    routeIndex >= 0 && config.routeVocabulary.length > 0
+      ? routeIndex / config.routeVocabulary.length
+      : 0.0;
 
   // 1-3. Capability flags.
   vector[1] = context.primaryActionAvailable ? 1.0 : 0.0;
@@ -77,7 +87,7 @@ export function encodeUIContext(context: UIContext): Float32Array {
 
   // 4. Task progress from the current step index.
   if (context.taskId && context.taskStepId) {
-    const stepCount = TASK_STEP_COUNTS[context.taskId];
+    const stepCount = config.taskStepCounts[context.taskId];
     if (stepCount && stepCount > 0) {
       const stepNumber = Number.parseInt(context.taskStepId.split('-').pop() ?? '', 10);
       if (Number.isFinite(stepNumber) && stepNumber > 0) {
@@ -88,7 +98,10 @@ export function encodeUIContext(context: UIContext): Float32Array {
 
   // 5. Breadth of currently available actions.
   const actionCount = new Set(context.availableActions ?? []).size;
-  vector[5] = Math.min(1.0, actionCount / ACTION_VOCABULARY.length);
+  vector[5] =
+    config.actionVocabulary.length > 0
+      ? Math.min(1.0, actionCount / config.actionVocabulary.length)
+      : 0.0;
 
   return vector;
 }

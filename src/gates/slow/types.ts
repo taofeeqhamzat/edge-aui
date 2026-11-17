@@ -8,6 +8,17 @@
 import { UIContext } from '../../types/uiContext.js';
 import { OutcomeType } from '../../telemetry/events';
 import { InterventionCommand } from '../../intervention/types';
+import { GatePrediction } from '../contracts';
+
+/**
+ * Version of the generic foundation outcome vocabulary
+ * (`NO_OUTCOME | CLICK | FORM_SUBMIT | BACKTRACK | RAPID_SCROLL | HOVER_DWELL | ABANDON`).
+ *
+ * The vocabulary is a model-manifest property (Task 20.3); this is the identity of the
+ * built-in default that the bundled foundation graphs were trained on. Re-exported so
+ * callers of the Slow Gate contract do not import the config layer.
+ */
+export { FOUNDATION_OUTCOME_VOCABULARY_VERSION } from '../../config/modelManifest';
 
 export interface SlowGateInput {
   sequence: Float32Array;
@@ -19,7 +30,16 @@ export type SlowGateMappingSource = 'learned_head' | 'deterministic_mapping';
 
 export interface SlowGateResult {
   outcome?: OutcomeType;
+  /**
+   * Candidate adaptation produced by the gate itself.
+   *
+   * Compatibility path only: an intervention is a *policy* output (Task 20.1). The gate
+   * publishes `prediction`, and the policy resolves that outcome into a command through
+   * the application's candidate resolver.
+   */
   intervention?: InterventionCommand;
+  /** Normalized prediction emitted for the inferred outcome. */
+  prediction?: GatePrediction;
   probabilities?: Float32Array;
   confidence?: number;
   /** Explicit intervention head probability distribution over the 5 target classes. */
@@ -28,6 +48,8 @@ export interface SlowGateResult {
   interventionConfidence?: number;
   /** Attribution of how candidate intervention was produced (ADR-006). */
   mappingSource?: SlowGateMappingSource;
+  /** Version of the outcome model/pattern set serving the prediction, for provenance. */
+  gateVersion?: string;
   source: 'slow';
 }
 

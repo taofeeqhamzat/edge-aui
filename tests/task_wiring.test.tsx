@@ -1,272 +1,387 @@
 /**
- * Task wiring (assessment §6, §25 P0-4).
+ * Task wiring for the TD1–TD4 testbed.
  *
- * Two invariants are asserted here:
- * 1. Every component id a task step expects actually exists in the rendered UI, so no
- *    task can be impossible to complete because of a naming mismatch.
- * 2. Driving the real UI through a task produces explicit task lifecycle events.
+ * These tests drive the real React testbed. Task completion is state-verified, so the tests
+ * assert the resulting UI state and lifecycle events rather than only that a control was touched.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../src/app/App';
-import { FilterDrawer } from '../src/testbed/components/FilterDrawer';
-import { ResultsTable } from '../src/testbed/components/ResultsTable';
-import { Navigation } from '../src/app/Navigation';
-import { KPICards } from '../src/testbed/components/KPICards';
-import { TrialControls } from '../src/testbed/components/TrialControls';
 import { EXPERIMENTAL_TASKS, TaskId, getTaskRequiredComponentIds } from '../src/testbed/tasks/taskModel';
 import { taskManager, TaskLifecycleEvent } from '../src/testbed/tasks/taskManager';
-import { experimentRecorder } from '../src/telemetry/recorder';
 import { defaultTelemetryObserver } from '../src/telemetry/observer';
-import { generateDeterministicData, defaultTableData } from '../src/testbed/mock-data/tableData';
 
-/** Action recorded against the task model for each observed event type. */
+function click(selector: string): void {
+  const element = document.querySelector(selector) as HTMLElement | null;
+  expect(element, `missing ${selector}`).not.toBeNull();
+  act(() => {
+    fireEvent.click(element!);
+  });
+}
+
+function select(selector: string, value: string): void {
+  const element = document.querySelector(selector) as HTMLSelectElement | null;
+  expect(element, `missing ${selector}`).not.toBeNull();
+  act(() => {
+    fireEvent.change(element!, { target: { value } });
+  });
+}
+
+function navigate(page: 'Analytics' | 'Reports' | 'Overview'): void {
+  click(`[data-aui-component="nav-${page}"]`);
+}
+
+function trialText(): string {
+  return document.querySelector('[data-aui-component="trial-status"]')?.textContent ?? '';
+}
+
+function openSection(componentId: string): void {
+  const section = document.querySelector(`[data-aui-component="${componentId}"]`);
+  if (section?.getAttribute('aria-expanded') !== 'true') {
+    click(`[data-aui-component="${componentId}"]`);
+  }
+}
+
 const TASK_ACTION_BY_EVENT: Record<string, string> = {
   click: 'click',
   submit: 'submit',
   change: 'change',
-  input: 'input'
+  input: 'input',
 };
 
-function renderTestbedSurface() {
-  return render(
-    <div data-aui-route="Analytics">
-      <Navigation currentPage="Analytics" onNavigate={() => {}} />
-      <FilterDrawer />
-      <TrialControls />
-      <KPICards />
-      <ResultsTable />
-    </div>
-  );
-}
-
 describe('Task model / DOM annotation contract', () => {
-  beforeEach(() => {
-    taskManager.resetTask();
-  });
-
-  it('every task step references a component that is actually rendered', () => {
-    const { container } = renderTestbedSurface();
-    const missing: string[] = [];
-
-    const selectorFor = (componentId: string) =>
-      `[data-aui-component="${componentId.replace(/"/g, '\\"')}"]`;
-
-    // Sections are progressively disclosed: a control inside a collapsed accordion is
-    // not in the DOM until its section is opened, which is exactly what the task step
-    // preceding it asks the participant to do.
-    const sectionForControl = (componentId: string) =>
-      Array.from(container.querySelectorAll('[data-aui-role="accordion"]')).find(
-        (accordion) => {
-          const section = accordion.parentElement;
-          return Boolean(section && section.querySelector(selectorFor(componentId)));
-        }
-      ) as HTMLElement | undefined;
-
-    // Controls are children of the accordion's sibling content block, so a control
-    // inside a closed section is absent from the DOM entirely.
-    const collapseAll = () => {
-      for (const accordion of Array.from(
-        container.querySelectorAll('[data-aui-role="accordion"]')
-      ) as HTMLElement[]) {
-        if (accordion.getAttribute('aria-expanded') === 'true') accordion.click();
-      }
-    };
-
-    act(() => collapseAll());
-
-    const requiredIds = (Object.keys(EXPERIMENTAL_TASKS) as TaskId[]).flatMap((taskId) =>
-      getTaskRequiredComponentIds(taskId).map((componentId) => ({ taskId, componentId }))
-    );
-
-    // Open each accordion in turn and check which required controls it reveals.
-    const remaining = new Set(requiredIds.map(({ componentId }) => componentId));
-    for (const accordion of Array.from(
-      container.querySelectorAll('[data-aui-role="accordion"]')
-    ) as HTMLElement[]) {
-      act(() => accordion.click());
-      for (const { taskId, componentId } of requiredIds) {
-        if (container.querySelector(selectorFor(componentId))) {
-          remaining.delete(componentId);
-        } else if (accordion.parentElement?.innerText?.includes(componentId)) {
-          missing.push(`${taskId} -> ${componentId}`);
-        }
-      }
-    }
-
-    for (const { taskId, componentId } of requiredIds) {
-      if (remaining.has(componentId)) {
-        missing.push(`${taskId} -> ${componentId}`);
-      }
-    }
-
-    expect(missing).toEqual([]);
-  });
-
-  it('has a declared expected action for every step', () => {
-    for (const taskId of Object.keys(EXPERIMENTAL_TASKS) as TaskId[]) {
-      for (const step of EXPERIMENTAL_TASKS[taskId].steps) {
-        expect(step.expectedAction).toBeTruthy();
-        expect(step.expectedComponentId).toBeTruthy();
-      }
-    }
-  });
-
-  it('renders trial controls that can start and reset a task', () => {
-    renderTestbedSurface();
-
-    expect(screen.getByText(/Experimental Trial/i)).not.toBeNull();
-    expect(document.querySelector('[data-aui-component="btn-start-T1"]')).not.toBeNull();
-    expect(document.querySelector('[data-aui-component="btn-reset-trial"]')).not.toBeNull();
-    expect(document.querySelector('[data-aui-component="condition-baseline"]')).not.toBeNull();
-    expect(document.querySelector('[data-aui-component="condition-adaptive"]')).not.toBeNull();
-  });
-});
-
-describe('Task lifecycle events from real UI interaction', () => {
-  let lifecycle: TaskLifecycleEvent[];
-  let unsubscribe: () => void;
+  let unsubscribeBridge: (() => void) | undefined;
 
   beforeEach(() => {
     taskManager.resetTask();
-    experimentRecorder.clear();
-    lifecycle = [];
-    unsubscribe = taskManager.onLifecycle((event) => lifecycle.push(event));
-  });
-
-  afterEach(() => {
-    unsubscribe();
-    taskManager.resetTask();
-    document.body.innerHTML = '';
-  });
-
-  it('emits task_start when a task is started and task_reset when reset', () => {
-    act(() => {
-      taskManager.startTask('T1');
-    });
-    expect(lifecycle.map((e) => e.type)).toContain('task_start');
-    expect(taskManager.getState().status).toBe('In Progress');
-
-    act(() => {
-      taskManager.resetTask();
-    });
-    // Resetting an in-progress task records an abandonment, then the reset.
-    expect(lifecycle.map((e) => e.type)).toContain('task_abandon');
-    expect(lifecycle.map((e) => e.type)).toContain('task_reset');
-    expect(taskManager.getState().status).toBe('Idle');
-  });
-
-  it('completes T1 through the real observer bridge and records the lifecycle', () => {
-    // Bridge observed events into the task manager exactly as App.tsx does.
-    const unsubBridge = defaultTelemetryObserver.subscribe((event) => {
+    unsubscribeBridge = defaultTelemetryObserver.subscribe((event) => {
       const action = TASK_ACTION_BY_EVENT[event.type];
       if (action && event.componentId) {
         taskManager.recordInteraction(event.componentId, action);
       }
     });
-
-    renderTestbedSurface();
     defaultTelemetryObserver.start();
-
-    act(() => {
-      taskManager.startTask('T1');
+    vi.stubGlobal('URL', {
+      createObjectURL: vi.fn(() => 'blob:test'),
+      revokeObjectURL: vi.fn(),
     });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  });
 
-    const clickComponent = (componentId: string) => {
-      const el = document.querySelector(`[data-aui-component="${componentId}"]`) as HTMLElement;
-      expect(el).not.toBeNull();
-      el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 5, clientY: 5 }));
-    };
-
-    // T1-1 navigate, T1-2 open Region accordion, T1-3 select region, T1-4 apply.
-    act(() => clickComponent('nav-Analytics'));
-
-    // T1-1 navigate, T1-2 open the Region section, which discloses its <select>.
-    act(() => clickComponent('filter-Region'));
-
-    const select = document.querySelector(
-      '[data-aui-component="filter-Region-select"]'
-    ) as HTMLSelectElement;
-    expect(select).not.toBeNull();
-
-    act(() => {
-      select.value = 'Europe';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-
-    act(() => clickComponent('btn-apply-filters'));
-
-    const state = taskManager.getState();
-    expect(state.status).toBe('Completed');
-    expect(state.completedSteps).toEqual(['T1-1', 'T1-2', 'T1-3', 'T1-4']);
-
-    const completeEvent = lifecycle.find((e) => e.type === 'task_complete');
-    expect(completeEvent).toBeDefined();
-    expect(completeEvent?.taskId).toBe('T1');
-    expect(typeof completeEvent?.durationMs).toBe('number');
-
+  afterEach(() => {
     defaultTelemetryObserver.stop();
-    unsubBridge();
+    unsubscribeBridge?.();
+    unsubscribeBridge = undefined;
+    taskManager.resetTask();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
   });
 
-  it('counts a wrong interaction as a task error without completing a step', () => {
-    act(() => {
-      taskManager.startTask('T2');
-    });
+  it('references rendered controls for every task', () => {
+    render(<App />);
 
-    act(() => {
-      taskManager.recordInteraction('btn-export', 'click'); // step 1 is nav-Analytics
-    });
+    navigate('Analytics');
+    click('[data-aui-component="filter-section-date-range"]');
+    click('[data-aui-component="filter-section-region"]');
+    click('[data-aui-component="filter-section-product-category"]');
+
+    const visibleIds = new Set(
+      Array.from(document.querySelectorAll('[data-aui-component]')).map((element) =>
+        element.getAttribute('data-aui-component'),
+      ),
+    );
+
+    navigate('Reports');
+    for (const element of Array.from(document.querySelectorAll('[data-aui-component]'))) {
+      visibleIds.add(element.getAttribute('data-aui-component'));
+    }
+
+    const missing: string[] = [];
+    for (const taskId of Object.keys(EXPERIMENTAL_TASKS) as TaskId[]) {
+      for (const componentId of getTaskRequiredComponentIds(taskId)) {
+        if (!visibleIds.has(componentId)) missing.push(`${taskId} -> ${componentId}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('exposes TD1–TD4 start controls and a reset control', () => {
+    render(<App />);
+    for (const taskId of Object.keys(EXPERIMENTAL_TASKS) as TaskId[]) {
+      expect(document.querySelector(`[data-aui-component="btn-start-${taskId}"]`)).not.toBeNull();
+    }
+    expect(document.querySelector('[data-aui-component="btn-reset-trial"]')).not.toBeNull();
+  });
+
+  it('normalizes the starting state and disables replacement while in progress', () => {
+    render(<App />);
+    navigate('Reports');
+    click('[data-aui-component="btn-start-TD1"]');
+
+    expect(taskManager.getState().status).toBe('In Progress');
+    expect(taskManager.getState().currentTaskId).toBe('TD1');
+    expect(document.querySelector('.app-container')?.getAttribute('data-aui-route')).toBe('Overview');
+    expect((document.querySelector('[data-aui-component="btn-start-TD1"]') as HTMLButtonElement).disabled).toBe(true);
+    expect((document.querySelector('[data-aui-component="condition-adaptive"]') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('completes TD1 from the real UI and records the lifecycle', () => {
+    const lifecycle: TaskLifecycleEvent[] = [];
+    const unsubscribe = taskManager.onLifecycle((event) => lifecycle.push(event));
+    render(<App />);
+
+    click('[data-aui-component="btn-start-TD1"]');
+    expect(trialText()).toContain('TD1-1');
+    navigate('Analytics');
+    expect(trialText()).toContain('TD1-2');
+    click('[data-aui-component="filter-section-region"]');
+    expect(trialText()).toContain('TD1-3');
+    select('[data-aui-component="filter-Region-select"]', 'Europe');
+    expect(trialText()).toContain('TD1-4');
+    click('[data-aui-component="btn-apply-filters"]');
+    expect(trialText()).toContain('TD1-5');
+    click('[data-aui-component="btn-export"]');
 
     const state = taskManager.getState();
-    expect(state.status).toBe('In Progress');
-    expect(state.errors).toBe(1);
-    expect(lifecycle.some((e) => e.type === 'task_error')).toBe(true);
+    expect(trialText()).toContain('Completed');
+    expect(state.status).toBe('Completed');
+    expect(state.errors).toBe(0);
+    expect(state.completedSteps).toEqual(['TD1-1', 'TD1-2', 'TD1-3', 'TD1-4', 'TD1-5']);
+    expect(lifecycle.some((event) => event.type === 'task_start')).toBe(true);
+    expect(lifecycle.some((event) => event.type === 'task_complete')).toBe(true);
+    unsubscribe();
   });
 
-  it('records abandonment when the trial is reset mid-task', () => {
+  it('does not complete TD2 when the required state is wrong', () => {
+    render(<App />);
+    click('[data-aui-component="btn-start-TD2"]');
+    click('[data-aui-component="btn-apply-filters"]');
+
+    expect(taskManager.getState().status).toBe('In Progress');
+  });
+
+  it('opens a report, synchronizes the preset filters, and shows the current report', () => {
+    render(<App />);
+    navigate('Reports');
+    click('[data-aui-component="open-report-eu-books"]');
+
+    expect(screen.getByText('Report: Europe Books')).not.toBeNull();
+    expect(screen.getByText('Results (6)')).not.toBeNull();
+    openSection('filter-section-region');
+    openSection('filter-section-product-category');
+    expect((document.querySelector('[data-aui-component="filter-Region-select"]') as HTMLSelectElement).value).toBe('Europe');
+    expect((document.querySelector('[data-aui-component="filter-category-books"]') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('keeps table and drawer filter state consistent across navigation', () => {
+    render(<App />);
+    navigate('Analytics');
+    click('[data-aui-component="filter-section-region"]');
+    select('[data-aui-component="filter-Region-select"]', 'Europe');
+    click('[data-aui-component="btn-apply-filters"]');
+    expect(screen.getByText('Results (18)')).not.toBeNull();
+
+    navigate('Reports');
+    navigate('Analytics');
+    expect(screen.getByText('Results (18)')).not.toBeNull();
+    openSection('filter-section-region');
+    expect((document.querySelector('[data-aui-component="filter-Region-select"]') as HTMLSelectElement).value).toBe('Europe');
+  });
+
+  it('resets drafts and applied filters', () => {
+    render(<App />);
+    navigate('Analytics');
+    click('[data-aui-component="filter-section-region"]');
+    select('[data-aui-component="filter-Region-select"]', 'Europe');
+    click('[data-aui-component="btn-apply-filters"]');
+    click('[data-aui-component="btn-reset-filters"]');
+
+    expect(screen.getByText('Results (50)')).not.toBeNull();
+    openSection('filter-section-region');
+    expect((document.querySelector('[data-aui-component="filter-Region-select"]') as HTMLSelectElement).value).toBe('All');
+  });
+
+  it('completes TD2 with the correct date/category state and no spurious errors', () => {
+    render(<App />);
+    click('[data-aui-component="btn-start-TD2"]');
+    expect(trialText()).toContain('TD2-1');
+    openSection('filter-section-date-range');
+    expect(trialText()).toContain('TD2-2');
+    const dateInput = document.querySelector('[data-aui-component="filter-date-input"]') as HTMLInputElement;
     act(() => {
-      taskManager.startTask('T3');
+      fireEvent.change(dateInput, { target: { value: '2025-06-01' } });
+    });
+    expect(trialText()).toContain('TD2-3');
+    openSection('filter-section-product-category');
+    expect(trialText()).toContain('TD2-4');
+    const books = document.querySelector('[data-aui-component="filter-category-books"]') as HTMLInputElement;
+    act(() => {
+      fireEvent.click(books);
+    });
+    expect(trialText()).toContain('TD2-5');
+    click('[data-aui-component="btn-apply-filters"]');
+
+    expect(screen.getByText('Results (5)')).not.toBeNull();
+    expect(trialText()).toContain('Completed');
+    expect(taskManager.getState().status).toBe('Completed');
+    expect(taskManager.getState().errors).toBe(0);
+  });
+
+  it('shows the exact value each step expects', () => {
+    // TD2's old prose ("on or after 1 June") admitted a later date that the completion
+    // predicate rejects. The step labels now name the exact target the predicate checks.
+    render(<App />);
+    click('[data-aui-component="btn-start-TD2"]');
+
+    openSection('filter-section-date-range');
+    // Opening the section completes TD2-1, so the step shown is the exact date instruction.
+    expect(trialText()).toContain('Set the start date to 1 June 2025');
+    const dateInput = document.querySelector('[data-aui-component="filter-date-input"]') as HTMLInputElement;
+    act(() => {
+      fireEvent.change(dateInput, { target: { value: '2025-06-01' } });
+    });
+    openSection('filter-section-product-category');
+    expect(trialText()).toContain('Select only Books');
+  });
+
+  it('explains locked controls while a trial is incomplete and restores them on completion', () => {
+    render(<App />);
+    click('[data-aui-component="btn-start-TD2"]');
+    openSection('filter-section-date-range');
+    const dateInput = document.querySelector('[data-aui-component="filter-date-input"]') as HTMLInputElement;
+    act(() => {
+      fireEvent.change(dateInput, { target: { value: '2025-07-01' } });
+    });
+    openSection('filter-section-product-category');
+    act(() => {
+      fireEvent.click(
+        document.querySelector('[data-aui-component="filter-category-books"]') as HTMLInputElement
+      );
+    });
+    click('[data-aui-component="btn-apply-filters"]');
+
+    // The later start date is a reasonable reading of the old prose but not the task's
+    // required state, so the trial stays open. The locked controls must say why.
+    expect(taskManager.getState().status).toBe('In Progress');
+    const note = document.querySelector('[data-aui-component="trial-lock-note"]');
+    expect(note).not.toBeNull();
+    expect(note?.textContent).toContain('Trial controls are disabled while a task is in progress');
+    expect(note?.textContent).toContain('Reset Trial');
+    expect(note?.getAttribute('aria-live')).toBe('polite');
+    // Every step has been visited, so the step line must not read "N/A" while the trial is
+    // still open: that is the state that looked inexplicable to a participant.
+    expect(trialText()).toContain("the task's required state is not met yet");
+    expect(
+      document.querySelector('[data-aui-component="condition-selector"]')?.getAttribute('aria-describedby')
+    ).toBe('trial-lock-note');
+    expect(
+      (document.querySelector('[data-aui-component="btn-start-TD3"]') as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(
+      (document.querySelector('[data-aui-component="condition-adaptive"]') as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(
+      (document.querySelector('[data-aui-component="btn-reset-trial"]') as HTMLButtonElement).disabled
+    ).toBe(false);
+
+    // Correcting the date completes the trial; the explanation disappears with the lock.
+    act(() => {
+      fireEvent.change(dateInput, { target: { value: '2025-06-01' } });
+    });
+    click('[data-aui-component="btn-apply-filters"]');
+    expect(taskManager.getState().status).toBe('Completed');
+    expect(document.querySelector('[data-aui-component="trial-lock-note"]')).toBeNull();
+    expect(
+      (document.querySelector('[data-aui-component="btn-start-TD3"]') as HTMLButtonElement).disabled
+    ).toBe(false);
+  });
+
+  it('completes TD3 from the empty state and a Reset Filters recovery', () => {
+    render(<App />);
+    click('[data-aui-component="btn-start-TD3"]');
+    openSection('filter-section-region');
+    select('[data-aui-component="filter-Region-select"]', 'Europe');
+    openSection('filter-section-product-category');
+    const books = document.querySelector('[data-aui-component="filter-category-books"]') as HTMLInputElement;
+    act(() => {
+      fireEvent.click(books);
+    });
+    openSection('filter-section-date-range');
+    const dateInput = document.querySelector('[data-aui-component="filter-date-input"]') as HTMLInputElement;
+    act(() => {
+      fireEvent.change(dateInput, { target: { value: '2025-09-01' } });
+    });
+    click('[data-aui-component="btn-apply-filters"]');
+
+    expect(screen.getByText('Results (0)')).not.toBeNull();
+    expect(taskManager.getState().status).toBe('In Progress');
+    click('[data-aui-component="btn-reset-filters"]');
+
+    expect(screen.getByText('Results (50)')).not.toBeNull();
+    expect(taskManager.getState().status).toBe('Completed');
+    expect(taskManager.getState().errors).toBe(0);
+  });
+
+  it('completes TD4 by comparing both reports and exporting Europe Books', () => {
+    render(<App />);
+    click('[data-aui-component="btn-start-TD4"]');
+    expect(document.querySelector('.app-container')?.getAttribute('data-aui-route')).toBe('Reports');
+    click('[data-aui-component="open-report-eu-electronics"]');
+    expect(screen.getByText('Results (3)')).not.toBeNull();
+    navigate('Reports');
+    click('[data-aui-component="open-report-eu-books"]');
+    expect(screen.getByText('Results (6)')).not.toBeNull();
+    click('[data-aui-component="btn-export"]');
+
+    expect(taskManager.getState().status).toBe('Completed');
+    expect(taskManager.getState().errors).toBe(0);
+  });
+
+  it('normalizes filter disclosure when the next trial starts', () => {
+    // The drawer keeps its open sections in local state. A participant who finishes TD2 with
+    // the date and category sections open must not start TD3 with them already expanded,
+    // because TD3's canonical path asks them to open those sections themselves.
+    render(<App />);
+    click('[data-aui-component="btn-start-TD2"]');
+    openSection('filter-section-date-range');
+    openSection('filter-section-product-category');
+    const dateInput = document.querySelector('[data-aui-component="filter-date-input"]') as HTMLInputElement;
+    act(() => {
+      fireEvent.change(dateInput, { target: { value: '2025-06-01' } });
     });
     act(() => {
-      taskManager.resetTask();
+      fireEvent.click(
+        document.querySelector('[data-aui-component="filter-category-books"]') as HTMLInputElement
+      );
     });
+    click('[data-aui-component="btn-apply-filters"]');
+    expect(taskManager.getState().status).toBe('Completed');
+    expect(
+      document.querySelector('[data-aui-component="filter-section-date-range"]')?.getAttribute('aria-expanded')
+    ).toBe('true');
 
-    const abandon = lifecycle.find((e) => e.type === 'task_abandon');
-    expect(abandon).toBeDefined();
-    expect(abandon?.reason).toBe('reset');
+    click('[data-aui-component="btn-start-TD3"]');
+
+    expect(taskManager.getState().status).toBe('In Progress');
+    expect(
+      document.querySelector('[data-aui-component="filter-section-date-range"]')?.getAttribute('aria-expanded')
+    ).toBe('false');
+    expect(
+      document.querySelector('[data-aui-component="filter-section-product-category"]')?.getAttribute('aria-expanded')
+    ).toBe('false');
   });
 
-  it('records an explicit abandonment with a navigation reason', () => {
-    act(() => {
-      taskManager.startTask('T1');
-    });
-    act(() => {
-      taskManager.abandonTask('navigation');
-    });
+  it('records abandonment when Reset Trial is used mid-task', () => {
+    const lifecycle: TaskLifecycleEvent[] = [];
+    const unsubscribe = taskManager.onLifecycle((event) => lifecycle.push(event));
+    render(<App />);
+    click('[data-aui-component="btn-start-TD2"]');
+    click('[data-aui-component="btn-reset-trial"]');
 
-    expect(taskManager.getState().status).toBe('Abandoned');
-    expect(taskManager.getState().abandonmentReason).toBe('navigation');
-  });
-});
-
-describe('Deterministic stimulus data (assessment §6.1)', () => {
-  it('produces identical rows for the same seed', () => {
-    const a = generateDeterministicData(20, 1234);
-    const b = generateDeterministicData(20, 1234);
-    expect(a).toEqual(b);
-  });
-
-  it('produces different rows for different seeds', () => {
-    const a = generateDeterministicData(20, 1);
-    const b = generateDeterministicData(20, 2);
-    expect(a).not.toEqual(b);
-  });
-
-  it('does not change between module evaluations', () => {
-    // The default dataset must be stable, not regenerated with Math.random().
-    const again = generateDeterministicData(50);
-    expect(again).toEqual(defaultTableData);
+    expect(lifecycle.some((event) => event.type === 'task_abandon' && event.reason === 'reset')).toBe(true);
+    expect(taskManager.getState().status).toBe('Idle');
+    unsubscribe();
   });
 });

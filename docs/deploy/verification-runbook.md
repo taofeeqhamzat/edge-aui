@@ -329,10 +329,24 @@ This check found a real, blocking defect: the ingestion pipeline overflowed on t
 
 ---
 
-## Reported blocker (not worked around)
+## Reported blocker (superseded 2026-11-17)
 
-**Browser automation is unavailable in the implementation environment.** Chrome does not launch
-under the harness sandbox. This is reported rather than worked around, because the alternative —
-asserting browser-level behaviour from a headless approximation — is precisely the evidence failure
-this milestone exists to remove. The headless acceptance test covers everything reachable without a
-browser and marks the rest as unverified.
+**Browser automation was unavailable in the implementation environment.** Chrome did not launch
+under the harness sandbox, so browser-level behaviour was reported rather than approximated from
+headless jsdom.
+
+The blocker was environmental, not architectural. Under this harness Chrome starts with
+`--no-sandbox` (its own sandbox cannot initialise inside the outer one), after which
+`agent-browser` drives the real runtime normally. The scripted validation used that setting:
+
+```bash
+export AUI_SCRIPTED_BROWSER_ARGS="--no-sandbox,--disable-gpu,--disable-software-rasterizer,--disable-dev-shm-usage"
+```
+
+The workaround is confined to the automation harness; it does not change the application,
+the trace path or any deployment configuration. With the browser available, the
+TD1–TD4 × baseline/adaptive captures were recorded and verified end to end — see
+[Workstream 30 validation](../plan/3/workstream/30-collection-validation/validation-report.md)
+and the [acceptance matrix](../plan/3/workstream/30-collection-validation/acceptance-matrix.md).
+The section above the blocker still holds for anything that needs a deployed origin or a
+Supabase project: those remain manual or blocked, exactly as recorded.

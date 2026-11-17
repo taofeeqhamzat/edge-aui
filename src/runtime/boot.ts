@@ -1,16 +1,24 @@
 /**
- * Testbed Boot
+ * Runtime Boot
  *
- * Single composition root for the target testbed. Replaces the previous boot of the
- * legacy `EdgeAUIFramework` (assessment §4.1 / §25 P0-1).
+ * Single composition point. Replaces the previous boot of the legacy `EdgeAUIFramework`
+ * (assessment §4.1 / §25 P0-1).
  *
  * The experimental condition is the one piece of state that must be fixed before the
  * pipeline starts, because it determines whether the actuator is permitted to mutate
  * the DOM. Switching condition therefore rebuilds the runtime between trials, which is
  * the correct experimental boundary.
+ *
+ * `src/runtime` must not depend on `src/testbed` (ADR-011). Everything that is application
+ * vocabulary or application policy — the UI adapter, the macro mapper, the context
+ * encoding, the declared Fast Gate patterns and the outcome→adaptation resolver — is
+ * registered by the composition root and consumed here. Framework defaults apply when
+ * nothing is registered, so a non-testbed deployment is a configuration change rather than
+ * a source edit (Task 20.2).
  */
 
 import { AdaptiveRuntime, AdaptiveRuntimeOptions } from './adaptiveRuntime';
+import type { CandidateResolver } from '../intervention/policy';
 import { ExperimentalCondition } from '../telemetry/events';
 import { InterventionType } from '../intervention/types';
 import { sessionManager } from '../telemetry/session';
@@ -18,34 +26,55 @@ import { experimentRecorder } from '../telemetry/recorder';
 import { ResearchCollection } from '../telemetry/collection';
 import { debugBus } from '../debug/debugBus';
 import { getRuntimeDiagnostics, startRuntimeDiagnostics } from './diagnostics';
+import { UiAdapter, DefaultUiAdapter, type UiTaskLifecycleEvent } from '../integration/index';
+import type { MacroMapper } from '../macro/mapper';
+import type { SemanticOutcomeDeriver } from '../outcome/semantic';
+import type { ContextEncodingConfig } from '../types/contextVector';
 
 export interface BootOptions extends AdaptiveRuntimeOptions {
   conditionId?: ExperimentalCondition;
 }
 
 /**
- * Patterns the deterministic Fast Gate may act on.
+ * Application-supplied defaults for the runtime.
  *
- * Each key is a macro-symbol sequence; each value is the declared intervention for it.
- * These are the testbed's candidate "known deterministic patterns" for the Fast Gate.
- *
- * The final key is also the task T1 completion path, so the task's own success sequence
- * is a pattern the Fast Gate can recognise deterministically.
+ * One registration replaces what used to be a testbed-shaped boot: every field is
+ * application vocabulary or application policy, and none has a framework meaning.
  */
-import { UiAdapter, DefaultUiAdapter, type UiTaskLifecycleEvent } from '../integration/index';
+export interface RegisteredRuntimeDefaults {
+  /** UI adapter supplying task model, context and action mapping. */
+  adapter?: UiAdapter;
+  /** Macro symbol vocabulary and event→symbol rules. */
+  macroMapper?: MacroMapper;
+  /** Route/action/task vocabulary for the R^6 context encoding. */
+  contextEncoding?: ContextEncodingConfig;
+  /** Declared Fast Gate patterns: macro-symbol sequence → adaptation. */
+  fastGatePatterns?: Record<string, InterventionType | Partial<import('../intervention/types').InterventionCommand>>;
+  /** Version of the declared pattern set, recorded with predictions. */
+  fastGatePatternVersion?: string;
+  /** Predicted outcome → candidate adaptation. */
+  candidateResolver?: CandidateResolver;
+  /** Application semantic outcome derivation (Task 20.4). */
+  semanticOutcomes?: SemanticOutcomeDeriver;
+  /** Study schedule: trial order and per-task timeouts. */
+  experiment?: {
+    trialOrder?: string[];
+    taskTimeoutsMs?: Record<string, number>;
+  };
+}
 
-export const TESTBED_FAST_GATE_PATTERNS: Record<string, InterventionType> = {
-  'OPEN_FILTERS > APPLY_FILTER': 'highlight_primary_action',
-  'NAV_ANALYTICS > OPEN_FILTERS': 'simplify_options',
-  'NAV_ANALYTICS > OPEN_FILTERS > APPLY_FILTER': 'highlight_primary_action',
-  'SELECT_DATE > OPEN_FILTERS > SELECT_REGION > APPLY_FILTER': 'highlight_primary_action',
-  'HOVER_KPI > HOVER_KPI': 'expand_tooltip'
-};
+let registeredDefaults: RegisteredRuntimeDefaults = {};
 
-let defaultUiAdapterProvider: (() => UiAdapter) | null = null;
+/**
+ * Registers application defaults. Merges over any previous registration, so the
+ * composition root can register in as many calls as it likes.
+ */
+export function registerRuntimeDefaults(defaults: RegisteredRuntimeDefaults | null): void {
+  registeredDefaults = defaults ? { ...registeredDefaults, ...defaults } : {};
+}
 
-export function registerDefaultUiAdapter(provider: (() => UiAdapter) | null): void {
-  defaultUiAdapterProvider = provider;
+export function getRegisteredRuntimeDefaults(): Readonly<RegisteredRuntimeDefaults> {
+  return { ...registeredDefaults };
 }
 
 let currentRuntime: AdaptiveRuntime | null = null;
@@ -60,7 +89,7 @@ export function getExperimentId(): string {
  * Starts (or restarts) the adaptive runtime for a condition. Idempotent for the same
  * condition; rebuilds when the condition changes.
  */
-export async function bootTestbed(
+export async function bootRuntime(
   optionsOrCondition: ExperimentalCondition | BootOptions = currentCondition
 ): Promise<AdaptiveRuntime> {
   const options: BootOptions =
@@ -107,17 +136,24 @@ export async function bootTestbed(
   // The resolved adapter is captured because trial completion is wired through the adapter
   // contract, not through the testbed: `src/runtime` must not depend on `src/testbed`
   // (ADR-011, asserted by tests/ui_adapter_contract.test.ts).
-  const adapter =
-    options.adapter ?? (defaultUiAdapterProvider ? defaultUiAdapterProvider() : new DefaultUiAdapter());
+  const adapter = options.adapter ?? registeredDefaults.adapter ?? new DefaultUiAdapter();
 
   const runtime = new AdaptiveRuntime({
     experimentId,
     conditionId,
+    config: registeredDefaults.experiment
+      ? { experiment: registeredDefaults.experiment, ...options.config }
+      : options.config,
+    candidateResolver: registeredDefaults.candidateResolver,
+    semanticOutcomes: registeredDefaults.semanticOutcomes,
+    macroMapper: registeredDefaults.macroMapper,
+    contextEncoding: registeredDefaults.contextEncoding,
     // support=1: the deterministic Fast Gate observes each frequent sequence from its
     // first occurrence, so the fast path is exercised inside a single trial. A
     // multi-trial study can raise this without any other change.
     minPatternSupport: 1,
-    fastGatePatterns: TESTBED_FAST_GATE_PATTERNS,
+    fastGatePatterns: registeredDefaults.fastGatePatterns,
+    fastGatePatternVersion: registeredDefaults.fastGatePatternVersion,
     policyConfig: { confidenceThreshold: 0.75, requiredConsecutiveWindows: 2 },
     enableSlowGate: true,
     enableInstrumentation,
@@ -136,7 +172,7 @@ export async function bootTestbed(
   const previousHandle = getRuntimeDiagnostics();
   if (previousHandle) {
     previousHandle.stop();
-    startRuntimeDiagnostics(runtime);
+    startRuntimeDiagnostics(runtime, { getCompletedTrace: getLastCompletedTrialTrace });
   }
 
   // Start (or re-point) research collection for this session. Collection is owned by the
@@ -149,8 +185,88 @@ export async function bootTestbed(
 }
 
 let currentCollection: ResearchCollection | null = null;
-let trialCompletionAdapter: UiAdapter | null = null;
 let trialCompletionUnsubscribe: (() => void) | null = null;
+
+/**
+ * The exported trace of the most recently finished trial.
+ *
+ * `closeTrial()` rotates the session and clears the recorder as soon as a trial reaches a
+ * terminal state, so the live recorder stops describing the trial that just ended. Keeping
+ * the export here makes the finished trial retrievable through the diagnostics handle
+ * instead of forcing a caller to race the rotation. It is cleared when the next trial
+ * starts, so "last completed" can never name a different task.
+ */
+let lastCompletedTrialTrace: string | null = null;
+
+/** Exported trace of the last completed or abandoned trial, or `null`. */
+export function getLastCompletedTrialTrace(): string | null {
+  return lastCompletedTrialTrace;
+}
+
+/** Clears the retained completed-trial snapshot. Used when a new trial begins. */
+export function clearLastCompletedTrialTrace(): void {
+  lastCompletedTrialTrace = null;
+}
+
+/**
+ * How long a finished trial keeps observing before it is closed.
+ *
+ * A trial's last action lands in a window that is still open when the task reaches its
+ * terminal state: the buffer emits a window 250 ms settlement delay after the window closes,
+ * and the tick loop runs at 125 ms. Ending the stream immediately would therefore settle
+ * every window except the one that contains the completing action, and that action's
+ * semantic outcome — the export, in TD1 and TD4 — would never be recorded. One window
+ * duration plus the settlement delay plus a tick covers it.
+ */
+const TRIAL_SETTLE_MS = 750;
+
+let trialFinalizePromise: Promise<void> | null = null;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Settles, snapshots and closes the finished trial.
+ *
+ * Idempotent: concurrent callers share one finalisation.
+ */
+function finishTrial(): Promise<void> {
+  if (!trialFinalizePromise) {
+    trialFinalizePromise = (async () => {
+      await delay(TRIAL_SETTLE_MS);
+      // Declare the stream ended so the last emitted window is labelled now instead of
+      // waiting out the idle grace period, then export before `closeTrial()` clears the
+      // recorder. The recorder has frozen the terminal task state, so the export still
+      // describes this trial even if a reset already moved the adapter back to `Idle`.
+      currentRuntime?.endTrialStream();
+      lastCompletedTrialTrace = experimentRecorder.exportJSON();
+      await closeTrial();
+    })()
+      .catch((err) => {
+        console.error('[Edge-AUI] Failed to finalise the finished trial:', err);
+      })
+      .finally(() => {
+        trialFinalizePromise = null;
+      });
+  }
+  return trialFinalizePromise;
+}
+
+/**
+ * The in-flight finalisation of a finished trial, or `null` when there is none.
+ *
+ * Returning `null` rather than a resolved promise matters: a caller that has nothing to wait
+ * for must not be suspended, or every trial start would move a microtask later than the
+ * interaction that triggered it.
+ *
+ * Starting, resetting or switching a trial while its predecessor is still settling would
+ * fold the old events into the new record (or clear the recorder mid-snapshot). The trial
+ * controls await this before crossing the boundary.
+ */
+export function pendingTrialFinalization(): Promise<void> | null {
+  return trialFinalizePromise;
+}
 
 /**
  * Points collection at the active session and schedules periodic local persistence.
@@ -245,20 +361,26 @@ async function closeTrial(): Promise<void> {
  * the pipeline host-agnostic. An adapter that does not expose task lifecycle (such as
  * `DefaultUiAdapter`) is left unwired, which is correct for a host with no task model.
  *
- * Ordering is significant. `AdaptiveRuntime.start()` subscribes to the same lifecycle before this
- * runs, so the terminal task event is already inside the trace when the snapshot is taken.
- * Subscribing earlier would upload a trace missing its own ending. The same reasoning is why the
- * adapter is tracked: re-subscribing on a condition switch would close every trial twice.
+ * Ordering is significant, and it is why this re-subscribes on every boot rather than once per
+ * adapter. The terminal event must already be inside the trace when the snapshot is taken, so the
+ * runtime's own subscription has to run first. A condition switch rebuilds the runtime, and its
+ * fresh subscription is appended *after* this one; keeping the old subscription would invert the
+ * order and every later trial would be captured without its own ending.
  */
 function wireTrialCompletion(adapter: UiAdapter): void {
-  if (trialCompletionAdapter === adapter) return;
-
   trialCompletionUnsubscribe?.();
-  trialCompletionAdapter = adapter;
   trialCompletionUnsubscribe =
     adapter.onTaskLifecycle?.((event: UiTaskLifecycleEvent) => {
+      if (event.type === 'task_start') {
+        // A new trial must not resolve to the previous trial's export.
+        lastCompletedTrialTrace = null;
+        return;
+      }
       if (event.type !== 'task_complete' && event.type !== 'task_abandon') return;
-      void closeTrial();
+      // The runtime has already recorded the terminal event. Settlement, snapshot and
+      // rotation continue asynchronously; `finalizePendingTrial()` is what the trial
+      // controls await before starting the next trial.
+      void finishTrial();
     }) ?? null;
 }
 
@@ -284,3 +406,10 @@ export function stopTestbed(): void {
   currentRuntime?.stop();
   currentRuntime = null;
 }
+
+/**
+ * Previous name of `bootRuntime`.
+ *
+ * Kept so an existing call site keeps working; the composition root uses `bootRuntime`.
+ */
+export const bootTestbed = bootRuntime;

@@ -39,6 +39,14 @@ export interface RuntimeDiagnosticsHandle {
   isInstrumentationEnabled: () => boolean;
   /** Flushes and settles all pending outcome windows and episodes. */
   flush: () => void;
+  /**
+   * The exported trace of the most recently completed or abandoned trial, or `null`.
+   *
+   * Completing a trial rotates the session and clears the recorder, so the live `trace()`
+   * becomes the next trial's empty record. Without this snapshot the just-finished trial
+   * could only be read back by racing the rotation, which is not an export path.
+   */
+  lastCompletedTrial: () => string | null;
   /** Starts a clean new trial with fresh session ID and empty recording buffer. */
   startNewTrial: (conditionId?: 'baseline' | 'adaptive') => Promise<void>;
   stop: () => void;
@@ -60,16 +68,31 @@ function diagnosticsEnabled(): boolean {
 }
 
 /**
+ * Options for the diagnostics handle.
+ *
+ * `getCompletedTrace` is supplied by the composition point (boot) because the retained
+ * completed-trial snapshot belongs to the trial lifecycle, not to the runtime instance.
+ */
+export interface RuntimeDiagnosticsOptions {
+  /** Publishing interval for the debug bus, in milliseconds. */
+  intervalMs?: number;
+  /** Returns the exported trace of the last completed/abandoned trial. */
+  getCompletedTrace?: () => string | null;
+}
+
+/**
  * Starts periodic publishing of live pipeline state. Returns a handle that also
  * exposes the current trace as JSON.
  */
 export function startRuntimeDiagnostics(
   runtime: AdaptiveRuntime,
-  intervalMs = 500
+  options: RuntimeDiagnosticsOptions = {}
 ): RuntimeDiagnosticsHandle | null {
   if (!diagnosticsEnabled()) {
     return null;
   }
+  const intervalMs = options.intervalMs ?? 500;
+  const getCompletedTrace = options.getCompletedTrace ?? (() => null);
 
   const handle: RuntimeDiagnosticsHandle = {
     status: () => runtime.getStatus(),
@@ -89,6 +112,7 @@ export function startRuntimeDiagnostics(
         window.dispatchEvent(new Event('pagehide'));
       }
     },
+    lastCompletedTrial: () => getCompletedTrace(),
     startNewTrial: async (conditionId?: 'baseline' | 'adaptive') => {
       const status = runtime.getStatus();
       const cond = conditionId ?? status.conditionId ?? 'adaptive';

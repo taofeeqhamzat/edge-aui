@@ -87,8 +87,10 @@ export function getActiveUIContext(options?: UIContextOptions): UIContext {
       route = cleanPath.charAt(0).toUpperCase() + cleanPath.slice(1);
     }
   }
+  // No fallback route name: a framework default would be one application's page name.
+  // An unresolved route encodes to 0 in the context vector (Task 20.2).
   if (!route) {
-    route = 'Overview';
+    route = '';
   }
 
   // 2. Resolve target element

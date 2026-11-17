@@ -14,10 +14,55 @@ import { UIContext } from '../types/uiContext.js';
 import {
   InterventionCommand,
   InterventionType,
-  createNoOpCommand
+  createNoOpCommand,
+  isInterventionType
 } from './types';
 import type { PolicyRejectionCategory } from '../telemetry/events';
 import { defaultCollector } from '../runtime/instrumentation';
+import type { PredictionResult } from '../gates/contracts';
+
+/**
+ * Application port that turns a predicted outcome into a candidate adaptation.
+ *
+ * This is the boundary Task 20.1 draws: gates predict outcomes, the application decides
+ * which outcome warrants which adaptation, and the policy applies its generic safety rules
+ * to the resulting candidate. Framework core therefore holds no outcome→intervention table
+ * and requires no particular outcome ID.
+ */
+export interface CandidateResolver {
+  /** Returns the candidate command, or null when the outcome warrants no adaptation. */
+  resolve(prediction: PredictionResult, context: UIContext): InterventionCommand | null;
+}
+
+/**
+ * Resolver used when an application supplies none.
+ *
+ * It recognises the one vocabulary core does own — the intervention vocabulary itself, used
+ * as an outcome vocabulary by the legacy heads and by declared Fast Gate patterns — and
+ * refuses everything else. Refusing is the safe direction: an unknown outcome produces
+ * `no_op`, never a guessed adaptation.
+ */
+export function createDefaultCandidateResolver(): CandidateResolver {
+  return {
+    resolve(prediction, context) {
+      if (!isInterventionType(prediction.outcomeId)) return null;
+      return {
+        type: prediction.outcomeId,
+        source: prediction.source,
+        confidence: prediction.confidence,
+        issuedAt: prediction.timestamp,
+        targetComponentId: prediction.target?.componentId ?? context.activeComponentId,
+        mappingSource: prediction.mappingSource ?? 'deterministic_mapping',
+        reason: `Outcome '${prediction.outcomeId}' is an intervention type (legacy vocabulary)`
+      };
+    }
+  };
+}
+
+export interface InterventionPolicyOptions {
+  /** Application-supplied outcome→candidate mapping. */
+  resolveCandidate?: CandidateResolver;
+}
 
 export interface PolicyConfig {
   /**
@@ -84,10 +129,13 @@ export interface PolicyDecision {
   cooldownRemainingMs: number;
   /** Adaptation lifetime applied when accepted; undefined when rejected. */
   ttlMs?: number;
+  /** The normalized prediction this verdict was made on, when there was one. */
+  prediction?: PredictionResult;
 }
 
 export class InterventionPolicy {
   private config: PolicyConfig;
+  private readonly resolveCandidate: CandidateResolver;
   private candidateType: InterventionType | null = null;
   private candidateTarget?: string;
   private candidateCount = 0;
@@ -98,142 +146,184 @@ export class InterventionPolicy {
   /** Per-intervention-type cooldown expiry, populated on dismissal. */
   private dismissedUntilMs = new Map<InterventionType, number>();
 
-  constructor(config: Partial<PolicyConfig> = {}) {
+  constructor(config: Partial<PolicyConfig> = {}, options: InterventionPolicyOptions = {}) {
     this.config = {
       ...DEFAULT_POLICY_CONFIG,
       ...config
     };
+    this.resolveCandidate = options.resolveCandidate ?? createDefaultCandidateResolver();
   }
 
   /**
-   * Evaluates candidate InterventionCommand against confidence, context, and persistence gates.
+   * Evaluates a normalized prediction against the generic policy rules.
+   *
+   * The application resolver produces the candidate; every safety rule (confidence,
+   * eligibility, persistence, cooldown, TTL) is applied to that candidate by the same code
+   * path a gate-emitted command uses. An outcome with no mapping is a deliberate `no_op`,
+   * not a rejection: "predicted, no adaptation warranted" is a decision worth recording.
+   */
+  public acceptPrediction(prediction: PredictionResult, context: UIContext): PolicyDecision {
+    return defaultCollector.timeSync('policy evaluation', 'main', () => {
+      const candidate = this.resolveCandidate.resolve(prediction, context);
+
+      if (!candidate) {
+        this.resetCandidate();
+        return {
+          accepted: true,
+          command: createNoOpCommand(
+            prediction.source,
+            `No intervention mapping for outcome '${prediction.outcomeId}'`
+          ),
+          reason: `Outcome '${prediction.outcomeId}' has no intervention mapping; no_op maintained`,
+          candidateCount: 0,
+          rejectionCategory: 'none',
+          cooldownRemainingMs: this.cooldownRemainingMs(),
+          prediction
+        };
+      }
+
+      return { ...this.evaluateCandidate(candidate, context), prediction };
+    });
+  }
+
+  /**
+   * Evaluates a candidate InterventionCommand against confidence, context, and persistence gates.
+   *
+   * Compatibility entry point for callers that already hold a command.
    */
   public accept(command: InterventionCommand, context: UIContext): PolicyDecision {
-    return defaultCollector.timeSync('policy evaluation', 'main', () => {
-      // 1. Task change detection: Automatically reset candidate state if task switched
-      if (this.lastTaskId !== undefined && context.taskId !== this.lastTaskId) {
-        this.reset();
-      }
-      this.lastTaskId = context.taskId;
+    return defaultCollector.timeSync('policy evaluation', 'main', () =>
+      this.evaluateCandidate(command, context)
+    );
+  }
 
-      // 2. Safe default no_op: Always accepted, resets active candidate
-      if (command.type === 'no_op') {
-        this.resetCandidate();
-        return {
-          accepted: true,
-          command,
-          reason: 'Safe default no_op maintained',
-          candidateCount: 0,
-          rejectionCategory: 'none',
-          cooldownRemainingMs: this.cooldownRemainingMs()
-        };
-      }
+  private evaluateCandidate(
+    command: InterventionCommand,
+    context: UIContext
+  ): PolicyDecision {
+    // 1. Task change detection: Automatically reset candidate state if task switched
+    if (this.lastTaskId !== undefined && context.taskId !== this.lastTaskId) {
+      this.reset();
+    }
+    this.lastTaskId = context.taskId;
 
-      // 3. Cooldown Gate: suppress re-actuation during the refractory period
-      const now = Date.now();
-      if (this.cooldownUntilMs > now) {
-        const remaining = this.cooldownUntilMs - now;
-        return {
-          accepted: false,
-          command: createNoOpCommand(command.source, `Cooldown active for ${remaining}ms`),
-          reason: `Cooldown active (${remaining}ms remaining)`,
-          candidateCount: 0,
-          rejectionCategory: 'cooldown',
-          cooldownRemainingMs: remaining
-        };
-      }
+    // 2. Safe default no_op: Always accepted, resets active candidate
+    if (command.type === 'no_op') {
+      this.resetCandidate();
+      return {
+        accepted: true,
+        command,
+        reason: 'Safe default no_op maintained',
+        candidateCount: 0,
+        rejectionCategory: 'none',
+        cooldownRemainingMs: this.cooldownRemainingMs()
+      };
+    }
 
-      // 4. Per-type dismissal feedback: a dismissed intervention is suppressed for longer
-      const dismissedUntil = this.dismissedUntilMs.get(command.type);
-      if (dismissedUntil !== undefined && dismissedUntil > now) {
-        return {
-          accepted: false,
-          command: createNoOpCommand(
-            command.source,
-            `Intervention '${command.type}' was recently dismissed`
-          ),
-          reason: `Suppressed after dismissal (${dismissedUntil - now}ms remaining)`,
-          candidateCount: 0,
-          rejectionCategory: 'dismissed',
-          cooldownRemainingMs: 0
-        };
-      }
+    // 3. Cooldown Gate: suppress re-actuation during the refractory period
+    const now = Date.now();
+    if (this.cooldownUntilMs > now) {
+      const remaining = this.cooldownUntilMs - now;
+      return {
+        accepted: false,
+        command: createNoOpCommand(command.source, `Cooldown active for ${remaining}ms`),
+        reason: `Cooldown active (${remaining}ms remaining)`,
+        candidateCount: 0,
+        rejectionCategory: 'cooldown',
+        cooldownRemainingMs: remaining
+      };
+    }
 
-      // 5. Confidence Threshold Gate
-      if (command.confidence !== undefined && command.confidence < this.config.confidenceThreshold) {
-        this.resetCandidate();
-        return {
-          accepted: false,
-          command: createNoOpCommand(
-            command.source,
-            `Confidence (${command.confidence.toFixed(2)}) below threshold (${this.config.confidenceThreshold})`
-          ),
-          reason: `Confidence ${command.confidence.toFixed(2)} below threshold ${this.config.confidenceThreshold}`,
-          candidateCount: 0,
-          rejectionCategory: 'below_threshold',
-          cooldownRemainingMs: 0
-        };
-      }
-
-      // 6. UI Context Eligibility Gate
-      if (this.config.enforceContextEligibility) {
-        const eligibility = this.checkContextEligibility(command, context);
-        if (!eligibility.eligible) {
-          this.resetCandidate();
-          return {
-            accepted: false,
-            command: createNoOpCommand(command.source, eligibility.reason),
-            reason: eligibility.reason,
-            candidateCount: 0,
-            rejectionCategory: eligibility.category,
-            cooldownRemainingMs: 0
-          };
-        }
-      }
-
-      // 7. Consecutive Window Persistence Gate
-      const isSameCandidate =
-        this.candidateType === command.type &&
-        this.candidateTarget === command.targetComponentId;
-
-      if (isSameCandidate) {
-        this.candidateCount++;
-      } else {
-        this.candidateType = command.type;
-        this.candidateTarget = command.targetComponentId;
-        this.candidateCount = 1;
-      }
-
-      if (this.candidateCount >= this.config.requiredConsecutiveWindows) {
-        // Enter the cooldown window so the same adaptation is not re-applied on every
-        // subsequent window.
-        this.cooldownUntilMs = now + this.config.cooldownMs;
-        return {
-          accepted: true,
-          // The adaptation lifetime is attached here, at the one place every accepted
-          // command passes through, so no producer can forget it (F-03).
-          command: { ...command, ttlMs: command.ttlMs ?? this.config.ttlMs },
-          reason: `Candidate met persistence requirement (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
-          candidateCount: this.candidateCount,
-          rejectionCategory: 'none',
-          cooldownRemainingMs: this.config.cooldownMs,
-          ttlMs: command.ttlMs ?? this.config.ttlMs
-        };
-      }
-
-      // Not yet persisted through enough consecutive windows
+    // 4. Per-type dismissal feedback: a dismissed intervention is suppressed for longer
+    const dismissedUntil = this.dismissedUntilMs.get(command.type);
+    if (dismissedUntil !== undefined && dismissedUntil > now) {
       return {
         accepted: false,
         command: createNoOpCommand(
           command.source,
-          `Awaiting consecutive window persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`
+          `Intervention '${command.type}' was recently dismissed`
         ),
-        reason: `Transient recommendation pending persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
-        candidateCount: this.candidateCount,
-        rejectionCategory: 'pending_persistence',
+        reason: `Suppressed after dismissal (${dismissedUntil - now}ms remaining)`,
+        candidateCount: 0,
+        rejectionCategory: 'dismissed',
         cooldownRemainingMs: 0
       };
-    });
+    }
+
+    // 5. Confidence Threshold Gate
+    if (command.confidence !== undefined && command.confidence < this.config.confidenceThreshold) {
+      this.resetCandidate();
+      return {
+        accepted: false,
+        command: createNoOpCommand(
+          command.source,
+          `Confidence (${command.confidence.toFixed(2)}) below threshold (${this.config.confidenceThreshold})`
+        ),
+        reason: `Confidence ${command.confidence.toFixed(2)} below threshold ${this.config.confidenceThreshold}`,
+        candidateCount: 0,
+        rejectionCategory: 'below_threshold',
+        cooldownRemainingMs: 0
+      };
+    }
+
+    // 6. UI Context Eligibility Gate
+    if (this.config.enforceContextEligibility) {
+      const eligibility = this.checkContextEligibility(command, context);
+      if (!eligibility.eligible) {
+        this.resetCandidate();
+        return {
+          accepted: false,
+          command: createNoOpCommand(command.source, eligibility.reason),
+          reason: eligibility.reason,
+          candidateCount: 0,
+          rejectionCategory: eligibility.category,
+          cooldownRemainingMs: 0
+        };
+      }
+    }
+
+    // 7. Consecutive Window Persistence Gate
+    const isSameCandidate =
+      this.candidateType === command.type &&
+      this.candidateTarget === command.targetComponentId;
+
+    if (isSameCandidate) {
+      this.candidateCount++;
+    } else {
+      this.candidateType = command.type;
+      this.candidateTarget = command.targetComponentId;
+      this.candidateCount = 1;
+    }
+
+    if (this.candidateCount >= this.config.requiredConsecutiveWindows) {
+      // Enter the cooldown window so the same adaptation is not re-applied on every
+      // subsequent window.
+      this.cooldownUntilMs = now + this.config.cooldownMs;
+      return {
+        accepted: true,
+        // The adaptation lifetime is attached here, at the one place every accepted
+        // command passes through, so no producer can forget it (F-03).
+        command: { ...command, ttlMs: command.ttlMs ?? this.config.ttlMs },
+        reason: `Candidate met persistence requirement (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
+        candidateCount: this.candidateCount,
+        rejectionCategory: 'none',
+        cooldownRemainingMs: this.config.cooldownMs,
+        ttlMs: command.ttlMs ?? this.config.ttlMs
+      };
+    }
+
+    // Not yet persisted through enough consecutive windows
+    return {
+      accepted: false,
+      command: createNoOpCommand(
+        command.source,
+        `Awaiting consecutive window persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`
+      ),
+      reason: `Transient recommendation pending persistence (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
+      candidateCount: this.candidateCount,
+      rejectionCategory: 'pending_persistence',
+      cooldownRemainingMs: 0
+    };
   }
 
   /**

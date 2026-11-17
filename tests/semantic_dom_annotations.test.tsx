@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { render, fireEvent, act } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import React from 'react';
 import { Navigation } from '../src/app/Navigation';
 import { FilterDrawer } from '../src/testbed/components/FilterDrawer';
 import { ResultsTable } from '../src/testbed/components/ResultsTable';
 import { KPICards } from '../src/testbed/components/KPICards';
 import { App } from '../src/app/App';
+import { createTelemetryObserver } from '../src/telemetry/observer';
+import { SemanticOutcomeDeriver } from '../src/outcome/semantic';
+import {
+  TESTBED_SEMANTIC_VOCABULARY,
+  createTestbedSemanticRules
+} from '../src/testbed/config/semanticOutcomes';
+import type { BehaviourEvent } from '../src/telemetry/events';
 
 describe('Task 3.1: Semantic DOM Annotation Contract (data-aui-*)', () => {
   it('annotates navigation buttons with stable component IDs and roles', () => {
@@ -45,12 +52,12 @@ describe('Task 3.1: Semantic DOM Annotation Contract (data-aui-*)', () => {
     expect(container.querySelector('form')).not.toBeNull();
 
     // Accordions
-    const regionAccordion = container.querySelector('[data-aui-component="filter-Region"]');
+    const regionAccordion = container.querySelector('[data-aui-component="filter-section-region"]');
     expect(regionAccordion).not.toBeNull();
     expect(regionAccordion?.getAttribute('data-aui-role')).toBe('accordion');
 
     // Region select filter (disclosed by opening its section)
-    openSection('filter-Region');
+    openSection('filter-section-region');
     const regionSelect = container.querySelector('[data-aui-component="filter-Region-select"]');
     expect(regionSelect).not.toBeNull();
     expect(regionSelect?.getAttribute('data-aui-role')).toBe('filter');
@@ -58,24 +65,49 @@ describe('Task 3.1: Semantic DOM Annotation Contract (data-aui-*)', () => {
     expect(regionSelect?.getAttribute('data-aui-task-role')).toBe('required');
 
     // Date range input (disclosed by opening its section)
-    openSection('filter-Date Range');
+    openSection('filter-section-date-range');
     const dateInput = container.querySelector('[data-aui-component="filter-date-input"]');
     expect(dateInput).not.toBeNull();
     expect(dateInput?.getAttribute('data-aui-role')).toBe('form-field');
 
-    // Advanced Options accordion toggle & customer segment select
-    const advancedAccordion = container.querySelector('[data-aui-component="filter-Advanced Options"]');
-    expect(advancedAccordion).not.toBeNull();
-    expect(advancedAccordion?.getAttribute('data-aui-role')).toBe('accordion');
-    expect(advancedAccordion?.getAttribute('aria-expanded')).toBe('false');
+    // Reset Filters is a real button and must not submit the form.
+    const resetBtn = container.querySelector('[data-aui-component="btn-reset-filters"]');
+    expect(resetBtn).not.toBeNull();
+    expect(resetBtn?.getAttribute('data-aui-role')).toBe('secondary-action');
+    expect(resetBtn?.getAttribute('type')).toBe('button');
 
-    // Click to expand Advanced Options
-    fireEvent.click(advancedAccordion!);
-    expect(advancedAccordion?.getAttribute('aria-expanded')).toBe('true');
+    // The inert Customer Segment control has been removed.
+    expect(container.querySelector('[data-aui-component="filter-segment-select"]')).toBeNull();
+    expect(container.querySelector('[data-aui-component="filter-Advanced Options"]')).toBeNull();
+  });
 
-    const segmentSelect = container.querySelector('[data-aui-component="filter-segment-select"]');
-    expect(segmentSelect).not.toBeNull();
-    expect(segmentSelect?.getAttribute('data-aui-role')).toBe('filter');
+  it('records an accordion click as the disclosure state it produced', () => {
+    // The observer listens in the capture phase, so it reads `aria-expanded` before React has
+    // committed the toggle. Recording that raw value labelled every opening click as
+    // `close_filter_section`, which is wrong about what the participant did.
+    const { container } = render(<FilterDrawer />);
+    const observer = createTelemetryObserver();
+    const captured: BehaviourEvent[] = [];
+    observer.subscribe((event) => captured.push(event));
+    observer.start(container);
+
+    const accordion = container.querySelector(
+      '[data-aui-component="filter-section-region"]'
+    ) as HTMLElement;
+    act(() => accordion.click());
+    observer.stop();
+
+    expect(accordion.getAttribute('aria-expanded')).toBe('true');
+    const click = captured.find(
+      (event) => event.type === 'click' && event.componentId === 'filter-section-region'
+    );
+    expect(click?.ariaExpanded).toBe(true);
+
+    const deriver = new SemanticOutcomeDeriver({
+      vocabulary: TESTBED_SEMANTIC_VOCABULARY,
+      rules: createTestbedSemanticRules()
+    });
+    expect(deriver.observe(click!).outcomeId).toBe('open_filter_section');
   });
 
   it('annotates ResultsTable actions, tooltips, and table rows', () => {

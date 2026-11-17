@@ -34,6 +34,7 @@ import { TelemetryObserver } from '../telemetry/observer';
 import { RollingWindowBuffer } from '../microtensor/window';
 import { MacroInteractionStream } from '../macro/sequence';
 import { OutcomeDeriver } from '../outcome/derive';
+import type { SemanticOutcomeDeriver } from '../outcome/semantic';
 import { RuntimeWorkerClient } from '../runtime/workerClient';
 import {
   InstrumentationCollector,
@@ -41,7 +42,7 @@ import {
   StageTimingRecord,
   StageTimingStats
 } from './instrumentation';
-import { InterventionPolicy, PolicyConfig } from '../intervention/policy';
+import { InterventionPolicy, PolicyConfig, CandidateResolver } from '../intervention/policy';
 import { UIActuator } from '../intervention/actuator';
 import { experimentRecorder } from '../telemetry/recorder';
 import { sessionManager, type SessionContext } from '../telemetry/session';
@@ -59,9 +60,15 @@ import {
 } from '../telemetry/events';
 import type { MiningCounters } from '../telemetry/traceSchema';
 import { InferenceResult } from '../gates/arbitration';
+import { nextPredictionId, PREDICTION_CONTRACT_VERSION } from '../gates/contracts';
 import { InterventionCommand, InterventionType } from '../intervention/types';
 import { UIContext } from '../types/uiContext.js';
-import { encodeUIContext } from '../types/contextVector';
+import {
+  encodeUIContext,
+  DEFAULT_CONTEXT_ENCODING_CONFIG,
+  ContextEncodingConfig
+} from '../types/contextVector';
+import { MacroMapper } from '../macro/mapper';
 import { PREPROCESSING_CONFIG, PIPELINE_CONFIG } from '../config/pipelineConfig';
 import {
   RuntimeConfig,
@@ -86,8 +93,18 @@ export interface AdaptiveRuntimeOptions {
   minPatternSupport?: number;
   /** Declared pattern → intervention map for the Fast Gate. */
   fastGatePatterns?: Record<string, InterventionType | Partial<InterventionCommand>>;
+  /** Version of the declared pattern set, reported on every Fast Gate prediction. */
+  fastGatePatternVersion?: string;
   /** Policy configuration overrides. */
   policyConfig?: Partial<PolicyConfig>;
+  /**
+   * Application port mapping a predicted outcome to a candidate adaptation.
+   *
+   * Defaults to the framework resolver, which only recognises the intervention
+   * vocabulary. An application with its own outcome vocabulary supplies its own resolver
+   * (Task 20.1); no outcome→intervention table lives in core.
+   */
+  candidateResolver?: CandidateResolver;
   /** Provide a slow gate; defaults to the deterministic mock. */
   enableSlowGate?: boolean;
   /**
@@ -107,12 +124,28 @@ export interface AdaptiveRuntimeOptions {
   forceInProcessWorker?: boolean;
   /** Auto-start on construction. Default false; call start(). */
   autoStart?: boolean;
+  /**
+   * Application semantic outcome derivation (Task 20.4).
+   *
+   * When supplied, every settled outcome carries both the generic seven-class label and the
+   * application semantic outcome of its source event.
+   */
+  semanticOutcomes?: SemanticOutcomeDeriver;
   /** Toggle runtime stage timing instrumentation. Defaults to true. */
   enableInstrumentation?: boolean;
   /** Custom instrumentation collector instance. Defaults to defaultCollector. */
   collector?: InstrumentationCollector;
   /** UI Adapter injecting application-specific task models, context, and actions. */
   adapter?: UiAdapter;
+  /**
+   * Application macro vocabulary. Defaults to the generic annotation mapper (Task 20.2).
+   */
+  macroMapper?: MacroMapper;
+  /**
+   * Application context-encoding vocabulary (routes, actions, task step counts).
+   * Defaults to the framework encoding, which declares no application vocabulary.
+   */
+  contextEncoding?: ContextEncodingConfig;
 }
 
 export interface AdaptiveRuntimeStatus {
@@ -145,6 +178,7 @@ export class AdaptiveRuntime {
   private actuator: UIActuator;
   private adapter: UiAdapter;
   private readonly config: RuntimeConfig;
+  private readonly contextEncoding: ContextEncodingConfig;
 
   private readonly options: AdaptiveRuntimeOptions;
   private readonly conditionId: ExperimentalCondition;
@@ -174,7 +208,6 @@ export class AdaptiveRuntime {
    * makes "which window produced this decision" answerable.
    */
   private evaluatedWindowIds: number[] = [];
-  private predictionCounter = 0;
 
   /**
    * Bounded Fast Gate execution counters (F-02). Surfaced in the trace so a dropped or
@@ -255,10 +288,20 @@ export class AdaptiveRuntime {
       settlementDelayMs: this.config.windowing.settlementDelayMs,
       emitInactiveWindows: this.config.windowing.emitInactiveWindows
     });
+    this.contextEncoding = options.contextEncoding ?? DEFAULT_CONTEXT_ENCODING_CONFIG;
     this.macroStream = new MacroInteractionStream({
-      maxCapacity: this.config.macro.maxHistoryLength
+      maxCapacity: this.config.macro.maxHistoryLength,
+      macroMapper: options.macroMapper
     });
-    this.outcomeDeriver = new OutcomeDeriver();
+    this.outcomeDeriver = new OutcomeDeriver({
+      semanticOutcomes: options.semanticOutcomes
+    });
+    // The versions that make the 1.4.0 records interpretable travel in metadata.
+    experimentRecorder.setVersionAttribution({
+      semanticOutcomeVocabularyVersion: options.semanticOutcomes?.vocabulary.version ?? null,
+      predictionContractVersion: PREDICTION_CONTRACT_VERSION,
+      taskDefinitionVersion: this.adapter.getTaskDefinitionVersion?.() ?? null
+    });
 
     this.workerClient = new RuntimeWorkerClient({
       useFallback: options.forceInProcessWorker ?? false,
@@ -267,16 +310,19 @@ export class AdaptiveRuntime {
       requestTimeoutMs: this.config.fastGate.rpcTimeoutMs
     });
 
-    this.policy = new InterventionPolicy({
-      confidenceThreshold: this.config.policy.confidenceThreshold,
-      requiredConsecutiveWindows: this.config.policy.requiredConsecutiveWindows,
-      enforceContextEligibility: this.config.policy.enforceContextEligibility,
-      cooldownMs: this.config.policy.cooldownMs,
-      dismissalCooldownMs: this.config.policy.dismissalCooldownMs,
-      // The adaptation lifetime is a research-methodology parameter; it is now wired rather
-      // than merely declared, so an accepted adaptation actually expires (F-03).
-      ttlMs: this.config.actuation.defaultTtlMs
-    });
+    this.policy = new InterventionPolicy(
+      {
+        confidenceThreshold: this.config.policy.confidenceThreshold,
+        requiredConsecutiveWindows: this.config.policy.requiredConsecutiveWindows,
+        enforceContextEligibility: this.config.policy.enforceContextEligibility,
+        cooldownMs: this.config.policy.cooldownMs,
+        dismissalCooldownMs: this.config.policy.dismissalCooldownMs,
+        // The adaptation lifetime is a research-methodology parameter; it is now wired
+        // rather than merely declared, so an accepted adaptation actually expires (F-03).
+        ttlMs: this.config.actuation.defaultTtlMs
+      },
+      { resolveCandidate: options.candidateResolver }
+    );
     this.actuator = new UIActuator({
       defaultAssistanceText: this.config.actuation.defaultAssistanceText
     });
@@ -327,9 +373,13 @@ export class AdaptiveRuntime {
           | 'prefixspan'
           | 'mock',
         fastGatePatterns: patternMap,
+        fastGatePatternVersion: this.options.fastGatePatternVersion,
         minPatternSupport: this.options.minPatternSupport ?? 2,
         enableFastGate: true,
-        enableSlowGate: this.options.enableSlowGate !== false
+        enableSlowGate: this.options.enableSlowGate !== false,
+        // The Slow Gate encodes UIContext inside the worker, so the application vocabulary
+        // has to travel with the INIT rather than being read from core (Task 20.2).
+        contextEncoding: this.contextEncoding
       };
 
       const desiredSlowGate = this.resolveSlowGateMode();
@@ -451,6 +501,7 @@ export class AdaptiveRuntime {
             errors: event.errors ?? taskSnapshot?.errors ?? 0,
             durationMs: event.durationMs,
             reason: event.reason as any,
+            taskDefinitionVersion: event.taskDefinitionVersion,
             sessionId: sessionManager.getActiveSession()?.sessionId,
             experimentId: this.options.experimentId,
             conditionId: this.conditionId
@@ -459,7 +510,11 @@ export class AdaptiveRuntime {
       );
     }
 
-    // 7. Start observation and the monotonic window driver.
+    // 7. Seed route-level backtracking with the page this session starts on, so a return to
+    // it is a reversal and the starting page is in the visited set (Task 20.4).
+    this.seedSemanticRoute();
+
+    // 8. Start observation and the monotonic window driver.
     this.observer.start();
     this.startTickLoop();
   }
@@ -475,11 +530,17 @@ export class AdaptiveRuntime {
    */
   public rebindSession(session: SessionContext): void {
     experimentRecorder.bindSession(session);
+    this.seedSemanticRoute();
     this.macroStream.setContext({
       sessionId: session.sessionId,
       experimentId: session.experimentId,
       conditionId: session.conditionId
     });
+  }
+
+  /** Seeds route-level backtracking from the page the session starts on. */
+  private seedSemanticRoute(): void {
+    this.options.semanticOutcomes?.reset(this.resolveUIContext().route);
   }
 
   /** Requested Slow Gate implementation for this environment. */
@@ -533,6 +594,19 @@ export class AdaptiveRuntime {
     }
   }
 
+  /**
+   * Declares the current trial's observation stream ended and labels its pending windows.
+   *
+   * Called when a task reaches a terminal state, before the trial is exported. Without it the
+   * windows that closed in the last lookahead horizon of the trial would stay unlabelled until
+   * the idle grace period expired — after the export had already been taken. `resetTrial()`
+   * clears the flag for the next trial.
+   */
+  public endTrialStream(): void {
+    this.streamEnded = true;
+    this.flushPendingOutcomes();
+  }
+
   /** Resolves the current UIContext using the injected adapter or default DOM queries. */
   private resolveUIContext(): UIContext {
     return this.adapter.getActiveContext ? this.adapter.getActiveContext() : getActiveUIContext();
@@ -574,6 +648,10 @@ export class AdaptiveRuntime {
     // Close any episode still visible before the trial boundary, so a reset cannot leave an
     // adaptation applied with no terminal event in the record (F-03).
     this.actuator.clear(undefined, 'session_end');
+    // A trial boundary is a trace boundary. The window buffer restarts its `windowId`
+    // sequence here, so keeping the previous windows would put two different windows under
+    // one id and make the trace's primary correlation key ambiguous.
+    experimentRecorder.clear();
     experimentRecorder.setMiningCounters(this.miningCounters);
     debugBus.reset();
     try {
@@ -775,8 +853,10 @@ export class AdaptiveRuntime {
         this.options.interventionModelUrl ??
         (this.modelLoaded ? 'TargetInterventionHead-v1.0.0-int8' : undefined);
 
-      this.predictionCounter++;
-      const predictionId = `pred_${this.predictionCounter}`;
+      // Arbitration is the single producer of prediction identity, so the trace event and
+      // the prediction it describes cannot disagree (Task 20.1).
+      const prediction = result.prediction;
+      const predictionId = prediction?.predictionId ?? nextPredictionId();
 
       // Fold the worker's bounded-execution counters in before the prediction is recorded.
       const workerDiagnostics = (result as InferenceResult & {
@@ -794,6 +874,10 @@ export class AdaptiveRuntime {
         evaluatedWindowIds,
         matchedGate: result.matchedGate,
         outcome: result.slowResult?.outcome,
+        predictedOutcome: prediction?.outcomeId,
+        predictionContractVersion: prediction?.contractVersion,
+        predictedOutcomeVocabularyVersion: prediction?.vocabularyVersion,
+        targetContext: prediction?.target,
         interventionType: result.intervention?.type,
         mappingSource: resolvedMappingSource,
         confidence: result.intervention?.confidence ?? result.slowResult?.confidence,
@@ -846,7 +930,7 @@ export class AdaptiveRuntime {
       // No candidate at all: record the absence explicitly so "no prediction" is
       // distinguishable from "prediction rejected" in the exported trace (F-07).
       // ---------------------------------------------------------------------
-      if (!result.intervention) {
+      if (!result.prediction || !result.prediction.matched) {
         this.recordPolicyDecision({
           windowId: evaluatedWindowId,
           predictionId,
@@ -868,7 +952,10 @@ export class AdaptiveRuntime {
         return;
       }
 
-      const decision = this.policy.accept(result.intervention, uiContext);
+      // The policy acts on the predicted outcome and the UI context. It no longer needs a
+      // gate to have emitted a command, so the adaptation is an application decision
+      // (Task 20.1).
+      const decision = this.policy.acceptPrediction(result.prediction, uiContext);
 
       // ---------------------------------------------------------------------
       // Rejected: the reason is a research result and is persisted, not just logged.
@@ -878,7 +965,7 @@ export class AdaptiveRuntime {
           windowId: evaluatedWindowId,
           predictionId,
           candidate: decision.command.type,
-          confidence: result.intervention.confidence ?? result.slowResult?.confidence,
+          confidence: result.prediction.confidence,
           accepted: false,
           policyDecision: 'rejected',
           policyReason: decision.reason,
@@ -897,6 +984,36 @@ export class AdaptiveRuntime {
           policyReason: decision.reason,
           policyCooldownRemainingMs: decision.cooldownRemainingMs,
           candidateCount: decision.candidateCount
+        });
+        return;
+      }
+
+      // ---------------------------------------------------------------------
+      // A predicted outcome with no mapped adaptation: recorded as a decision, never as an
+      // episode. Opening an episode would claim an adaptation that does not exist, and the
+      // DOM could never evidence it (F-05).
+      // ---------------------------------------------------------------------
+      if (decision.command.type === 'no_op') {
+        this.recordPolicyDecision({
+          windowId: evaluatedWindowId,
+          predictionId,
+          candidate: decision.command.type,
+          confidence: result.prediction.confidence,
+          accepted: true,
+          policyDecision: 'decision_only',
+          policyReason: `${decision.reason} — no adaptation engaged`,
+          candidateCount: decision.candidateCount,
+          cooldownRemainingMs: decision.cooldownRemainingMs,
+          phase: 'policy'
+        });
+        debugBus.update({
+          interventionStatus: {
+            type: 'no_op',
+            source: decision.command.source,
+            state: 'no adaptation engaged'
+          },
+          policyState: 'NO ADAPTATION',
+          policyReason: decision.reason
         });
         return;
       }
@@ -1238,7 +1355,7 @@ export class AdaptiveRuntime {
    * what a real target head consumes (assessment §15).
    */
   public getContextVector(): Float32Array {
-    return encodeUIContext(this.resolveUIContext());
+    return encodeUIContext(this.resolveUIContext(), this.contextEncoding);
   }
 
   /** Returns the active UI adapter. */

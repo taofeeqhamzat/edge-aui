@@ -21,9 +21,23 @@ import {
 import { defaultCollector } from '../runtime/instrumentation';
 import { getWallClockTimestamp } from '../telemetry/normalizer';
 
+/**
+ * Application port that turns a target reference into a DOM element.
+ *
+ * The framework must not know an application's markup. A configured resolver is
+ * authoritative: when it returns null the adaptation fails, and the failure is recorded, so
+ * a misconfigured target never degrades into "adapt something else" (Task 20.5).
+ */
+export type ActuationTargetResolver = (
+  targetId: string,
+  context: { root: Document | HTMLElement | null; command: InterventionCommand }
+) => Element | null;
+
 export interface UIActuatorOptions {
   root?: Document | HTMLElement;
   defaultAssistanceText?: string;
+  /** Resolves a declared target reference to a DOM element. */
+  targetResolver?: ActuationTargetResolver;
 }
 
 export type InterventionEventListener = (event: InterventionEvent) => void;
@@ -133,6 +147,7 @@ export function markAdaptation(
 export class UIActuator {
   private root: Document | HTMLElement | null;
   private defaultAssistanceText: string;
+  private readonly targetResolver?: ActuationTargetResolver;
   private activeAdaptations = new Map<InterventionType, ReversionRecord>();
   private eventListeners = new Set<InterventionEventListener>();
 
@@ -141,6 +156,23 @@ export class UIActuator {
     this.defaultAssistanceText =
       options.defaultAssistanceText ??
       'Need assistance? Guided steps and contextual filters are available to help complete the task.';
+    this.targetResolver = options.targetResolver;
+  }
+
+  /**
+   * Resolves a command's declared target.
+   *
+   * With a configured resolver the answer is final — including "no element". Without one,
+   * the framework falls back to the annotation contract (`data-aui-component`), which is the
+   * documented default for a DOM application that has not supplied a resolver.
+   */
+  private resolveDeclaredTarget(command: InterventionCommand): Element | null {
+    const targetId = command.targetComponentId;
+    if (!targetId) return null;
+    if (this.targetResolver) {
+      return this.targetResolver(targetId, { root: this.root, command });
+    }
+    return this.root?.querySelector(componentSelector(targetId)) ?? null;
   }
 
   /**
@@ -334,11 +366,10 @@ export class UIActuator {
   private applyHighlightPrimaryAction(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
-    let targetEl: HTMLElement | null = null;
-    if (command.targetComponentId) {
-      targetEl = this.root.querySelector(componentSelector(command.targetComponentId));
-    }
-    if (!targetEl) {
+    let targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
+    if (!targetEl && !this.targetResolver) {
+      // Framework default only: a configured resolver is authoritative, so its "no element"
+      // answer is an actuation failure rather than a licence to adapt a different control.
       targetEl = this.root.querySelector(
         '[data-aui-role="primary-action"]:not([disabled])'
       );
@@ -368,7 +399,7 @@ export class UIActuator {
   // =========================================================================
   // 2. simplify_options
   // =========================================================================
-  private applySimplifyOptions(_command: InterventionCommand): AdaptationResult | null {
+  private applySimplifyOptions(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
     const accordionButtons = Array.from(
@@ -377,6 +408,13 @@ export class UIActuator {
 
     if (accordionButtons.length === 0) return null;
 
+    // A configured resolver is authoritative: it names the surface to simplify, and a
+    // missing target fails instead of collapsing unrelated accordions.
+    const declaredSurface = this.resolveDeclaredTarget(command) as HTMLElement | null;
+    if (this.targetResolver && !declaredSurface) return null;
+    const simplifiedSurface =
+      declaredSurface ?? (accordionButtons[0]?.parentElement ?? null);
+
     const activeEl = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
     const collapsedItems: Array<{
       btn: HTMLElement;
@@ -384,13 +422,12 @@ export class UIActuator {
       container?: HTMLElement | null;
     }> = [];
 
-    // Tag drawer or container with edge-aui-simplified
-    const filterDrawer = this.root.querySelector('[data-aui-component="filter-drawer"]');
-    const drawerHadClass = filterDrawer?.hasAttribute('class');
-    const drawerInitialClass = filterDrawer?.getAttribute('class');
+    // Tag the surface that contains the options being simplified.
+    const surfaceHadClass = simplifiedSurface?.hasAttribute('class');
+    const surfaceInitialClass = simplifiedSurface?.getAttribute('class');
 
-    if (filterDrawer) {
-      filterDrawer.classList.add('edge-aui-simplified');
+    if (simplifiedSurface) {
+      simplifiedSurface.classList.add('edge-aui-simplified');
     }
 
     for (const btn of accordionButtons) {
@@ -423,11 +460,11 @@ export class UIActuator {
       // correlation attributes go there rather than on a wrapper the user cannot see.
       element: accordionButtons[0],
       cleanup: () => {
-        if (filterDrawer) {
-          if (drawerHadClass && typeof drawerInitialClass === 'string') {
-            filterDrawer.setAttribute('class', drawerInitialClass);
+        if (simplifiedSurface) {
+          if (surfaceHadClass && typeof surfaceInitialClass === 'string') {
+            simplifiedSurface.setAttribute('class', surfaceInitialClass);
           } else {
-            filterDrawer.removeAttribute('class');
+            simplifiedSurface.removeAttribute('class');
           }
         }
         // Restore previously open accordions
@@ -450,11 +487,8 @@ export class UIActuator {
   private applyExpandTooltip(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
-    let targetEl: HTMLElement | null = null;
-    if (command.targetComponentId) {
-      targetEl = this.root.querySelector(componentSelector(command.targetComponentId));
-    }
-    if (!targetEl) {
+    let targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
+    if (!targetEl && !this.targetResolver) {
       targetEl = this.root.querySelector('[data-aui-role="tooltip"]');
     }
 

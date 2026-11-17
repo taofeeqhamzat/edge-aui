@@ -26,7 +26,8 @@
  * - the built `dist/` satisfies the deployment requirements (per-file size, no JSEP binary,
  *   the WASM-only ORT binary, COOP/COEP headers, model graphs and the WASM vectoriser);
  * - the full pipeline runs with both INT8 ONNX graphs loaded, so inference is real;
- * - the trace it produces is a canonical 1.3.0 record on a single epoch clock;
+ * - the trace it produces is a canonical 1.4.0 record on a single epoch clock, carrying the
+ *   semantic outcome, task-definition version and normalized prediction fields;
  * - the trace is internally consistent: no orphaned windows, every prediction has a policy
  *   verdict, every applied episode is terminal.
  *
@@ -47,6 +48,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { AdaptiveRuntime } from '../src/runtime/adaptiveRuntime';
+import { SemanticOutcomeDeriver } from '../src/outcome/semantic';
+import {
+  TESTBED_SEMANTIC_VOCABULARY,
+  createTestbedSemanticRules
+} from '../src/testbed/config/semanticOutcomes';
 import { experimentRecorder, EXPERIMENT_TRACE_SCHEMA_VERSION } from '../src/telemetry/recorder';
 import { sessionManager } from '../src/telemetry/session';
 import { debugBus } from '../src/debug/debugBus';
@@ -176,7 +182,12 @@ describe('Headless acceptance: real pipeline with real ONNX graphs', () => {
       experimentId: 'exp-acceptance',
       enableSlowGate: true,
       enableInstrumentation: false,
-      minPatternSupport: 1
+      minPatternSupport: 1,
+      // The testbed semantic layer, supplied exactly as src/main.tsx supplies it.
+      semanticOutcomes: new SemanticOutcomeDeriver({
+        vocabulary: TESTBED_SEMANTIC_VOCABULARY,
+        rules: createTestbedSemanticRules()
+      })
     });
 
     await runtime.start();
@@ -192,7 +203,7 @@ describe('Headless acceptance: real pipeline with real ONNX graphs', () => {
     expect(status.executionProvider).not.toBe('mock');
   }, 60_000);
 
-  it('runs the pipeline end to end and produces a canonical, self-consistent 1.3.0 trace', async () => {
+  it('runs the pipeline end to end and produces a canonical, self-consistent 1.4.0 trace', async () => {
     runtime = new AdaptiveRuntime({
       forceInProcessWorker: true,
       // Explicit: the default resolution keeps the mock when no `Worker` global exists, which
@@ -201,7 +212,12 @@ describe('Headless acceptance: real pipeline with real ONNX graphs', () => {
       experimentId: 'exp-acceptance',
       enableSlowGate: true,
       enableInstrumentation: false,
-      minPatternSupport: 1
+      minPatternSupport: 1,
+      // The testbed semantic layer, supplied exactly as src/main.tsx supplies it.
+      semanticOutcomes: new SemanticOutcomeDeriver({
+        vocabulary: TESTBED_SEMANTIC_VOCABULARY,
+        rules: createTestbedSemanticRules()
+      })
     });
 
     await runtime.start();
@@ -318,7 +334,16 @@ describe('Headless acceptance: real pipeline with real ONNX graphs', () => {
 
     // --- Version identity and provenance travel with the record.
     expect(trace.schemaVersion).toBe(EXPERIMENT_TRACE_SCHEMA_VERSION);
-    expect(trace.schemaVersion).toBe('1.3.0');
+    expect(trace.schemaVersion).toBe('1.4.0');
+    // 1.4.0's semantic field is populated in a real capture, not only in a hand-built trace.
+    expect(trace.metadata.semanticOutcomeVocabularyVersion).toBe(
+      TESTBED_SEMANTIC_VOCABULARY.version
+    );
+    const semanticOutcomes = trace.outcomes.filter((o) => typeof o.taskOutcome === 'string');
+    expect(semanticOutcomes.length).toBeGreaterThan(0);
+    for (const outcome of semanticOutcomes) {
+      expect(outcome.taskOutcomeVocabularyVersion).toBe(TESTBED_SEMANTIC_VOCABULARY.version);
+    }
     expect(trace.metadata.clock).toBe('epoch_ms');
     expect(trace.metadata.provenance).toBe('scripted');
     expect(trace.metadata.applicationVersion).toBe(APPLICATION_VERSION);
@@ -397,7 +422,12 @@ describe('Headless acceptance: real pipeline with real ONNX graphs', () => {
       experimentId: 'exp-acceptance',
       enableSlowGate: true,
       enableInstrumentation: false,
-      minPatternSupport: 1
+      minPatternSupport: 1,
+      // The testbed semantic layer, supplied exactly as src/main.tsx supplies it.
+      semanticOutcomes: new SemanticOutcomeDeriver({
+        vocabulary: TESTBED_SEMANTIC_VOCABULARY,
+        rules: createTestbedSemanticRules()
+      })
     });
 
     await runtime.start();
@@ -455,14 +485,14 @@ describe('Headless acceptance: real pipeline with real ONNX graphs', () => {
 });
 
 /**
- * Writes a real 1.3.0 capture to disk.
+ * Writes a real 1.4.0 capture to disk.
  *
  * The cross-repository ingestion contract test in `model-preparation` reads the sibling
  * repository's `docs/experiments/random/traces/` directory. A trace produced by the *actual*
  * runtime — not a hand-built dict — is what makes that contract meaningful, and the audit found
  * the previous cross-repo check passing only because a real capture was being silently skipped.
  */
-describe('Acceptance artefact: a real exported 1.3.0 capture', () => {
+describe('Acceptance artefact: a real exported 1.4.0 capture', () => {
   it('writes a runtime-produced trace for the cross-repository contract', async () => {
     experimentRecorder.clear();
     sessionManager.resetSession();
@@ -488,7 +518,12 @@ describe('Acceptance artefact: a real exported 1.3.0 capture', () => {
       experimentId: 'exp-deploy-verification',
       enableSlowGate: true,
       enableInstrumentation: false,
-      minPatternSupport: 1
+      minPatternSupport: 1,
+      // The testbed semantic layer, supplied exactly as src/main.tsx supplies it.
+      semanticOutcomes: new SemanticOutcomeDeriver({
+        vocabulary: TESTBED_SEMANTIC_VOCABULARY,
+        rules: createTestbedSemanticRules()
+      })
     });
 
     await runtime.start();
@@ -528,7 +563,16 @@ describe('Acceptance artefact: a real exported 1.3.0 capture', () => {
     fs.writeFileSync(targetPath, JSON.stringify(trace, null, 2));
 
     // The artefact must be a genuinely usable capture, not an empty shell.
-    expect(trace.schemaVersion).toBe('1.3.0');
+    expect(trace.schemaVersion).toBe('1.4.0');
+    // 1.4.0's semantic field is populated in a real capture, not only in a hand-built trace.
+    expect(trace.metadata.semanticOutcomeVocabularyVersion).toBe(
+      TESTBED_SEMANTIC_VOCABULARY.version
+    );
+    const semanticOutcomes = trace.outcomes.filter((o) => typeof o.taskOutcome === 'string');
+    expect(semanticOutcomes.length).toBeGreaterThan(0);
+    for (const outcome of semanticOutcomes) {
+      expect(outcome.taskOutcomeVocabularyVersion).toBe(TESTBED_SEMANTIC_VOCABULARY.version);
+    }
     expect(trace.behaviourEvents.length).toBeGreaterThan(0);
     expect(trace.microTensors.length).toBeGreaterThan(0);
     expect(trace.outcomes.length).toBeGreaterThan(0);
