@@ -38,6 +38,28 @@ describe("DebugPanel (Task 10.2)", () => {
     expect(toggleBtn.textContent).toContain("[Idle]");
   });
 
+  it("displays the resolved experiment condition of the active session", () => {
+    sessionManager.startSession({
+      experimentId: "exp-debug-condition",
+      conditionId: "baseline",
+    });
+
+    act(() => {
+      render(<DebugPanel forceShow={true} />);
+    });
+
+    const toggleBtn = screen.getByRole("button", {
+      name: /Open Edge-AUI Development Debug Panel/i,
+    });
+    act(() => {
+      fireEvent.click(toggleBtn);
+    });
+
+    const value = screen.getByTestId("aui-condition");
+    expect(value.textContent).toBe("baseline");
+    expect(value.getAttribute("data-aui-condition")).toBe("baseline");
+  });
+
   it("expands panel and displays prioritized session, task, and gate metrics", () => {
     sessionManager.startSession("T1");
     taskManager.startTask("TD1");

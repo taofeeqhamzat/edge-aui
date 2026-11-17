@@ -1,8 +1,12 @@
 /**
  * Trial Controls
  *
- * Makes the experimental task model and the experimental condition reachable from the
- * UI. Starting a task runs the testbed-owned normalization first, then emits `task_start`.
+ * Makes the experimental task model reachable from the UI. Starting a task runs the
+ * testbed-owned normalization first, then emits `task_start`.
+ *
+ * The experiment condition is deliberately absent: it is resolved from build/URL
+ * configuration before the session starts and is immutable for that session, so there is no
+ * participant-facing condition control.
  */
 
 import { useEffect, useState } from "react";
@@ -15,64 +19,17 @@ import {
   TaskState,
   TaskUiState,
 } from "../tasks/taskModel";
-import { bootTestbed, getRuntime, pendingTrialFinalization, switchCondition } from "../../runtime/boot";
-import { ExperimentalCondition } from "../../telemetry/events";
+import { getRuntime, pendingTrialFinalization } from "../../runtime/boot";
 import { sessionManager } from "../../telemetry/session";
 
 /** Shared between the locked controls and the explanation they point at. */
 const LOCK_NOTE_ID = "trial-lock-note";
 
 export interface TrialControlsProps {
-  /** Initial condition. */
-  initialCondition?: ExperimentalCondition;
   /** Testbed-owned task-start normalization. Runs before `task_start`. */
   onPrepareTask?: (task: TargetTask) => TaskUiState;
   /** Testbed-owned UI reset when a trial is reset. */
   onResetTaskUi?: () => void;
-}
-
-interface ConditionSelectorProps {
-  condition: ExperimentalCondition;
-  disabled: boolean;
-  onChange: (condition: ExperimentalCondition) => void;
-  /** Id of the visible explanation for the locked state, when the controls are locked. */
-  describedBy?: string;
-}
-
-function ConditionSelector({
-  condition,
-  disabled,
-  onChange,
-  describedBy,
-}: ConditionSelectorProps) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Experimental condition"
-      aria-describedby={describedBy}
-      data-aui-component="condition-selector"
-      data-aui-role="condition-selector"
-      className="condition-selector"
-    >
-      <span className="condition-label">Condition:</span>
-      {(["baseline", "adaptive"] as ExperimentalCondition[]).map((candidate) => (
-        <button
-          key={candidate}
-          type="button"
-          role="radio"
-          aria-checked={condition === candidate}
-          data-aui-component={`condition-${candidate}`}
-          data-aui-role="condition-option"
-          data-aui-action="click"
-          disabled={disabled}
-          onClick={() => onChange(candidate)}
-          className={`condition-btn ${condition === candidate ? "active" : ""}`}
-        >
-          {candidate}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 interface TaskButtonsProps {
@@ -181,14 +138,9 @@ function sessionLabel(): string {
 interface TrialActionOptions {
   onPrepareTask?: (task: TargetTask) => TaskUiState;
   onResetTaskUi?: () => void;
-  onConditionChange: (condition: ExperimentalCondition) => void;
 }
 
-function useTrialActions({
-  onPrepareTask,
-  onResetTaskUi,
-  onConditionChange,
-}: TrialActionOptions) {
+function useTrialActions({ onPrepareTask, onResetTaskUi }: TrialActionOptions) {
   const [busy, setBusy] = useState(false);
 
   const handleStart = async (taskId: TaskId) => {
@@ -223,34 +175,17 @@ function useTrialActions({
     }
   };
 
-  const handleCondition = async (next: ExperimentalCondition) => {
-    setBusy(true);
-    try {
-      // A condition switch rebuilds the runtime and clears the recorder, so the finished
-      // trial must be snapshotted and closed first.
-      const pending = pendingTrialFinalization();
-      if (pending) await pending;
-      onConditionChange(next);
-      await switchCondition(next);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return { busy, handleStart, handleReset, handleCondition };
+  return { busy, handleStart, handleReset };
 }
 
 export function TrialControls({
-  initialCondition = "adaptive",
   onPrepareTask,
   onResetTaskUi,
 }: TrialControlsProps) {
   const [taskState, setTaskState] = useState<TaskState>(taskManager.getState());
-  const [condition, setCondition] = useState<ExperimentalCondition>(initialCondition);
-  const { busy, handleStart, handleReset, handleCondition } = useTrialActions({
+  const { busy, handleStart, handleReset } = useTrialActions({
     onPrepareTask,
     onResetTaskUi,
-    onConditionChange: setCondition,
   });
 
   useEffect(() => taskManager.subscribe(setTaskState), []);
@@ -274,12 +209,6 @@ export function TrialControls({
             Session: {sessionLabel()}
           </span>
         </div>
-        <ConditionSelector
-          condition={condition}
-          disabled={busy || inProgress}
-          onChange={handleCondition}
-          describedBy={inProgress ? LOCK_NOTE_ID : undefined}
-        />
       </div>
 
       <TaskButtons
@@ -312,4 +241,5 @@ export function TrialControls({
   );
 }
 
-export { bootTestbed };
+// Kept as a re-export for callers that imported the composition root from this module.
+export { bootTestbed } from "../../runtime/boot";

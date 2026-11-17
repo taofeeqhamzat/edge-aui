@@ -17,6 +17,8 @@ import { sessionManager } from '../telemetry/session';
 
 export interface RuntimeDiagnosticsHandle {
   status: () => ReturnType<AdaptiveRuntime['getStatus']>;
+  /** The resolved condition the runtime actually runs, fixed for the session. */
+  condition: () => ReturnType<AdaptiveRuntime['getCondition']>;
   counts: () => ReturnType<typeof experimentRecorder.getEventCounts>;
   trace: () => string;
   /** Window-tagged macro sequences available to the PrefixSpan Fast Gate. */
@@ -96,6 +98,7 @@ export function startRuntimeDiagnostics(
 
   const handle: RuntimeDiagnosticsHandle = {
     status: () => runtime.getStatus(),
+    condition: () => runtime.getCondition(),
     counts: () => experimentRecorder.getEventCounts(),
     trace: () => experimentRecorder.exportJSON(),
     macroSequences: () => runtime.getMacroSequences(),
@@ -113,12 +116,14 @@ export function startRuntimeDiagnostics(
       }
     },
     lastCompletedTrial: () => getCompletedTrace(),
-    startNewTrial: async (conditionId?: 'baseline' | 'adaptive') => {
+    startNewTrial: async (_requestedCondition?: 'baseline' | 'adaptive') => {
+      // The condition is fixed for the participant session. A new trial rotates the session
+      // id but keeps the condition the runtime actually runs; accepting the optional argument
+      // here would let a console call rewrite the independent variable mid-session.
       const status = runtime.getStatus();
-      const cond = conditionId ?? status.conditionId ?? 'adaptive';
       const newSession = sessionManager.startSession({
         experimentId: status.experimentId,
-        conditionId: cond
+        conditionId: runtime.getCondition()
       });
       experimentRecorder.bindSession(newSession);
       experimentRecorder.clear();

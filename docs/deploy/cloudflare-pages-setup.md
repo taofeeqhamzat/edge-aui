@@ -85,8 +85,9 @@ also appear during project creation, under **Environment variables**. The equiva
 | `VITE_SUPABASE_ANON_KEY` | the **anon/public** key | Optional — never `service_role` |
 | `VITE_AUI_COLLECTION_MODE` | `scripted` | Default. Do not use `all` before a consent workflow exists |
 | `VITE_AUI_DIAGNOSTICS` | `1` | Optional; exposes the research panel in the production build |
+| `VITE_AUI_EXPERIMENT_CONDITION` | `adaptive` | Optional; `adaptive` (default) or `baseline`. A valid `?auiCondition=` overrides it for a session |
 
-All four are optional. With none set, the testbed runs and records locally, exports traces from
+All five are optional. With none set, the testbed runs and records locally, exports traces from
 the research panel, and reports `collection: local_only`.
 
 **Verify that the inlining actually happened** — this is the check that catches a variable set on

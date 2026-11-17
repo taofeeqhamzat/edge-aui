@@ -50,7 +50,8 @@ DOM events → TelemetryObserver → BehaviourEvent
 Two experimental conditions are supported. In `baseline` the pipeline still observes, windows,
 mines, derives outcomes and records predictions **and policy decisions**, but never mutates the DOM
 — so the two conditions can be compared like for like, and the trace itself evidences "decided but
-not applied".
+not applied". The condition is resolved once per session from `VITE_AUI_EXPERIMENT_CONDITION` or a
+valid `?auiCondition=` override; see [Getting started](#getting-started).
 
 Full details, including the windowing contract, feature table, macro vocabulary, gate
 semantics, and every schema, are in [`docs/architecture.md`](docs/architecture.md).
@@ -100,12 +101,16 @@ npm run dev                    # http://localhost:5173
 ```
 
 The application renders a small analytics dashboard. Use the **Experimental Trial** controls on the
-Analytics view to start task T1/T2/T3 and to switch between the `baseline` and `adaptive` conditions.
-The **AUI Debug** panel shows live session, condition, decision state (including *why* an intervention
-did or did not occur), the active intervention episode and its TTL, model/provider provenance, mining
-counters, eviction counts and collection state, and exports the experiment trace as JSON. In
-development, `window.__EDGE_AUI__` exposes the same state programmatically. In a production build the
-panel is reachable with `?auiDiagnostics=1` or by setting `VITE_AUI_DIAGNOSTICS=1`.
+Analytics view to start tasks TD1–TD4. The experiment condition is fixed for the participant
+session: set `VITE_AUI_EXPERIMENT_CONDITION=adaptive|baseline` at build time (default `adaptive`),
+and optionally override it for a session with `?auiCondition=adaptive|baseline`. A valid query
+parameter wins over the build default; missing or unsupported values fall back safely. There is no
+participant-facing condition selector. The **AUI Debug** panel shows the resolved condition, live
+session, decision state (including *why* an intervention did or did not occur), the active
+intervention episode and its TTL, model/provider provenance, mining counters, eviction counts and
+collection state, and exports the experiment trace as JSON. In development, `window.__EDGE_AUI__`
+exposes the same state programmatically. In a production build the panel is reachable with
+`?auiDiagnostics=1` or by setting `VITE_AUI_DIAGNOSTICS=1`.
 
 ### Model artifacts
 

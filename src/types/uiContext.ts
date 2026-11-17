@@ -25,6 +25,9 @@ export type AuiComponentRole =
   | 'help'
   | 'kpi-card'
   | 'trial-controls'
+  // Retained in the role vocabulary for compatibility with traces and adapters produced
+  // before the participant-facing condition control was removed. The testbed no longer
+  // renders these roles.
   | 'condition-selector'
   | 'condition-option'
   | 'status'

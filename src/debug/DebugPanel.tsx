@@ -184,7 +184,11 @@ const SessionTaskSection = memo(function SessionTaskSection({
       </div>
       <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Condition:</span>
-        <span className="edge-aui-debug-val highlight">
+        <span
+          className="edge-aui-debug-val highlight"
+          data-testid="aui-condition"
+          data-aui-condition={session?.conditionId ?? "--"}
+        >
           {session?.conditionId ?? "--"}
         </span>
       </div>

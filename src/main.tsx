@@ -92,7 +92,9 @@ installTestbedGate({
  */
 async function start(): Promise<void> {
   try {
-    const runtime = await bootRuntime('adaptive');
+    // The condition is resolved from `VITE_AUI_EXPERIMENT_CONDITION` / `?auiCondition=`
+    // here, before `bootRuntime()` creates the participant session.
+    const runtime = await bootRuntime();
     const status = runtime.getStatus();
 
     console.log('[Edge-AUI] Adaptive runtime started', {

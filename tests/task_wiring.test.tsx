@@ -124,7 +124,8 @@ describe('Task model / DOM annotation contract', () => {
     expect(taskManager.getState().currentTaskId).toBe('TD1');
     expect(document.querySelector('.app-container')?.getAttribute('data-aui-route')).toBe('Overview');
     expect((document.querySelector('[data-aui-component="btn-start-TD1"]') as HTMLButtonElement).disabled).toBe(true);
-    expect((document.querySelector('[data-aui-component="condition-adaptive"]') as HTMLButtonElement).disabled).toBe(true);
+    // The condition is resolved before the session and has no participant-facing control.
+    expect(document.querySelector('[data-aui-component="condition-selector"]')).toBeNull();
   });
 
   it('completes TD1 from the real UI and records the lifecycle', () => {
@@ -274,14 +275,9 @@ describe('Task model / DOM annotation contract', () => {
     // still open: that is the state that looked inexplicable to a participant.
     expect(trialText()).toContain("the task's required state is not met yet");
     expect(
-      document.querySelector('[data-aui-component="condition-selector"]')?.getAttribute('aria-describedby')
-    ).toBe('trial-lock-note');
-    expect(
       (document.querySelector('[data-aui-component="btn-start-TD3"]') as HTMLButtonElement).disabled
     ).toBe(true);
-    expect(
-      (document.querySelector('[data-aui-component="condition-adaptive"]') as HTMLButtonElement).disabled
-    ).toBe(true);
+    expect(document.querySelector('[data-aui-component="condition-selector"]')).toBeNull();
     expect(
       (document.querySelector('[data-aui-component="btn-reset-trial"]') as HTMLButtonElement).disabled
     ).toBe(false);
