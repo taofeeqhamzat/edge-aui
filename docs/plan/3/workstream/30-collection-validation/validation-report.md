@@ -254,8 +254,9 @@ A second test asserts the brief and the exact step instruction are rendered
 (`528 passed` framework suite).
 
 **Inferred.** The wording is participant-facing; it should be confirmed in the study-protocol
-review rather than treated as approved copy. No task definition, completion predicate or
-capture was changed, so the eight captures in this report remain valid.
+review rather than treated as approved copy. No step id, expected component, action or
+completion predicate changed — only display text — so the `TD-v2` definition the captures
+name is still correct and the eight captures remain valid.
 
 ---
 
