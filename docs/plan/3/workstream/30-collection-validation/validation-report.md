@@ -221,7 +221,45 @@ scripted record for this milestone.
 
 ---
 
-## 6. Reproduction notes
+## 6. Participant-facing clarification (post-validation review, 2026-11-17)
+
+**Observation.** TD2's brief said "Books sold on or after 1 June 2025", but its completion
+predicate requires the exact state `dateFrom = 2025-06-01`, only Books, and five rows. A
+participant who chose a later start date was doing a reasonable reading of the instruction
+and still could not complete the trial. The task stayed `In Progress`, so the task and
+condition controls correctly stayed locked — with nothing on screen explaining why. The task
+brief itself was also never rendered; participants saw only a short name and a step label.
+
+**Change.** The completion predicate is unchanged: the approved task requires that exact
+state, and accepting a date range would make the row count (and every downstream target)
+non-deterministic. Instead the interface now says what the task expects:
+
+- the active task's full brief is rendered above the status row
+  (`data-aui-component="trial-instruction"`);
+- step labels name the exact targets: "Set the start date to 1 June 2025",
+  "Select only Books", "Select the Europe region";
+- while a trial is in progress, a visible note
+  (`data-aui-component="trial-lock-note"`) explains that task and condition controls are
+  locked until the trial ends and that Reset Trial ends it early; the note is an
+  `aria-live="polite"` region and is referenced by `aria-describedby` from both control
+  groups;
+- when every step has been visited but the required state is still not met, the step line
+  says so ("All steps visited — the task's required state is not met yet") instead of
+  reading `N/A`.
+
+**Proof.** `tests/task_wiring.test.tsx` starts TD2, applies a later start date, asserts the
+trial stays incomplete with the explanation visible and Reset Trial still available, then
+corrects the date and asserts completion removes the explanation and unlocks the controls.
+A second test asserts the brief and the exact step instruction are rendered
+(`528 passed` framework suite).
+
+**Inferred.** The wording is participant-facing; it should be confirmed in the study-protocol
+review rather than treated as approved copy. No task definition, completion predicate or
+capture was changed, so the eight captures in this report remain valid.
+
+---
+
+## 7. Reproduction notes
 
 - The harness needs a running Vite server (it starts one if the port is free), a
   diagnostics-enabled origin (`?auiDiagnostics=1`), and `agent-browser`.

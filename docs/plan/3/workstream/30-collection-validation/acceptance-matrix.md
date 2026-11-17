@@ -133,6 +133,8 @@ above covers only canonical completion.
 | TD3 completion without pre-Apply empty state | [task_diversification.test.tsx:230](../../../../../tests/task_diversification.test.tsx#L230) | An empty state observed before Apply is not recovery evidence | **Verified** |
 | Non-Apply interaction as apply evidence | [task_diversification.test.tsx:254](../../../../../tests/task_diversification.test.tsx#L254) | A region change does not satisfy TD2's Apply evidence | **Verified** |
 | Filter disclosure reset at trial boundary | [task_wiring.test.tsx:273](../../../../../tests/task_wiring.test.tsx#L273) | A trial cannot inherit the previous trial's open filter sections | **Verified** |
+| Locked-state explanation during an incomplete trial | [task_wiring.test.tsx:254](../../../../../tests/task_wiring.test.tsx#L254) | A later TD2 start date leaves the trial open; the lock note explains the frozen task/condition controls and Reset Trial stays available; completion removes the note | **Verified** |
+| Task brief and exact step targets rendered | [task_wiring.test.tsx:232](../../../../../tests/task_wiring.test.tsx#L232) | The participant sees the full brief and the exact date/category values the predicate checks | **Verified** |
 | Scripted captures duplicate-action check | `record_scripted_traces.py` assertion | Every capture: `task.errors = 0` and zero `task_error` events | **Verified** |
 
 ---
@@ -170,3 +172,4 @@ metadata repeats both. The verifier rejects a trace whose records and metadata d
 | Participant collection | **Blocked** | Study protocol (consent, counterbalancing, participant counts) is out of scope for this milestone |
 | First-action semantic outcome | **Inferred limitation** | No preceding window to carry the horizon label |
 | Multiple trials per condition | Not run | One trial per task/condition pair is the 30.1 acceptance requirement; repeat runs are a study-protocol decision |
+| Participant-facing wording | **Inferred** | The lock explanation and exact step labels should be confirmed in the study-protocol review; no task definition or predicate changed |
