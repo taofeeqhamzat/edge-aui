@@ -101,8 +101,9 @@ tracked template.
 | `VITE_SUPABASE_ANON_KEY` | No | Public anon key. Unset ⇒ local-only collection. |
 | `VITE_AUI_COLLECTION_MODE` | No | `off` \| `scripted` (default) \| `all` |
 | `VITE_AUI_DIAGNOSTICS` | No | `1` to expose the research panel in a production build |
+| `VITE_AUI_EXPERIMENT_CONDITION` | No | `adaptive` (default) \| `baseline`; valid `?auiCondition=` overrides it for a session |
 
-**All four are optional.** A build with none of them set is a valid, supported configuration:
+**All five are optional.** A build with none of them set is a valid, supported configuration:
 the testbed runs, records sessions locally, exports traces from the research panel, and
 reports `collection: local_only` instead of attempting an upload. Collection degrades visibly,
 never silently.
@@ -171,5 +172,10 @@ deploying front-end code. See [`supabase-setup.md`](./supabase-setup.md).
   and treats a `409` on a retry as success instead.
 - **The developer panel is absent from a production build by default.** Add
   `?auiDiagnostics=1` to the URL or set `VITE_AUI_DIAGNOSTICS=1` for a researcher build.
+- **The experiment condition is a build default, not a UI control.** Set
+  `VITE_AUI_EXPERIMENT_CONDITION=adaptive|baseline` for a build, or override it for one session
+  with `?auiCondition=adaptive|baseline`. It is resolved before the participant session starts,
+  is immutable for that session, and the panel's **Condition** row shows the value actually in
+  force.
 - **Deployment branch:** `main` is production. Advisory only — Cloudflare Pages controls the
   actual mapping.

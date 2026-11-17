@@ -264,8 +264,14 @@ resolver the framework falls back to the `data-aui-component` annotation contrac
 
 In `baseline` the pipeline still observes, windows, mines, derives outcomes, records
 predictions and *decides* interventions — it simply never mutates the DOM. This is what makes
-a like-for-like telemetry comparison between conditions possible. Switching condition is
-treated as starting a new trial and rebuilds the runtime (`src/runtime/boot.ts`).
+a like-for-like telemetry comparison between conditions possible.
+
+The condition is resolved **before** the participant session starts, from
+`VITE_AUI_EXPERIMENT_CONDITION` (`adaptive` by default) with a valid `?auiCondition=` query
+parameter taking precedence, and it is immutable for that session
+(`src/config/experimentCondition.ts`, `src/runtime/boot.ts`). A new session resolves it again.
+There is no participant-facing condition selector, so navigation or a component interaction
+cannot change the independent variable mid-session.
 
 ---
 
