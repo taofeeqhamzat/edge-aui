@@ -1,8 +1,13 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import { App } from './app/App';
 import './style.css';
-import { bootRuntime, getLastCompletedTrialTrace, registerRuntimeDefaults } from './runtime/boot';
+import {
+  bootRuntime,
+  getLastCompletedTrialTrace,
+  registerRuntimeDefaults,
+  stopTestbed
+} from './runtime/boot';
 import { testbedAdapter } from './testbed/adapter';
 import { TESTBED_MACRO_MAPPER } from './testbed/config/macroVocabulary';
 import { TESTBED_CONTEXT_ENCODING_CONFIG } from './testbed/config/contextEncoding';
@@ -18,6 +23,7 @@ import {
   createTestbedSemanticRules
 } from './testbed/config/semanticOutcomes';
 import { startRuntimeDiagnostics } from './runtime/diagnostics';
+import { installTestbedGate } from './testbed/entry/entryGate';
 
 /**
  * The testbed supplies every piece of application vocabulary and application policy the
@@ -41,12 +47,39 @@ registerRuntimeDefaults({
   experiment: TESTBED_EXPERIMENT_CONFIG
 });
 
-const root = createRoot(document.getElementById('app')!);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+/**
+ * Pre-session supported-device gate.
+ *
+ * This is intentionally the boundary between the browser and the study. `bootRuntime()` is
+ * the only pre-task path that calls `sessionManager.startSession()`, and it also starts the
+ * observer and research collection. Until `onAccessGranted` runs, no participant identity,
+ * task session, local store record or behavioural trace exists.
+ *
+ * The gate is not part of the collection pipeline: it only decides whether the pipeline may
+ * be composed at all. Re-evaluation on capability/navigation events is handled inside the
+ * gate so a responsive layout change or orientation change cannot reveal the testbed.
+ */
+const rootElement = document.getElementById('app')!;
+let reactRoot: Root | null = null;
+
+installTestbedGate({
+  root: rootElement,
+  onAccessGranted: () => {
+    reactRoot = createRoot(rootElement);
+    reactRoot.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+    void start();
+  },
+  onAccessRevoked: () => {
+    // Stop observation/actuation while the DOM still exists, then unmount the testbed.
+    stopTestbed();
+    reactRoot?.unmount();
+    reactRoot = null;
+  }
+});
 
 /**
  * Composition root.
@@ -74,5 +107,3 @@ async function start(): Promise<void> {
     console.error('[Edge-AUI] Failed to start the adaptive runtime:', err);
   }
 }
-
-void start();
