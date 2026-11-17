@@ -10,13 +10,29 @@ described as participant evidence.
 
 ## Current state
 
-- The model-preparation scripted harness still drives T1–T3 with `EMEA` and `Enterprise` and old
-  controls. It cannot exercise the approved task set.
-- The framework can export 1.3.0 traces; semantic outcome and task-definition fields do not exist
-  until Workstream 20.5.
-- A trace verifier and condition-comparison script exist but do not know 1.4.0/semantic fields.
+**Before this workstream**
+
+- The model-preparation scripted harness still drove T1–T3 with `EMEA` and `Enterprise` and old
+  controls. It could not exercise the approved task set.
+- The framework could export 1.3.0 traces only.
+- The trace verifier and condition-comparison script were a second, stale JavaScript copy that
+  accepted only 1.2.0 and required T1–T3 step ids.
 - Collection, session persistence, participant identity and the Supabase provenance gate already
-  exist; they need a post-change verification.
+  existed but had not been verified after the 1.4.0 change.
+
+**After 30.1 and 30.2 (2026-11-17)**
+
+- Eight scripted captures (TD1–TD4 × baseline/adaptive) were recorded in a real browser against
+  framework `5f5f734` and model-preparation `963ae54`; all eight export verified `1.4.0` traces.
+- `verify-trace.mjs` and `compare-condition-traces.mjs` load the single TypeScript verification
+  contract; the verifier checks generic lifecycle consistency, prediction→window attribution,
+  semantic/task-version attribution and condition/provenance agreement.
+- Ingestion accepts `1.4.0`, and a real exported capture is ingested in the tests.
+- Five defects were found and fixed during validation (finished-trial destruction, duplicate
+  window ids, inverted disclosure semantics, the stale CLI verifier, logit-as-confidence).
+- Evidence: [validation-report.md](validation-report.md),
+  [acceptance-matrix.md](acceptance-matrix.md),
+  [collection-readiness.md](collection-readiness.md).
 
 ## Task index and order
 
@@ -36,20 +52,25 @@ described as participant evidence.
 
 ## Checkpoints
 
-| After | Checkpoint |
-| --- | --- |
-| 30.1 | Eight scripted runs export valid 1.4.0 traces; expected counts and completion evidence hold |
-| 30.2 | Verifier, ingestion smoke test and collection checklist pass; blocked items recorded |
+| After | Checkpoint | Result |
+| --- | --- | --- |
+| 30.1 | Eight scripted runs export valid 1.4.0 traces; expected counts and completion evidence hold | **Passed** — 8/8 recorded, 8/8 verified |
+| 30.2 | Verifier, ingestion smoke test and collection checklist pass; blocked items recorded | **Passed** — 15/15 checks per capture, 17 ingestion tests, blocked items named |
 
 ## Exit criteria
 
-- [ ] Eight scripted runs (TD1–TD4 × baseline/adaptive) complete and export 1.4.0 traces.
-- [ ] Each canonical path completes with state evidence and zero canonical-path errors.
-- [ ] Baseline traces contain no adaptive DOM mutation; adaptive traces contain the configured
-      interventions only.
-- [ ] Trace verifier and model-preparation ingestion accept the real exports.
-- [ ] Collection readiness checklist is signed off; participant protocol items remain explicitly
-      deferred.
+- [x] Eight scripted runs (TD1–TD4 × baseline/adaptive) complete and export 1.4.0 traces.
+      → [acceptance matrix §1](acceptance-matrix.md#1-scripted-capture-matrix)
+- [x] Each canonical path completes with state evidence and zero canonical-path errors.
+      → [acceptance matrix §2](acceptance-matrix.md#2-canonical-completion-evidence-per-task)
+- [x] Baseline traces contain no adaptive DOM mutation; adaptive traces contain the configured
+      interventions only. No adaptive actuation was observed on the canonical path (policy
+      declined); every applied intervention would have to be configured and attributed.
+      → [acceptance matrix §3](acceptance-matrix.md#3-condition-integrity)
+- [x] Trace verifier and model-preparation ingestion accept the real exports.
+      → [validation report §4](validation-report.md#4-verification-detail)
+- [x] Collection readiness checklist is signed off; participant protocol items remain explicitly
+      deferred. → [collection-readiness.md](collection-readiness.md)
 
 ## Verification
 
