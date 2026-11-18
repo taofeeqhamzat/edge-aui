@@ -26,6 +26,12 @@ import type {
 export const TESTBED_SEMANTIC_VOCABULARY_ID = 'testbed-semantic';
 export const TESTBED_SEMANTIC_VOCABULARY_VERSION = 'testbed-semantic/1.0.0';
 
+/**
+ * The testbed's **recorded** vocabulary. It has 15 IDs; the model's approved **target** vocabulary
+ * is 14 and excludes `inspect_help` (ADR-030). Do not delete `inspect_help` or its rule to
+ * reconcile the counts: that rule is what keeps `tooltip-region` from being classified as
+ * `select_region`, and model-preparation excludes those windows from training labels instead.
+ */
 export const TESTBED_SEMANTIC_VOCABULARY: SemanticOutcomeVocabulary = {
   id: TESTBED_SEMANTIC_VOCABULARY_ID,
   version: TESTBED_SEMANTIC_VOCABULARY_VERSION,

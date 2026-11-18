@@ -463,6 +463,15 @@ different page is a reversal.
 Core imports none of its outcome IDs. The derived outcome is recorded next to the generic
 one on the same `OutcomeEvent` (`taskOutcome` + vocabulary version + source + rule id).
 
+The testbed **records** 15 outcome IDs, and the model's **target vocabulary is the approved 14**
+([ADR-030](decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)). The extra ID,
+`inspect_help`, is recorded evidence: it exists because exact-ID checks run before substring
+checks, so `tooltip-region` is never classified as `select_region` (assessment limitation #6).
+Model-preparation excludes windows labelled `inspect_help` from training targets rather than
+relabelling them; the excluded count is reported. The recorded/target split is versioned and is
+described in [data_schemas.md](data_schemas.md). The residual macro-symbol defects from that same
+limitation are tracked in the milestone plan §2.8 and are not fixed by this split.
+
 **Derivation is deferred.** A window is queued on emission and settled only once the observed
 stream has advanced past its horizon, with a 2 s idle grace period. Labelling immediately
 (before post-window activity exists) is what prevented `CLICK` and `FORM_SUBMIT` from ever

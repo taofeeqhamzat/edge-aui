@@ -66,9 +66,13 @@ export interface SerializableExperimentTrace {
   alongside the generic seven-class `outcome`. `taskOutcomeVocabularyVersion` names the
   vocabulary, `taskOutcomeSource` is `backtrack` | `application_rule` | `none`, and
   `taskOutcomeRuleId` names the rule that matched. Both labels describe the same event.
+  The recorded vocabulary is the application's full vocabulary (15 IDs for the testbed); the
+  model's target vocabulary is a declared 14-ID subset, and `inspect_help` is recorded but
+  excluded from training targets ([ADR-030](decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
 - **Task-definition version (1.4.0):** `TaskEvent.taskDefinitionVersion` records which task
-  model the event refers to, and `TaskEvent.reason` accepts the failure reasons
-  (`wrong_action`, `state_mismatch`, `step_exhausted`) so a `task_fail` says why.
+  model the event refers to, and `TaskEvent.reason` accepts `reset`, `replaced`,
+  `condition_change`, `interrupted`, `timeout`, `wrong_action`, `state_mismatch` and
+  `step_exhausted` so a `task_fail`/`task_abandon` says why.
 - **Normalized prediction (1.4.0):** `PredictionEvent.predictedOutcome`,
   `predictedOutcomeVocabularyVersion`, `predictionContractVersion` and `targetContext`
   record the application outcome the gates asserted and the UI context it was computed
