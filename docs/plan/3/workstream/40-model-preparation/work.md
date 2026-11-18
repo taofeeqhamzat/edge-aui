@@ -3,7 +3,8 @@
 ## Objective
 
 Prepare the model-preparation pipeline for semantic task outcomes and train/evaluate/export a
-target head on participant-held-out data.
+target head over the approved 14-outcome target vocabulary, evaluated on the declared held-out
+split unit (session-held-out until a participant identifier is approved).
 
 Phase 4 is split:
 - **4A (tasks 40.1–40.3):** ingestion, semantic dataset, splits, class balance and the
@@ -22,6 +23,9 @@ Phase 4 is split:
   `training.target_classes: 5`.
 - `TargetInterventionHead` outputs five classes; `export.py` validates a five-class
   `intervention_logits` graph.
+- The runtime records 15 semantic IDs (the 14 approved target IDs plus `inspect_help`); the target
+  vocabulary is the 14, so dataset labels and the head's output dimension are 14
+  ([ADR-030](../../../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
 - Foundation GRU, session-bounded splits, class weights, provenance manifest, training/eval,
   ONNX export and `bundle/v1.0.0` are implemented and must be preserved.
 - The scripted harness is updated in Workstream 30, not here.
@@ -43,6 +47,16 @@ pipeline verification; any result from that data is a pipeline/engineering resul
 about participants or usability. The previous five-class `bundle/v1.0.0` remains the historical
 artifact; do not overwrite it.
 
+Two target-side rules are fixed before 4A starts:
+
+- **Labels.** Only the 14 target IDs are labels; `inspect_help` is recorded evidence and its windows
+  are excluded and counted ([ADR-030](../../../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
+  Do not delete the tooltip rule that produces it.
+- **Splits.** Session-bounded, with per-partition task-level coverage
+  ([ADR-031](../../../../decisions/ADR-031-session-bounded-dataset-splits.md)). Participant-bounded
+  splits are adopted only after ADR-023 approves an identifier; until then no participant-held-out
+  claim may be made.
+
 ## Checkpoints
 
 | After | Checkpoint |
@@ -53,13 +67,14 @@ artifact; do not overwrite it.
 ## Exit criteria
 
 - [ ] 1.4.0 traces ingest with semantic outcomes/task version; legacy versions still readable.
-- [ ] Semantic target generation is deterministic and mirrored by the TypeScript rules on shared
-      fixtures.
-- [ ] Dataset v2 has semantic labels, provenance, session/participant-bounded splits and class
-      weights from the training partition only.
+- [ ] Semantic target generation is deterministic, labels only the 14 target IDs (excluding and
+      counting `inspect_help` windows) and is mirrored by the TypeScript rules on shared fixtures.
+- [ ] Dataset v2 has semantic labels, provenance, session-bounded splits with task-level coverage,
+      and class weights from the training partition only.
 - [ ] Window/horizon experiment is small, pre-declared and reports per-outcome coverage/lead time.
-- [ ] Semantic target head is trained/evaluated with per-class/macro-F1/confusion/majority/held-out
-      metrics and no future leakage.
+- [ ] Semantic target head is trained/evaluated with per-class/macro-F1/confusion/majority metrics
+      and no future leakage, on the declared held-out split unit (session- or participant-bounded,
+      stated explicitly).
 - [ ] ONNX/bundle v2 records vocabulary, dataset, code, seed and metrics; the browser can load it.
 - [ ] Old foundation/head artifacts remain reproducible.
 

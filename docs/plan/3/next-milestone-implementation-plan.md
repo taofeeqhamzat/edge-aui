@@ -1,11 +1,17 @@
 # Next-Milestone Implementation Plan — Edge-AUI
 
-- **Date:** 2026-11-16
+- **Date:** 2026-11-16 (amended 2026-11-18)
 - **Status:** Planning complete — no application code, configuration, model, dataset or deployment change was made
 - **Framework baseline:** `edge-aui-framework` branch `feat/refinement`, commit `25033a8`
 - **Model baseline:** `model-preparation` commit `cbab411`
 - **Authoritative inputs:** [`task-diversification-ui-assessment.md`](../../assessments/task-diversification-ui-assessment.md), [`revised-implementation-planning.md`](../../revised-implementation-planning.md), existing ADR register, both repositories' source and tests
-- **Plan version:** `1.0.0`
+- **Plan version:** `1.1.0`
+- **Amendment 1.1.0 (2026-11-18):** the semantic **target** vocabulary is pinned to the approved 14
+  IDs; the runtime additionally records `inspect_help` as evidence and that ID is excluded from
+  training targets ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
+  Dataset splits are **session-bounded**, with task-level coverage reported
+  ([ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md)). Assessment limitation #6's
+  residual items remain open and are tracked in §2.8.
 
 **Evidence labels**
 
@@ -154,25 +160,26 @@ deployment acceptance.
   ONNX export and bundle manifest.
 - Hardened Fast Gate/PrefixSpan, shared arbitration and no-match behaviour.
 - Verified policy/intervention behaviour and a supervisor-ready deployment/demo path.
-- New ADRs 025–029 and updated schema/architecture documentation.
+- New ADRs 025–031 and updated schema/architecture documentation.
 
-### 1.8 Open decisions, especially Decision 6
+### 1.8 Decision 6 — settled vocabulary and split policy
 
 **Decision 6 — semantic outcome taxonomy migration.** The approved planning baseline is additive
-semantic recording. The following must be settled before Phase 2 implementation, because they
-change the trace contract and the model target:
+semantic recording. The vocabulary and the split unit were settled on 2026-11-18; the remaining
+rows are unchanged from the planning baseline.
 
-| Decision | Recommended default | Why it must be settled |
+| Decision | Status / approved value | Why it matters |
 | --- | --- | --- |
-| Field name and version | `taskOutcome` + `taskOutcomeVocabularyVersion` in trace schema 1.4.0 | Both runtime and ingestion must agree before collection |
-| Exact vocabulary | The 14 outcomes listed in §3.4 and §7.7 | Determines model output dimension and evaluation |
+| Field name and version | Implemented as `taskOutcome` + `taskOutcomeVocabularyVersion` in trace schema 1.4.0; retained unless a rename is approved (ADR-026 deferment) | Both runtime and ingestion must agree before collection |
+| **Target vocabulary** | **Settled:** the 14 IDs in §3.4. The runtime records one further ID, `inspect_help`, as evidence; it is excluded from targets and its windows are excluded and counted — [ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md) | Determines the semantic head's output dimension (14) and evaluation |
+| **Split unit** | **Settled:** session-bounded splits with task-level coverage; participant-bounded only when ADR-023 approves an identifier — [ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md) | Determines the leakage-control unit and what the evaluation may claim |
 | Lifecycle exclusion | `task_complete`/`task_abandon` are evaluation labels, not prediction targets | Prevents task-script leakage into the model |
 | Migration point | Record additively through Phases 3–4A; swap model taxonomy/config/output only in Phase 4B | Avoids an untrained seven-class head claiming semantic predictions |
 | Generic taxonomy retention | Keep seven-class `outcome` and `outcome_taxonomy` through collection | Backward compatibility and ablation |
 | Label horizon | Start with the existing `[500, 1500] ms` and compare a small controlled set in Phase 4A | Determines future-outcome labels |
 
-If the exact vocabulary or field name is not approved, Phase 1 and Phase 2.1–2.4 can proceed; the
-semantic trace field (2.5), ingestion (4.1), dataset (4.2) and retraining (4B) are blocked.
+The vocabulary and split decisions are recorded; the label horizon is still selected by the 40.3
+experiment. Retraining (4B) remains blocked on usable participant traces, not on taxonomy approval.
 
 Other open decisions are listed in §12.2. The approved decisions in §1.2 are not reopened.
 
@@ -285,8 +292,8 @@ five-class intervention-head training/evaluation, ONNX export and reproducibilit
   validate TD1–TD4.
 - The window/horizon choice (`T=8`, 500/250 ms, `[500, 1500] ms`) has not been evaluated for the
   semantic vocabulary.
-- No semantic dataset version, semantic class distribution, participant-held-out evaluation or
-  task-level evaluation exists yet.
+- No semantic dataset version, semantic class distribution, held-out evaluation (session- or
+  participant-bounded) or task-level evaluation exists yet.
 - `docs/data_schemas.md` documents the five-class intervention head and old task IDs; it must be
   revised with schema 1.4.0 and the semantic head.
 
@@ -309,6 +316,26 @@ difference from this plan (for example, a recommendation that has since been imp
 recorded in the Phase 0 gap register and the plan is adjusted before implementation. A plan task is
 not "done" because the source file was edited; its acceptance criteria and verification commands
 must pass.
+
+### 2.8 Assessment limitation #6 — macro-symbol status (2026-11-18)
+
+[Assessment limitation #6](../../assessments/task-diversification-ui-assessment.md) reported that
+several macro symbols were misleading or unreachable. The workstreams that touched this area fixed
+part of it; the rest is still open and must not be treated as closed by the vocabulary decision in
+§3.4.
+
+| Item (limitation #6) | Status 2026-11-18 | Where it is carried |
+| --- | --- | --- |
+| `tooltip-region` matches the `SELECT_REGION` substring rule | **Open in the macro stream.** The semantic layer orders exact-ID checks first, so `tooltip-region` derives `inspect_help`, never `select_region`; the macro mapper still checks `componentId.includes('region')` before its tooltip branch | WS50 (pattern semantics) / a follow-up macro fix |
+| `TABLE_ROW_SELECT` emitted on row hover even though rows are not selectable | **Open.** Rows carry `data-aui-component="table-row-*"` and `data-aui-action="hover"`; the mapper derives `TABLE_ROW_SELECT` from the identifier | WS50 / macro follow-up |
+| `RESET_FILTERS`, `OPEN_REPORT` have no control | **Closed** — Reset Filters (10.3) and the Reports catalogue (10.4) provide producers | WS10 record |
+| `TABLE_PAGE_*`, `TABLE_SORT` have no control | **Open** — no pagination or sorting exists, and none is planned for TD1–TD4 | Explicitly out of scope; symbols must not be mined as if reachable |
+| `EXPAND_TOOLTIP` reachable by clicking a tooltip `<span>` but produces no visible expansion | **Open** — the affordance is a native `title`; the click emits the symbol but nothing expands | WS50 / macro follow-up |
+| `BACKTRACK`, `IDLE_DWELL`, `RAPID_SCROLL` have no producer | **Open in the macro stream.** The generic outcome layer derives `BACKTRACK`/`RAPID_SCROLL`, but no event action feeds the macro mapping | WS50 / macro follow-up |
+
+The semantic target decision (§3.4, ADR-030) deliberately keeps the tooltip **exclusion rule** and
+only narrows the target set to 14. Removing the rule, or mining symbols that no control produces,
+would reintroduce the defect the assessment recorded.
 
 ---
 
@@ -361,7 +388,7 @@ must pass.
                                       ▼
 ┌──────────────────────────── model-preparation (offline) ─────────────────────────────────────┐
 │ trace ingestion (1.4.0 + legacy) -> canonical events -> semantic target generation            │
-│ -> session/participant-bounded dataset -> window/horizon experiment -> target-head training    │
+│ -> session-bounded dataset -> window/horizon experiment -> target-head training               │
 │ -> evaluation (per-class, macro-F1, confusion, lead time) -> ONNX export + bundle             │
 └─────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -400,7 +427,8 @@ must pass.
 
 ### 3.4 Shared semantic outcome contract
 
-The testbed vocabulary for this milestone is:
+**Target vocabulary — the approved 14 IDs** ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
+The semantic head's output dimension is 14, and the semantic dataset labels only these:
 
 ```text
 navigate_overview
@@ -419,8 +447,24 @@ backtrack
 NO_OUTCOME
 ```
 
+**The runtime vocabulary is deliberately wider.** Task 20.4 records one further ID,
+`inspect_help`, for a committed click on a tooltip affordance. That ID exists because the
+exact-identifier rule stops `tooltip-region` from being classified as `select_region` (assessment
+limitation #6). It is recorded evidence, not a target: dataset v2 excludes those windows from the
+training examples and reports the excluded count rather than relabelling them `NO_OUTCOME`.
+Deleting the rule to make the recorded count 14 would either lose the evidence or reopen the
+substring defect, so the recorded/target split is the contract:
+
+| Set | Size | Used by |
+| --- | --- | --- |
+| Recorded runtime vocabulary | 15 IDs | Trace `taskOutcome`, ingestion, analysis |
+| Target vocabulary | 14 IDs | Dataset labels, model output dimension, evaluation |
+
 `task_complete` and `task_abandon` are task-lifecycle/evaluation outcomes, not ordinary model
 prediction targets.
+
+The residual items of assessment limitation #6 concern the **macro** stream, not this vocabulary,
+and remain open — see §2.8.
 
 The framework must not import or require these strings. It supplies:
 - a trace field and derivation metadata shape that accepts any string ID;
@@ -491,6 +535,8 @@ The framework consumes an exported artifact plus a manifest:
 | [ADR-027](../../decisions/ADR-027-event-canonicalization-and-outcome-derivation-ownership.md) | Framework owns canonicalization/backtracking mechanics; testbed owns semantic rules/vocabulary |
 | [ADR-028](../../decisions/ADR-028-normalized-gate-prediction-contract.md) | Both gates return a normalized outcome prediction; policy maps outcome→intervention; actuator receives the command |
 | [ADR-029](../../decisions/ADR-029-trace-schema-1-4-task-versioning.md) | Additive trace 1.4.0 with semantic outcome/task version/prediction fields; legacy versions readable |
+| [ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md) | Target vocabulary pinned to the 14 approved IDs; `inspect_help` recorded as evidence, excluded from targets |
+| [ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md) | Session-bounded dataset splits with task-level coverage; participant-bounded only after ADR-023 approves an identifier |
 
 ### 3.9 Hypothetical second UI vocabulary (conceptual check)
 
@@ -632,7 +678,8 @@ files carry acceptance criteria and verification.
   traces for 4B.
 - **Tests/verification:** ingestion 1.4 + legacy; semantic label parity between TS and Python;
   leakage tests; window/horizon experiment; per-class/macro-F1/confusion/majority baseline;
-  participant-held-out; ONNX parity/quantization; bundle verification.
+  held-out at the declared split unit (session until ADR-023; ADR-031); ONNX parity/quantization;
+  bundle verification.
 - **Acceptance criteria:** Workstream 40 exit criteria and the §13 model-preparation checklist; the
   exported semantic head loads in the browser and produces the configured output dimension; no
   future leakage; metrics reported with support.
@@ -969,7 +1016,9 @@ Framework generic mechanics plus testbed rules:
 - system intervention events are not user outcomes.
 
 Record `taskOutcome` alongside the generic `outcome`; do not replace the generic taxonomy in this
-phase.
+phase. `inspect_help` is recorded but is not one of the 14 target IDs: keep the exact-ID rule that
+produces it (it is what prevents `tooltip-region` from becoming `select_region`) and exclude those
+windows from training labels ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
 
 ### 6.6 Trace schema 1.4.0
 
@@ -1018,7 +1067,10 @@ Add a semantic target generator that:
   configured lookahead;
 - recognises committed changes, form submits, report selection, reset, navigation/backtrack;
 - uses exact IDs/roles and canonical action dedupe;
-- records label provenance (`source: trace_semantic_outcome` vs re-derived) and vocabulary version;
+- labels only the 14 target IDs; a window whose future outcome is `inspect_help` is excluded and
+  counted, never relabelled `NO_OUTCOME` ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md));
+- records label provenance (`source: trace_semantic_outcome` vs re-derived), the target-vocabulary
+  version and the recorded-vocabulary version it was derived from;
 - mirrors the TypeScript derivation on shared fixtures;
 - keeps the generic seven-class outcome for backward comparison.
 
@@ -1027,13 +1079,16 @@ Do not silently replace `target_outcome` with `task_outcome`; add fields and ver
 ### 7.3 Dataset, splits and class balance
 
 New dataset version (e.g. `v2.0.0-semantic`) with:
-- sequence `(T, 18)`, context `(6)`, `target_task_outcome` + ID, vocabulary version,
-  task definition version, provenance;
+- sequence `(T, 18)`, context `(6)`, `target_task_outcome` + ID, target-vocabulary version,
+  recorded-vocabulary version, task definition version, provenance;
 - retained generic `target_outcome`/`target_intervention` columns for legacy/ablation;
-- session/participant-bounded splits before window generation;
+- **session-bounded splits before window generation** — participant-bounded only when ADR-023
+  approves an identifier; the split unit is recorded in the manifest
+  ([ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md));
 - class weights derived on the training partition only;
 - per-partition semantic class distribution, absent-class declarations and majority baselines;
-- participant coverage and task coverage reporting.
+- per-partition task-level coverage reporting, and an excluded-window count for outcomes outside
+  the 14 IDs (`inspect_help`).
 
 ### 7.4 Window and horizon experiment
 
@@ -1054,8 +1109,8 @@ on a single aggregate.
 ### 7.5 Target-head architecture and training
 
 - Preserve `foundational_gru.pth` and the recurrent backbone.
-- Add `TargetTaskOutcomeHead` (or parameterised equivalent) with output dimension = semantic
-  vocabulary size (14 proposed).
+- Add `TargetTaskOutcomeHead` (or parameterised equivalent) with output dimension = 14, the
+  approved target vocabulary ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
 - Keep `TargetInterventionHead` and `bundle/v1.0.0` reproducible for comparison.
 - Training config: semantic taxonomy, head class count, history/lookahead, class weights, seed,
   split, dataset version.
@@ -1066,13 +1121,17 @@ on a single aggregate.
 
 - Per-class precision/recall/F1, macro-F1, weighted-F1, confusion matrix, support, majority
   baseline.
-- Participant-held-out and task-level performance; prediction lead time; calibration/reliability
-  where support allows.
+- Held-out performance at the declared split unit — session-held-out until ADR-023 approves a
+  participant identifier, participant-held-out only after that
+  ([ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md)) — plus task-level
+  performance, prediction lead time and calibration/reliability where support allows.
+  Participant-held-out generalisation is **NOT MEASURED** until an identifier exists.
 - Class distribution/imbalance and rare-class handling.
 - ONNX: inputs `(batch, T, 18)` + `(batch, 6)`, output `(batch, 14)`; quantized INT8; parity and
   size/latency measured.
-- Bundle v2 manifest: vocabulary/version, dataset version/hash, code commit, seed, environment,
-  metrics, input/output contract, artifact hashes.
+- Bundle v2 manifest: target-vocabulary version and the recorded-vocabulary version, dataset
+  version/hash, split unit, code commit, seed, environment, metrics, input/output contract,
+  artifact hashes.
 - Framework handoff: model URL/config points to the new artifact; framework reads vocabulary from
   the manifest/config, not hardcoded order.
 
@@ -1242,7 +1301,8 @@ claims; the deployment uses WASM.
 | PrefixSpan F-02 incorrectness | High | Dedicated phase; deterministic fixtures; no premature optimisation |
 | Payload target remains unmet | High | Record actual size; do not claim target met; defer reduction |
 | Browser coverage limited to Chromium | Medium | Record scope; manual checks in intended environment; no cross-browser claim |
-| Task/model leakage from task progress | High | Exclude lifecycle labels from model targets; participant-held-out evaluation |
+| Task/model leakage from task progress | High | Exclude lifecycle labels from model targets; session-bounded splits with task coverage, participant-bounded when ADR-023 lands ([ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md)) |
+| Runtime vocabulary wider than target vocabulary | Medium | Recorded/target split declared and versioned; `inspect_help` windows excluded and counted ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)) |
 | Supabase/egress policy regression | High | Provenance-gated collection tests; no new egress path |
 | Visual intervention judgments | Medium | Functional assertions + screenshots; human review; distinguish evidence |
 
@@ -1255,11 +1315,12 @@ claims; the deployment uses WASM.
 | 3 | Task timeout durations | Participant burden | 120/120/150/150 s placeholders; protocol decision |
 | 4 | Allow task replacement mid-trial? | Data integrity | Disable Start/condition changes while `In Progress`; explicit reset |
 | 5 | Keep intervention head alongside semantic head? | Payload/comparison | Keep old artifact for comparison; production uses semantic head after validation |
-| 6 | Exact semantic vocabulary approval | Model output dimension | 14 IDs in §3.4; approve before 4B |
+| 6 | Exact semantic vocabulary | Model output dimension | **Settled 2026-11-18:** 14 target IDs in §3.4; `inspect_help` recorded but not targeted ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)) |
 | 7 | Participant study protocol/counterbalancing | Validity | Deferred (ADR-014 D7); not part of this plan |
 | 8 | Browser scope | Deployment claim | Chromium current; state intended environment; no cross-browser claim |
 | 9 | Fast Gate pattern set | Gate behaviour | Derive after participant traces; validate in WS50 |
 | 10 | Reports catalogue visual treatment | UI scope | Existing styles; list + Open + current report; no counts |
+| 11 | Dataset split unit | Leakage control / evaluation claim | **Settled 2026-11-18:** session-bounded with task coverage; participant-bounded when ADR-023 lands ([ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md)) |
 
 ### 12.3 Deferred work
 
@@ -1303,12 +1364,16 @@ claims; the deployment uses WASM.
 ### Model preparation
 
 - [ ] Participant traces export/ingest reproducibly (1.4.0 + legacy).
-- [ ] Semantic outcomes recorded/versioned correctly.
+- [ ] Semantic outcomes recorded/versioned correctly, with the 14 target IDs distinguished from
+      the recorded `inspect_help` ID (ADR-030).
 - [ ] Training inputs use only information available at prediction time.
-- [ ] Participant/session/task leakage prevented.
+- [ ] Session-bounded splits prevent leakage; task-level coverage reported; participant-bounded
+      splits only after ADR-023 approves an identifier (ADR-031).
 - [ ] Outcome coverage and class imbalance measured.
 - [ ] Window/horizon choices evaluated on a small controlled set.
-- [ ] Semantic target head trained/evaluated on participant-held-out data.
+- [ ] Semantic target head trained/evaluated on held-out data at the declared split unit
+      (participant-held-out only once participant IDs exist; otherwise session-held-out and
+      explicitly declared — ADR-031).
 - [ ] ONNX model compatible with browser runtime and manifest/versioned.
 
 ### Fast Gate and arbitration
@@ -1399,7 +1464,7 @@ The semantic dataset/export commands are defined in 40.2–40.5 and must be reco
 | Configuration | `src/config/runtimeConfig.ts`, `src/config/pipelineConfig.json`, `model-preparation/src/config.yaml` |
 | Trace/collection/deploy | `src/telemetry/collection*.ts`, `src/telemetry/session.ts`, `docs/deploy/*` |
 | Model preparation | `model-preparation/src/*`, `model-preparation/tests/*`, `model-preparation/models/*` |
-| Prior decisions | `docs/decisions/ADR-001…ADR-024`, new ADR-025…ADR-029 |
+| Prior decisions | `docs/decisions/ADR-001…ADR-024`, new ADR-025…ADR-031 |
 | Assessment | `docs/assessments/task-diversification-ui-assessment.md` |
 
 ---

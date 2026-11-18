@@ -165,7 +165,7 @@ origin and a live Supabase project — is recorded as `NOT VERIFIED` in
 | [`docs/deploy/supabase-setup.md`](docs/deploy/supabase-setup.md) | Database setup and the RLS security model |
 | [`docs/architecture.md`](docs/architecture.md) | Implemented architecture, contracts and schemas |
 | [`docs/assessments/`](docs/assessments/) | The audits, the implementation record, and the deployment report |
-| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 … ADR-029) |
+| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 … ADR-031) |
 | [`docs/testbed/prd.md`](docs/testbed/prd.md) | Product requirements for the target UI |
 | [`docs/testbed/device-support.md`](docs/testbed/device-support.md) | Supported-device rule and pre-session entry gate |
 | [`AGENTS.md`](AGENTS.md) | Architectural constraints and engineering guidance |

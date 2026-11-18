@@ -18,6 +18,12 @@ intervention refinement. This workstream therefore starts after Phase 4B.
 - No-match behavior and confidence/strength semantics need explicit definition.
 - Fast and Slow gates do not yet return a shared normalized prediction contract (Workstream 20
   provides the contract; this workstream validates it end to end).
+- Assessment limitation #6 is only partly resolved. The semantic layer's exact-ID rule is in
+  place, but the **macro** mapper still classifies `tooltip-region` as `SELECT_REGION`, emits
+  `TABLE_ROW_SELECT` on non-selectable row hover, and has no producer for `BACKTRACK`,
+  `IDLE_DWELL` or `RAPID_SCROLL`; `TABLE_PAGE_*`/`TABLE_SORT` are unreachable and
+  `EXPAND_TOOLTIP` expands nothing visible. `RESET_FILTERS` and `OPEN_REPORT` are now produced by
+  the WS10 controls. Status detail: plan §2.8.
 
 ## Task index and order
 
