@@ -29,6 +29,14 @@ Phase 4 is split:
 - Foundation GRU, session-bounded splits, class weights, provenance manifest, training/eval,
   ONNX export and `bundle/v1.0.0` are implemented and must be preserved.
 - The scripted harness is updated in Workstream 30, not here.
+- **40.1–40.3 are implemented** (2026-11-19): 1.4.0 ingestion carries semantic/task fields; the
+  semantic dataset and manifest exist (14 target IDs, `inspect_help` excluded); the
+  window/horizon experiment is reproducible and provenance-scoped.
+- **Participant evidence exists but is provisional.** 39 participant sessions were exported from
+  Supabase (mis-uploaded as `scripted`), locally retrofitted with an audit manifest, and gated
+  by the trace verifier: 35 verified, 4 excluded for attribution/structural defects. The 40.3
+  re-run selected D (12×500 ms) provisionally; the scripted selection (C) was not confirmed.
+  No head has been trained.
 
 ## Task index and order
 
@@ -42,10 +50,11 @@ Phase 4 is split:
 
 ## Phase boundary
 
-**Do not start 40.4 before usable participant traces exist.** 40.1–40.3 may use scripted traces for
-pipeline verification; any result from that data is a pipeline/engineering result, not evidence
-about participants or usability. The previous five-class `bundle/v1.0.0` remains the historical
-artifact; do not overwrite it.
+**Do not start 40.4 until the participant configuration is re-confirmed.** 40.1–40.3 may use
+scripted traces for pipeline verification; any result from that data is a pipeline/engineering
+result, not evidence about participants or usability. The current participant set is provisional
+(35 verified sessions, no approved participant identifier, ~80% `NO_OUTCOME`). The previous
+five-class `bundle/v1.0.0` remains the historical artifact; do not overwrite it.
 
 Two target-side rules are fixed before 4A starts:
 
@@ -59,19 +68,20 @@ Two target-side rules are fixed before 4A starts:
 
 ## Checkpoints
 
-| After | Checkpoint |
-| --- | --- |
-| 40.3 | Semantic dataset, splits, class balance and window/horizon report are reproducible |
+| After | Checkpoint | Result |
+| --- | --- | --- |
+| 40.3 | Semantic dataset, splits, class balance and window/horizon report are reproducible | **Passed (provisional on participant evidence)** — scripted and participant reports; `v2.0.0-semantic` and `v2.1.0-participant` datasets validate |
 | 40.5 | Semantic head is trained/evaluated/exported; bundle v2 loads; old artifacts remain reproducible |
 
 ## Exit criteria
 
-- [ ] 1.4.0 traces ingest with semantic outcomes/task version; legacy versions still readable.
-- [ ] Semantic target generation is deterministic, labels only the 14 target IDs (excluding and
+- [x] 1.4.0 traces ingest with semantic outcomes/task version; legacy versions still readable.
+- [x] Semantic target generation is deterministic, labels only the 14 target IDs (excluding and
       counting `inspect_help` windows) and is mirrored by the TypeScript rules on shared fixtures.
-- [ ] Dataset v2 has semantic labels, provenance, session-bounded splits with task-level coverage,
+- [x] Dataset v2 has semantic labels, provenance, session-bounded splits with task-level coverage,
       and class weights from the training partition only.
-- [ ] Window/horizon experiment is small, pre-declared and reports per-outcome coverage/lead time.
+- [x] Window/horizon experiment is small, pre-declared and reports per-outcome coverage/lead time;
+      re-run on participant evidence (provisional).
 - [ ] Semantic target head is trained/evaluated with per-class/macro-F1/confusion/majority metrics
       and no future leakage, on the declared held-out split unit (session- or participant-bounded,
       stated explicitly).
@@ -89,6 +99,22 @@ python3 -m src.export --help
 ```
 
 Task-specific commands are in the task files.
+
+## Participant evidence (2026-11-19)
+
+| Item | Result |
+| --- | --- |
+| Export | 39 participant sessions (1.4.0, TD1–TD4) from Supabase, originally labelled `scripted` |
+| Retrofit | Local only; both provenance declarations corrected under recorded researcher authority; database untouched; `participantId` null (ADR-023) |
+| Verification | 35 verified; 4 excluded (`prediction_window_attribution` ×3, `structural_validity` ×1) |
+| 40.3 participant run | [report](../../../../../../model-preparation/docs/experiments/window-horizon-participant/window-horizon-report.md) — selected **D (12×500 ms, [500,1500])**, provisional; 12/14 classes with ≥5 train examples; `NO_OUTCOME` ≈ 80.9% of train |
+| Dataset | `v2.1.0-participant`, 3,603 examples, manifest validated; [summary](../../../../../../model-preparation/docs/experiments/participant-evidence/dataset-summary-v2.1.0-participant.json) |
+| 50.2 candidates | [participant-derived candidates](../../../../../../model-preparation/docs/experiments/participant-patterns/participant-pattern-candidates.md) — 159 patterns at ≥3-session support |
+| Retrofit / verification audit | [participant-evidence README](../../../../../../model-preparation/docs/experiments/participant-evidence/README.md) |
+
+The participant run does **not** confirm the scripted selection; the margin between the top
+configurations is 0.4 percentage points. 40.4 remains blocked until further collection and a
+re-confirmed configuration, and no participant-held-out claim is made (ADR-023, ADR-031).
 
 ## Risks
 

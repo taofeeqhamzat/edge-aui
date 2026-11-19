@@ -18,6 +18,11 @@ intervention refinement. This workstream therefore starts after Phase 4B.
 - No-match behavior and confidence/strength semantics need explicit definition.
 - Fast and Slow gates do not yet return a shared normalized prediction contract (Workstream 20
   provides the contract; this workstream validates it end to end).
+- Participant-derived candidate patterns now exist: 159 contiguous 2–4 symbol n-grams at
+  ≥3-session support, extracted from 35 verified participant sessions after collapsing
+  duplicate macro events and excluding unreachable/misleading symbols
+  (`model-preparation/docs/experiments/participant-patterns/`). The pattern set must be
+  validated from this evidence, not from the scripted canonical paths (open decision #9).
 - Assessment limitation #6 is only partly resolved. The semantic layer's exact-ID rule is in
   place, but the **macro** mapper still classifies `tooltip-region` as `SELECT_REGION`, emits
   `TABLE_ROW_SELECT` on non-selectable row hover, and has no producer for `BACKTRACK`,

@@ -1,17 +1,23 @@
 # Next-Milestone Implementation Plan — Edge-AUI
 
-- **Date:** 2026-11-16 (amended 2026-11-18)
+- **Date:** 2026-11-16 (amended 2026-11-19)
 - **Status:** Planning complete — no application code, configuration, model, dataset or deployment change was made
 - **Framework baseline:** `edge-aui-framework` branch `feat/refinement`, commit `25033a8`
 - **Model baseline:** `model-preparation` commit `cbab411`
 - **Authoritative inputs:** [`task-diversification-ui-assessment.md`](../../assessments/task-diversification-ui-assessment.md), [`revised-implementation-planning.md`](../../revised-implementation-planning.md), existing ADR register, both repositories' source and tests
-- **Plan version:** `1.1.0`
+- **Plan version:** `1.2.0`
 - **Amendment 1.1.0 (2026-11-18):** the semantic **target** vocabulary is pinned to the approved 14
   IDs; the runtime additionally records `inspect_help` as evidence and that ID is excluded from
   training targets ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
   Dataset splits are **session-bounded**, with task-level coverage reported
   ([ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md)). Assessment limitation #6's
   residual items remain open and are tracked in §2.8.
+- **Amendment 1.2.0 (2026-11-19):** participant traces now exist (39 exported; 35 verified after
+  a local provenance retrofit of a mislabelled export). 40.3 was re-run on participant evidence
+  and selects **D (12×500 ms) provisionally**; the scripted selection (C) is not confirmed.
+  `v2.1.0-participant` is the participant dataset, and Task 50.2's candidates are derived from
+  participant macro sequences. 40.4 remains blocked until further collection re-confirms the
+  configuration; no participant-held-out claim is made.
 
 **Evidence labels**
 
@@ -1318,7 +1324,7 @@ claims; the deployment uses WASM.
 | 6 | Exact semantic vocabulary | Model output dimension | **Settled 2026-11-18:** 14 target IDs in §3.4; `inspect_help` recorded but not targeted ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)) |
 | 7 | Participant study protocol/counterbalancing | Validity | Deferred (ADR-014 D7); not part of this plan |
 | 8 | Browser scope | Deployment claim | Chromium current; state intended environment; no cross-browser claim |
-| 9 | Fast Gate pattern set | Gate behaviour | Derive after participant traces; validate in WS50 |
+| 9 | Fast Gate pattern set | Gate behaviour | **Basis settled:** participant-derived candidates exist (159 at ≥3-session support, 35 sessions); 50.2 validates/declares them. Scripted-derived sequences are not the basis |
 | 10 | Reports catalogue visual treatment | UI scope | Existing styles; list + Open + current report; no counts |
 | 11 | Dataset split unit | Leakage control / evaluation claim | **Settled 2026-11-18:** session-bounded with task coverage; participant-bounded when ADR-023 lands ([ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md)) |
 
