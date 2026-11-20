@@ -62,7 +62,7 @@
   },
   "sequence_length": 12,
   "seed": 42,
-  "code_commit": "333f975d4c118969a820dfd149bf0dc030bd022e",
+  "code_commit": "49105ef0a78395e7603c83935b8d1a447cab1eb7",
   "environment": {
     "python": "3.13.12",
     "pytorch": "2.15.0",
@@ -847,14 +847,14 @@
     "fp32": {
       "file_size_bytes": 189907,
       "file_size_mb": 0.18110942840576172,
-      "avg_latency_ms": 0.04246700962539762,
-      "p95_latency_ms": 0.04342527827247977
+      "avg_latency_ms": 0.04207327059702948,
+      "p95_latency_ms": 0.04287710617063567
     },
     "int8": {
       "file_size_bytes": 177583,
       "file_size_mb": 0.1693563461303711,
-      "avg_latency_ms": 0.04325950954807922,
-      "p95_latency_ms": 0.04387708613649011
+      "avg_latency_ms": 0.051558220002334565,
+      "p95_latency_ms": 0.08620144362794235
     }
   },
   "training_config": "semantic_head_e2_training.json",
