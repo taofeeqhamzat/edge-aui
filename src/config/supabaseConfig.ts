@@ -27,14 +27,34 @@ export interface SupabaseCollectionConfig {
   configured: boolean;
 }
 
-function readEnv(key: string): string | null {
+function readString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+function readMetaEnv(key: string): string | null {
   try {
     const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
-    const value = env?.[key];
-    return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+    return readString(env?.[key]);
   } catch {
     return null;
   }
+}
+
+function readProcessEnv(key: string): string | null {
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return readString(process.env[key]);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function readEnv(key: string): string | null {
+  return readMetaEnv(key) ?? readProcessEnv(key);
 }
 
 function parseMode(raw: string | null): CollectionMode {
@@ -47,6 +67,22 @@ function parseMode(raw: string | null): CollectionMode {
     );
   }
   return 'scripted';
+}
+
+function sanitizeUrl(rawUrl: string | null | undefined): string | null {
+  if (!rawUrl) return null;
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      throw new Error('unsupported protocol');
+    }
+    return parsed.toString().replace(/\/+$/, '');
+  } catch {
+    console.warn(
+      `[SupabaseCollection] VITE_SUPABASE_URL is not a valid absolute URL; collection is disabled.`
+    );
+    return null;
+  }
 }
 
 /**
@@ -62,30 +98,15 @@ export function resolveSupabaseCollectionConfig(
   const anonKey = overrides.anonKey !== undefined ? overrides.anonKey : readEnv('VITE_SUPABASE_ANON_KEY');
   const rawMode =
     overrides.mode !== undefined ? (overrides.mode as string) : readEnv('VITE_AUI_COLLECTION_MODE');
-  // Parsed after the override is applied, so an invalid explicit mode is caught too.
-  const mode = parseMode(rawMode ?? null);
 
-  let url: string | null = rawUrl ?? null;
-  if (url !== null) {
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-        throw new Error('unsupported protocol');
-      }
-      url = parsed.toString().replace(/\/+$/, '');
-    } catch {
-      console.warn(
-        `[SupabaseCollection] VITE_SUPABASE_URL is not a valid absolute URL; collection is disabled.`
-      );
-      url = null;
-    }
-  }
+  const mode = parseMode(rawMode ?? null);
+  const url = sanitizeUrl(rawUrl);
 
   return {
     url,
-    anonKey,
+    anonKey: anonKey ?? null,
     mode,
-    configured: url !== null && anonKey !== null && mode !== 'off'
+    configured: Boolean(url && anonKey && mode !== 'off')
   };
 }
 
