@@ -19,10 +19,10 @@ Phase 4 is split:
 - `target_generation.py` derives the generic seven-class outcome.
 - `target_dataset.py` labels examples with the five-class scripted intervention policy; its
   `target_outcome` is the generic outcome.
-- `config.yaml` has generic `outcome_taxonomy` (7), `target_intervention_vocabulary` (5) and
-  `training.target_classes: 5`.
-- `TargetInterventionHead` outputs five classes; `export.py` validates a five-class
-  `intervention_logits` graph.
+- `config.yaml` has generic `outcome_taxonomy` (7), `target_intervention_vocabulary` (5),
+  `training.target_classes: 5` and `training.semantic_classes: 14`.
+- `TargetInterventionHead` outputs five classes and `TargetSemanticHead` outputs the 14 approved
+  target IDs; `export.py` validates both graphs.
 - The runtime records 15 semantic IDs (the 14 approved target IDs plus `inspect_help`); the target
   vocabulary is the 14, so dataset labels and the head's output dimension are 14
   ([ADR-030](../../../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
@@ -103,8 +103,11 @@ Two target-side rules are fixed before 4A starts:
 cd model-preparation
 python3 -m pytest tests -q
 python3 -m src.target_dataset --help
-python3 -m src.training --help
+python3 -m src.semantic_training --help
 python3 -m src.export --help
+
+cd ../edge-aui-framework
+npx vitest run tests/gate_vocabulary.test.ts tests/onnx_contract.test.ts tests/intervention_head_contract.test.ts
 ```
 
 Task-specific commands are in the task files.
