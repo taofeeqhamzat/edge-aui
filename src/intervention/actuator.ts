@@ -634,7 +634,7 @@ export class UIActuator {
     acceptBtn.className = 'edge-aui-assistance-accept';
     acceptBtn.setAttribute('aria-label', 'Acknowledge guidance tip');
     acceptBtn.setAttribute('type', 'button');
-    acceptBtn.textContent = 'Got it';
+    acceptBtn.textContent = 'OK';
 
     const dismissBtn = doc.createElement('button');
     dismissBtn.className = 'edge-aui-assistance-dismiss';

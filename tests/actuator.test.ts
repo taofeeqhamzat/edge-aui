@@ -213,10 +213,10 @@ describe('Task 8.3: UIActuator (Non-Destructive & Accessible Adaptation)', () =>
     expect(banner).not.toBeNull();
     expect(banner?.textContent).toContain('Next step: Open Region filter');
 
-    // Click "Got it" accept button
+    // Click "OK" accept button
     const acceptBtn = banner?.querySelector('.edge-aui-assistance-accept') as HTMLButtonElement;
     expect(acceptBtn).not.toBeNull();
-    expect(acceptBtn.textContent).toBe('Got it');
+    expect(acceptBtn.textContent).toBe('OK');
     acceptBtn.click();
 
     // Banner should be removed
