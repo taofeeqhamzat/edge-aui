@@ -15,7 +15,7 @@
 > Retained below as the historical record of what was produced at that time.
 
 - **Date:** 2026-09-29
-- **Task:** Phase G Task 6.2 ([`docs/plan/1/tasks/6.2.md`](../plan/1/tasks/6.2.md))
+- **Task:** Phase G Task 6.2 (historical `docs/plan/1/tasks/6.2.md`)
 - **Decision Informs:** [ADR-006: TargetInterventionHead Interface](../decisions/ADR-006-target-intervention-head-interface.md), [ADR-010: Privacy and Retention Model](../decisions/ADR-010-privacy-retention-model.md), [ADR-014: Deferred Target-UI Features](../decisions/ADR-014-deferred-target-ui-features.md)
 - **Status:** Superseded — see the disclaimer above
 
