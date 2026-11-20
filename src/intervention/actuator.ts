@@ -38,6 +38,12 @@ export interface UIActuatorOptions {
   defaultAssistanceText?: string;
   /** Resolves a declared target reference to a DOM element. */
   targetResolver?: ActuationTargetResolver;
+  /**
+   * Whether clearing a simplify_options adaptation re-expands the accordions it collapsed.
+   * Default is true in raw UIActuator for backward compatibility, but false in AdaptiveRuntime
+   * so the simplified layout is retained for the user.
+   */
+  restoreCollapsedSectionsOnClear?: boolean;
 }
 
 export type InterventionEventListener = (event: InterventionEvent) => void;
@@ -148,6 +154,7 @@ export class UIActuator {
   private root: Document | HTMLElement | null;
   private defaultAssistanceText: string;
   private readonly targetResolver?: ActuationTargetResolver;
+  private readonly restoreCollapsedSectionsOnClear: boolean;
   private activeAdaptations = new Map<InterventionType, ReversionRecord>();
   private eventListeners = new Set<InterventionEventListener>();
 
@@ -157,6 +164,7 @@ export class UIActuator {
       options.defaultAssistanceText ??
       'Need assistance? Guided steps and contextual filters are available to help complete the task.';
     this.targetResolver = options.targetResolver;
+    this.restoreCollapsedSectionsOnClear = options.restoreCollapsedSectionsOnClear ?? true;
   }
 
   /**
@@ -468,10 +476,13 @@ export class UIActuator {
         } else {
           simplifiedSurface.removeAttribute('class');
         }
-        // Restore previously open accordions
-        for (const item of collapsedItems) {
-          if (item.btn.getAttribute('aria-expanded') !== 'true') {
-            item.btn.click();
+        // Re-expand previously open accordions only when explicitly configured.
+        // By default, the simplification is retained so the UI does not jarringly re-complicate itself.
+        if (this.restoreCollapsedSectionsOnClear) {
+          for (const item of collapsedItems) {
+            if (item.btn.getAttribute('aria-expanded') !== 'true') {
+              item.btn.click();
+            }
           }
         }
         // Guarantee focus integrity is maintained upon restoration

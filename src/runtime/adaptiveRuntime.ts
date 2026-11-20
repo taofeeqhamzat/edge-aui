@@ -133,6 +133,8 @@ export interface AdaptiveRuntimeOptions {
   slowGateMode?: 'mock' | 'onnx';
   /** Manifest describing the model artifacts and their vocabularies. Overrides defaults. */
   manifest?: SlowGateManifest;
+  /** Whether clearing a simplify_options adaptation re-expands collapsed accordions. Default false. */
+  restoreCollapsedSectionsOnClear?: boolean;
   /** URL of the foundation ONNX graph. Defaults to the bundled INT8 artifact. */
   modelUrl?: string;
   /** URL of the learned intervention head ONNX graph. Defaults to /models/intervention_head_int8.onnx. */
@@ -349,7 +351,8 @@ export class AdaptiveRuntime {
     );
     this.actuator = new UIActuator({
       defaultAssistanceText: this.config.actuation.defaultAssistanceText,
-      targetResolver: options.targetResolver
+      targetResolver: options.targetResolver,
+      restoreCollapsedSectionsOnClear: options.restoreCollapsedSectionsOnClear ?? false
     });
 
     if (options.autoStart) {
@@ -940,7 +943,7 @@ export class AdaptiveRuntime {
         fastPattern: result.fastDecision.matchedPattern,
         intervention: result.intervention?.type,
         corpusSize: this.getMacroSequences().length,
-        slowOutcome: result.slowResult?.outcome,
+        slowOutcome: result.slowResult?.prediction?.outcomeId ?? result.slowResult?.outcome,
         slowConfidence: result.slowResult?.confidence
       };
 
@@ -953,9 +956,10 @@ export class AdaptiveRuntime {
         fastGateCorpusSize: macroCorpus.length,
         slowGateStatus: {
           called: result.matchedGate !== 'fast',
-          outcome: result.slowResult?.outcome,
-          confidence: result.slowResult?.confidence
+          outcome: result.slowResult?.prediction?.outcomeId ?? result.slowResult?.outcome,
+          confidence: result.slowResult?.prediction?.confidence ?? result.slowResult?.confidence
         },
+        predictedOutcome: result.prediction?.outcomeId,
         inferenceLatencyMs: result.latencyMs,
         latestPredictionId: predictionId,
         matchedGate: result.matchedGate,

@@ -113,9 +113,34 @@ describe('Task 8.3: UIActuator (Non-Destructive & Accessible Adaptation)', () =>
     // Region accordion contains focused select -> must NOT be collapsed!
     expect(regionBtn.getAttribute('aria-expanded')).toBe('true');
 
-    // Clearing restores date accordion
+    // Clearing restores date accordion when restoreCollapsedSectionsOnClear is true (default)
     actuator.clear(cmd);
     expect(dateBtn.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('retains simplified collapsed accordions on clear when restoreCollapsedSectionsOnClear is false', () => {
+    const customActuator = createUIActuator({ root: container, restoreCollapsedSectionsOnClear: false });
+    const dateBtn = container.querySelector('[data-aui-component="filter-date"]') as HTMLElement;
+    dateBtn.setAttribute('aria-expanded', 'true');
+    dateBtn.onclick = () => {
+      const open = dateBtn.getAttribute('aria-expanded') === 'true';
+      dateBtn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    };
+
+    const cmd = createInterventionCommand({
+      type: 'simplify_options',
+      targetComponentId: 'filter-drawer',
+      source: 'slow',
+      confidence: 0.90
+    });
+
+    customActuator.apply(cmd);
+    expect(dateBtn.getAttribute('aria-expanded')).toBe('false');
+
+    // Clearing removes visual tags but retains the simplified collapsed state
+    customActuator.clear(cmd);
+    expect(dateBtn.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelector('[data-aui-component="filter-drawer"]')?.classList.contains('edge-aui-simplified')).toBe(false);
   });
 
   it('applies expand_tooltip non-destructively and restores on clear', () => {
