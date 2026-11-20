@@ -15,8 +15,8 @@ intervention refinement. This workstream therefore starts after Phase 4B.
   `max_patterns`), counts support per sequence, reports conditional confidence and returns a
   deterministic order. Quality Assessment 2 finding F-02 is resolved for the miner.
 - The reported audit corpus (nine short sequences, support 2) at the old effective bounds
-  returns **9 825 patterns** at p95 27.3 ms; the production bounds return **32 patterns** at
-  p95 0.35 ms. Memory and the full case table:
+  returns **9 825 patterns** at p95 28.6 ms; the production bounds return **32 patterns** at
+  p95 0.38 ms. Memory and the full case table:
   [`docs/benchmarks/fastgate-mining.md`](../../../benchmarks/fastgate-mining.md).
 - The Fast Gate resolves a mined pattern through an application **declaration set**
   (`src/gates/fast/patternDeclaration.ts`) that carries the semantic outcome and the measured
@@ -78,17 +78,17 @@ npm run benchmark:fastgate
 ## Measurement record
 
 `npm run benchmark:fastgate` writes `docs/benchmarks/fastgate-mining.json` and `.md` from the
-committed WASM package. Measured 2026-11-20 on an Apple M1, Node v26.13.1, commit `72424e8`:
+committed WASM package. Measured 2026-11-20 on an Apple M1, Node v26.13.1, commit `5b427d1`:
 
 | Case | Corpus | Bounds (support / length / patterns) | Patterns | p95 ms |
 | --- | --- | --- | --- | --- |
-| `live_pre_fix` | 9 × 18 | 2 / 8 / 1 000 000 | 9 825 | 27.331 |
-| `bounded_production` | 35 × 18 | 2 / 4 / 32 | 32 (cap) | 0.351 |
-| `bounded_evidence_floor` | 35 × 18 | 3 / 4 / 32 | 32 (cap) | 0.319 |
-| `bounded_worst_corpus` | 40 × 60 | 2 / 4 / 32 | 32 (cap) | 1.159 |
+| `live_pre_fix` | 9 × 18 | 2 / 8 / 1 000 000 | 9 825 | 28.588 |
+| `bounded_production` | 35 × 18 | 2 / 4 / 32 | 32 (cap) | 0.382 |
+| `bounded_evidence_floor` | 35 × 18 | 3 / 4 / 32 | 32 (cap) | 0.280 |
+| `bounded_worst_corpus` | 40 × 60 | 2 / 4 / 32 | 32 (cap) | 1.206 |
 
 The browser run of `npm run benchmark:runtime` independently measured `PrefixSpan mining` at
-p95 **0.405 ms** over 84 in-session calls, so the Node measurement above is not the only
+p95 **0.665 ms** over 82 in-session calls, so the Node measurement above is not the only
 evidence. `NOT MEASURED`: Total Blocking Time as a Lab metric, the 20 MB browser memory
 budget, worker head-of-line blocking and deployed end-to-end latency. No historical latency
 value is reused.
@@ -138,8 +138,8 @@ value is reused.
   2 tests in `trial_completion_upload.test.ts` without it). Both sets reproduce at commit
   `72424e8`, so neither is caused by this workstream.
 - `npm run benchmark:runtime`: succeeded. Browser `PrefixSpan mining` measured p95
-  **0.405 ms** over 84 calls (mean 0.714 ms, max 22.745 ms); per-window pipeline p95
-  **8.07 ms**; ONNX inference p95 1.395 ms; one long task (>50 ms) during the run. The
+  **0.665 ms** over 82 calls (mean 1.138 ms, max 36.82 ms); per-window pipeline p95
+  **6.545 ms**; ONNX inference p95 1.445 ms; one long task (>50 ms) during the run. The
   refreshed report is `docs/benchmarks/runtime-benchmark.md`.
 - `npm run benchmark:fastgate`: wrote `docs/benchmarks/fastgate-mining.{json,md}`; the table
   above is copied from it.

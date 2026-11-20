@@ -1,69 +1,61 @@
 {
-  "timestamp": "2026-09-26T02:13:29.273Z",
-  "gitCommit": "aa9ab1654dfdde5aaea56bfb6ee4435ca7e27ce8",
+  "timestamp": "2026-11-20T10:50:07.099Z",
+  "gitCommit": "5b427d1d84f6a2515409e26e34e94f0e20d1f0f2",
   "environment": {
     "os": {
       "platform": "darwin",
       "arch": "arm64",
-      "release": "27.0.0"
+      "release": "27.3.0"
     },
     "cpu": {
       "model": "Apple M1",
       "cores": 8
     },
-    "node": "v26.4.0",
-    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "node": "v26.13.1",
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
     "webgpuAvailable": true,
-    "executionProvider": "webgpu",
+    "executionProvider": "wasm",
     "condition": "adaptive"
   },
   "tolerance": "±10% on identical hardware under uniform CPU governor",
   "artifactSizes": {
     "mainBundle": {
-      "totalBytes": 291304,
-      "totalKB": 284.48,
+      "totalBytes": 383276,
+      "totalKB": 374.29,
       "files": [
         {
-          "file": "index-CEYG-w_0.css",
-          "bytes": 9047
+          "file": "index-BWZheDIZ.js",
+          "bytes": 360941
         },
         {
-          "file": "index-CyjAJGkR.js",
-          "bytes": 282257
+          "file": "index-YF-PvKH3.css",
+          "bytes": 22335
         }
       ],
       "status": "Measured (filesystem stat of Vite entry chunk)"
     },
     "workerBundle": {
-      "totalBytes": 831529,
-      "totalKB": 812.04,
+      "totalBytes": 54730,
+      "totalKB": 53.45,
       "files": [
         {
-          "file": "core-BpmbIEae.js",
-          "bytes": 16502
+          "file": "core-CR8XpsCk.js",
+          "bytes": 19416
         },
         {
-          "file": "entry-BIDoNEdN.js",
-          "bytes": 21856
-        },
-        {
-          "file": "ort.bundle.min-Be8iBYUy.js",
-          "bytes": 397834
-        },
-        {
-          "file": "ort.bundle.min-CHtCoB-i.js",
-          "bytes": 395337
+          "file": "entry-DUv0UYUz.js",
+          "bytes": 35314
         }
       ],
       "status": "Measured (filesystem stat of Vite worker chunks)"
     },
     "wasmPayload": {
-      "totalBytes": 26941552,
-      "totalKB": 26310.11,
+      "totalBytes": 13593987,
+      "totalKB": 13275.38,
       "files": [
         {
-          "file": "ort-wasm-simd-threaded.jsep-DC5y_g6C.wasm",
-          "bytes": 26827543
+          "file": "ort-wasm-simd-threaded-Cpm-ox6i.wasm",
+          "bytes": 13479978
         },
         {
           "file": "wasm_vectorizer_bg-Chz1A_gQ.wasm",
@@ -73,9 +65,17 @@
       "status": "Measured (filesystem stat of compiled WebAssembly binary)"
     },
     "modelArtifacts": {
-      "totalBytes": 339562,
-      "totalKB": 331.6,
+      "totalBytes": 1071458,
+      "totalKB": 1046.35,
       "files": [
+        {
+          "file": "intervention_head.onnx",
+          "bytes": 187567
+        },
+        {
+          "file": "intervention_head_int8.onnx",
+          "bytes": 176839
+        },
         {
           "file": "model.onnx",
           "bytes": 169356
@@ -83,13 +83,21 @@
         {
           "file": "model_int8.onnx",
           "bytes": 170206
+        },
+        {
+          "file": "task_outcome_head_v2.onnx",
+          "bytes": 189907
+        },
+        {
+          "file": "task_outcome_head_v2_int8.onnx",
+          "bytes": 177583
         }
       ],
       "status": "Measured (filesystem stat of ONNX model files)"
     },
     "totalClientPayload": {
-      "totalBytes": 28403947,
-      "totalKB": 27738.23,
+      "totalBytes": 15103451,
+      "totalKB": 14749.46,
       "architecturalBudgetKB": 500,
       "status": "Measured (sum of bundle chunks, wasm, and model artifacts)"
     }
@@ -97,231 +105,218 @@
   "runtimeInstrumentation": {
     "stages": {
       "MicroTensor extraction:main": {
-        "count": 53,
-        "maxMs": 0.655,
-        "meanMs": 0.0727,
-        "minMs": 0.005,
-        "p50Ms": 0.045,
-        "p95Ms": 0.17,
+        "count": 56,
+        "maxMs": 0.895,
+        "meanMs": 0.0539,
+        "minMs": 0.01,
+        "p50Ms": 0.035,
+        "p95Ms": 0.08,
         "side": "main",
         "stage": "MicroTensor extraction",
-        "totalMs": 3.855,
+        "totalMs": 3.02,
         "classification": "latency-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "ONNX inference:model": {
-        "count": 27,
-        "maxMs": 66.565,
-        "meanMs": 8.9007,
-        "minMs": 4.035,
-        "p50Ms": 6.025,
-        "p95Ms": 18.165,
+        "count": 82,
+        "maxMs": 2.065,
+        "meanMs": 0.6415,
+        "minMs": 0.29,
+        "p50Ms": 0.535,
+        "p95Ms": 1.445,
         "side": "model",
         "stage": "ONNX inference",
-        "totalMs": 240.32,
+        "totalMs": 52.605,
         "classification": "latency-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "PrefixSpan mining:wasm": {
-        "count": 60,
-        "maxMs": 226.615,
-        "meanMs": 45.5445,
-        "minMs": 0.31,
-        "p50Ms": 11.39,
-        "p95Ms": 167.94,
+        "count": 82,
+        "maxMs": 36.82,
+        "meanMs": 1.1383,
+        "minMs": 0.08,
+        "p50Ms": 0.17,
+        "p95Ms": 0.665,
         "side": "wasm",
         "stage": "PrefixSpan mining",
-        "totalMs": 2732.67,
-        "classification": "latency-bound",
-        "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
-      },
-      "actuation:main": {
-        "count": 1,
-        "maxMs": 0.585,
-        "meanMs": 0.585,
-        "minMs": 0.585,
-        "p50Ms": 0.585,
-        "p95Ms": 0.585,
-        "side": "main",
-        "stage": "actuation",
-        "totalMs": 0.585,
+        "totalMs": 93.34,
         "classification": "latency-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "event capture:main": {
-        "count": 404,
-        "maxMs": 2.44,
-        "meanMs": 0.233,
-        "minMs": 0.04,
-        "p50Ms": 0.15,
-        "p95Ms": 0.525,
+        "count": 389,
+        "maxMs": 1.475,
+        "meanMs": 0.1437,
+        "minMs": 0.035,
+        "p50Ms": 0.125,
+        "p95Ms": 0.235,
         "side": "main",
         "stage": "event capture",
-        "totalMs": 94.13,
+        "totalMs": 55.895,
         "classification": "throughput-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "event normalisation:main": {
-        "count": 404,
-        "maxMs": 2.285,
-        "meanMs": 0.2238,
-        "minMs": 0.04,
-        "p50Ms": 0.145,
-        "p95Ms": 0.495,
+        "count": 389,
+        "maxMs": 1.355,
+        "meanMs": 0.1368,
+        "minMs": 0.03,
+        "p50Ms": 0.12,
+        "p95Ms": 0.22,
         "side": "main",
         "stage": "event normalisation",
-        "totalMs": 90.41,
+        "totalMs": 53.2,
         "classification": "throughput-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "macro sequence construction:main": {
-        "count": 27,
-        "maxMs": 0.45,
-        "meanMs": 0.0965,
-        "minMs": 0.015,
-        "p50Ms": 0.065,
-        "p95Ms": 0.44,
+        "count": 13,
+        "maxMs": 0.215,
+        "meanMs": 0.0546,
+        "minMs": 0.01,
+        "p50Ms": 0.03,
+        "p95Ms": 0.215,
         "side": "main",
         "stage": "macro sequence construction",
-        "totalMs": 2.605,
+        "totalMs": 0.71,
         "classification": "latency-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "policy evaluation:main": {
-        "count": 5,
-        "maxMs": 0.125,
-        "meanMs": 0.038,
-        "minMs": 0.005,
+        "count": 4,
+        "maxMs": 0.015,
+        "meanMs": 0.0125,
+        "minMs": 0.01,
         "p50Ms": 0.015,
-        "p95Ms": 0.125,
+        "p95Ms": 0.015,
         "side": "main",
         "stage": "policy evaluation",
-        "totalMs": 0.19,
+        "totalMs": 0.05,
         "classification": "latency-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "trace recording:main": {
-        "count": 579,
-        "maxMs": 0.03,
-        "meanMs": 0.0019,
+        "count": 594,
+        "maxMs": 0.035,
+        "meanMs": 0.0015,
         "minMs": 0,
         "p50Ms": 0,
         "p95Ms": 0.005,
         "side": "main",
         "stage": "trace recording",
-        "totalMs": 1.09,
+        "totalMs": 0.865,
         "classification": "latency-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "window assignment:main": {
-        "count": 404,
-        "maxMs": 0.11,
-        "meanMs": 0.003,
+        "count": 389,
+        "maxMs": 0.075,
+        "meanMs": 0.0022,
         "minMs": 0,
         "p50Ms": 0,
-        "p95Ms": 0.01,
+        "p95Ms": 0.005,
         "side": "main",
         "stage": "window assignment",
-        "totalMs": 1.22,
+        "totalMs": 0.865,
         "classification": "latency-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "window assignment:worker": {
-        "count": 55,
-        "maxMs": 0.14,
-        "meanMs": 0.0267,
+        "count": 56,
+        "maxMs": 0.055,
+        "meanMs": 0.014,
         "minMs": 0.005,
-        "p50Ms": 0.015,
-        "p95Ms": 0.095,
+        "p50Ms": 0.01,
+        "p95Ms": 0.04,
         "side": "worker",
         "stage": "window assignment",
-        "totalMs": 1.47,
+        "totalMs": 0.785,
         "classification": "latency-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       },
       "worker message/transfer:transfer": {
-        "count": 112,
-        "maxMs": 335.57,
-        "meanMs": 29.935,
-        "minMs": 0.11,
-        "p50Ms": 1.855,
-        "p95Ms": 239.815,
+        "count": 110,
+        "maxMs": 75.77,
+        "meanMs": 2.2146,
+        "minMs": 0.115,
+        "p50Ms": 0.405,
+        "p95Ms": 6.46,
         "side": "transfer",
         "stage": "worker message/transfer",
-        "totalMs": 3352.725,
+        "totalMs": 243.605,
         "classification": "latency-bound",
         "status": "Measured (high-resolution window.__EDGE_AUI__.timings())"
       }
     },
-    "totalRecordedStages": 12,
+    "totalRecordedStages": 11,
     "status": "Measured"
   },
   "endToEndPerWindowLatency": {
-    "meanMs": 30.011,
-    "p95Ms": 239.995,
+    "meanMs": 2.271,
+    "p95Ms": 6.545,
     "components": {
-      "windowAssignmentMs": 0.003,
-      "microtensorExtractionMs": 0.0727,
-      "workerTransferMs": 29.935
+      "windowAssignmentMs": 0.0022,
+      "microtensorExtractionMs": 0.0539,
+      "workerTransferMs": 2.2146
     },
     "classification": "latency-bound",
     "status": "Measured"
   },
   "transferOverhead": {
-    "meanTransferMs": 29.935,
-    "shareOfPerWindowLatencyPercent": 99.75,
+    "meanTransferMs": 2.2146,
+    "shareOfPerWindowLatencyPercent": 97.52,
     "classification": "latency-bound",
     "status": "Measured"
   },
   "predictionLatency": {
-    "samples": 31,
-    "meanMs": 82.369,
-    "p50Ms": 25.18,
-    "p95Ms": 285.035,
-    "maxMs": 335.415,
+    "samples": 42,
+    "meanMs": 2.41,
+    "p50Ms": 0.895,
+    "p95Ms": 6.335,
+    "maxMs": 38.625,
     "classification": "latency-bound",
     "status": "Measured"
   },
   "throughput": {
-    "eventsPerSecond": 30.6,
-    "windowsPerSecond": 6.31,
+    "eventsPerSecond": 30.9,
+    "windowsPerSecond": 6.9,
     "totalEvents": 300,
-    "totalWindows": 62,
-    "interactionDurationMs": 9818.48,
+    "totalWindows": 67,
+    "interactionDurationMs": 9710.93,
     "classification": "throughput-bound",
     "status": "Measured"
   },
   "instrumentationOverhead": {
-    "instrumentedInteractionMs": 9818.48,
-    "uninstrumentedInteractionMs": 9780.85,
-    "macroOverheadMs": 37.63,
-    "macroOverheadPercent": 0.38,
-    "microOverheadPerCallUs": 12.651,
+    "instrumentedInteractionMs": 9710.93,
+    "uninstrumentedInteractionMs": 9729.73,
+    "macroOverheadMs": -18.8,
+    "macroOverheadPercent": -0.19,
+    "microOverheadPerCallUs": 12.187,
     "classification": "throughput-bound",
     "status": "Measured"
   },
   "browserPerformance": {
-    "baselineFps": 30.7,
-    "instrumentedFps": 30,
-    "uninstrumentedFps": 30.1,
-    "fpsDelta": -0.1,
+    "baselineFps": 60.9,
+    "instrumentedFps": 60.1,
+    "uninstrumentedFps": 60,
+    "fpsDelta": 0.1,
     "longTaskCount": 1,
     "longTasks": [
       {
-        "durationMs": 125,
+        "durationMs": 82,
         "name": "self",
-        "startTime": 5508.34
+        "startTime": 5314.17
       }
     ],
     "classification": "latency-bound",
     "status": "Measured"
   },
   "memory": {
-    "usedJSHeapMBBefore": 9.693,
-    "usedJSHeapMBAfter": 14.219,
-    "heapDeltaMB": 4.526,
-    "totalJSHeapMB": 18.514,
-    "windowsProcessed": 62,
+    "usedJSHeapMBBefore": 10.875,
+    "usedJSHeapMBAfter": 13.872,
+    "heapDeltaMB": 2.997,
+    "totalJSHeapMB": 15.817,
+    "windowsProcessed": 67,
     "classification": "throughput-bound",
     "status": "Measured"
   },
