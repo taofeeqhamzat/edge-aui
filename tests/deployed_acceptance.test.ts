@@ -121,6 +121,8 @@ describe('Deployment asset inventory', () => {
     expect(files.some((f) => /wasm_vectorizer_bg.*\.wasm$/.test(f))).toBe(true);
     expect(files).toContain(path.join('models', 'model_int8.onnx'));
     expect(files).toContain(path.join('models', 'intervention_head_int8.onnx'));
+    expect(files).toContain(path.join('models', 'task_outcome_head_v2_int8.onnx'));
+    expect(files).toContain(path.join('models', 'task_outcome_head_v2.bundle.json'));
   });
 
   it.skipIf(!distBuilt)('ships cross-origin isolation headers, which the deployed origin needs', () => {
