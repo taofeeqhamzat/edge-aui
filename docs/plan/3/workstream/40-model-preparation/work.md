@@ -32,11 +32,17 @@ Phase 4 is split:
 - **40.1–40.3 are implemented** (2026-11-19): 1.4.0 ingestion carries semantic/task fields; the
   semantic dataset and manifest exist (14 target IDs, `inspect_help` excluded); the
   window/horizon experiment is reproducible and provenance-scoped.
-- **Participant evidence exists but is provisional.** 39 participant sessions were exported from
-  Supabase (mis-uploaded as `scripted`), locally retrofitted with an audit manifest, and gated
-  by the trace verifier: 35 verified, 4 excluded for attribution/structural defects. The 40.3
-  re-run selected D (12×500 ms) provisionally; the scripted selection (C) was not confirmed.
-  No head has been trained.
+- **Participant evidence (2026-11-20):** 92 Supabase sessions exported, all schema 1.4.0 and
+  untruncated. 44 trace bodies still declared `scripted` (upload-mode oversight); they were
+  corrected on the exported copy under a recorded researcher authority and the whole set is
+  participant-declared. The framework verifier passed 77 and excluded 15 capture defects.
+  Dataset `v2.2.0-participant` has 9,686 examples from 77 session-bounded splits, and the 40.3
+  re-run selected **D (12×500 ms, [500,1500])** again, still provisional.
+- **40.4–40.5 are implemented** (2026-11-20). A 14-class `TargetSemanticHead` was trained in the
+  E1/E2/E3 freeze/partial/full ablation; E2 was selected on validation macro-F1 (test macro-F1
+  0.1297 vs majority 0.0841, accuracy 0.1271 vs 0.8603). ONNX/INT8 export, bundle v2 and the
+  framework manifest handoff are in place. These are participant-derived engineering results,
+  not participant-held-out or user-benefit evidence.
 
 ## Task index and order
 
@@ -50,11 +56,13 @@ Phase 4 is split:
 
 ## Phase boundary
 
-**Do not start 40.4 until the participant configuration is re-confirmed.** 40.1–40.3 may use
-scripted traces for pipeline verification; any result from that data is a pipeline/engineering
-result, not evidence about participants or usability. The current participant set is provisional
-(35 verified sessions, no approved participant identifier, ~80% `NO_OUTCOME`). The previous
-five-class `bundle/v1.0.0` remains the historical artifact; do not overwrite it.
+**40.4 was started only after the participant configuration was re-run on the enlarged set.**
+40.1–40.3 may use scripted traces for pipeline verification; any result from that data is a
+pipeline/engineering result, not evidence about participants or usability. The current
+participant set is provisional (77 verified sessions, no approved participant identifier,
+~83% `NO_OUTCOME` in the selected training partition). The previous five-class
+`bundle/v1.0.0` remains the historical artifact; it was not overwritten and its hashes are
+checked by the export test.
 
 Two target-side rules are fixed before 4A starts:
 
@@ -70,8 +78,8 @@ Two target-side rules are fixed before 4A starts:
 
 | After | Checkpoint | Result |
 | --- | --- | --- |
-| 40.3 | Semantic dataset, splits, class balance and window/horizon report are reproducible | **Passed (provisional on participant evidence)** — scripted and participant reports; `v2.0.0-semantic` and `v2.1.0-participant` datasets validate |
-| 40.5 | Semantic head is trained/evaluated/exported; bundle v2 loads; old artifacts remain reproducible |
+| 40.3 | Semantic dataset, splits, class balance and window/horizon report are reproducible | **Passed (provisional on participant evidence)** — scripted and participant reports; `v2.0.0-semantic`, `v2.1.0-participant` and `v2.2.0-participant` datasets validate |
+| 40.5 | Semantic head is trained/evaluated/exported; bundle v2 loads; old artifacts remain reproducible | **Passed (participant-derived engineering evidence)** — E2 head, ONNX/INT8, `bundle/v2.0.0`, framework manifest load; legacy artifacts hashed unchanged |
 
 ## Exit criteria
 
@@ -82,11 +90,12 @@ Two target-side rules are fixed before 4A starts:
       and class weights from the training partition only.
 - [x] Window/horizon experiment is small, pre-declared and reports per-outcome coverage/lead time;
       re-run on participant evidence (provisional).
-- [ ] Semantic target head is trained/evaluated with per-class/macro-F1/confusion/majority metrics
-      and no future leakage, on the declared held-out split unit (session- or participant-bounded,
-      stated explicitly).
-- [ ] ONNX/bundle v2 records vocabulary, dataset, code, seed and metrics; the browser can load it.
-- [ ] Old foundation/head artifacts remain reproducible.
+- [x] Semantic target head is trained/evaluated with per-class/macro-F1/confusion/majority metrics
+      and no future leakage, on the declared held-out split unit (session-bounded, stated
+      explicitly in the report and bundle).
+- [x] ONNX/bundle v2 records vocabulary, dataset, code, seed and metrics; the browser can load it
+      through the framework manifest and the committed public artifact.
+- [x] Old foundation/head artifacts remain reproducible (hashes unchanged; legacy tests pass).
 
 ## Verification
 
@@ -100,21 +109,26 @@ python3 -m src.export --help
 
 Task-specific commands are in the task files.
 
-## Participant evidence (2026-11-19)
+## Participant evidence (2026-11-20)
 
 | Item | Result |
 | --- | --- |
-| Export | 39 participant sessions (1.4.0, TD1–TD4) from Supabase, originally labelled `scripted` |
-| Retrofit | Local only; both provenance declarations corrected under recorded researcher authority; database untouched; `participantId` null (ADR-023) |
-| Verification | 35 verified; 4 excluded (`prediction_window_attribution` ×3, `structural_validity` ×1) |
-| 40.3 participant run | [report](../../../../../../model-preparation/docs/experiments/window-horizon-participant/window-horizon-report.md) — selected **D (12×500 ms, [500,1500])**, provisional; 12/14 classes with ≥5 train examples; `NO_OUTCOME` ≈ 80.9% of train |
-| Dataset | `v2.1.0-participant`, 3,603 examples, manifest validated; [summary](../../../../../../model-preparation/docs/experiments/participant-evidence/dataset-summary-v2.1.0-participant.json) |
-| 50.2 candidates | [participant-derived candidates](../../../../../../model-preparation/docs/experiments/participant-patterns/participant-pattern-candidates.md) — 159 patterns at ≥3-session support |
+| Export | 92 sessions (schema 1.4.0, TD1–TD4, baseline) from Supabase `bfntyqahujplvcowjdmh` |
+| Declarations | 48 bodies `participant`, 44 bodies `scripted` (upload-mode oversight); the whole export is participant-declared under a recorded researcher authority |
+| Retrofit | Local only; 44 corrected, 48 already correct; database and source export untouched; `participantId` null (ADR-023) |
+| Verification | 77 verified; 15 excluded (`prediction_window_attribution` ×11, `structural_validity` ×3, `task_lifecycle_consistency` ×1) |
+| 40.3 participant re-run | [report](../../../../../../model-preparation/docs/experiments/window-horizon-participant-r2/window-horizon-report.md) — selected **D (12×500 ms, [500,1500])**, provisional; 12/14 classes with ≥5 train examples; `NO_OUTCOME` ≈ 82.6% of train |
+| Dataset | `v2.2.0-participant`, 9,686 examples, 77 session-bounded splits, manifest validated |
+| 40.4 training | [report](../../../../../../model-preparation/docs/experiments/semantic-head/semantic-head-report.md) — E2 selected on validation macro-F1; test macro-F1 0.1297 vs majority 0.0841; accuracy 0.1271 |
+| 40.5 export | `models/task_outcome_head_v2.onnx` / `_int8.onnx`; `models/bundles/v2.0.0/bundle.json`; framework copy under `public/models/`; real INT8 graph load verified (55 framework tests) |
+| Presentation | [notebook](../../../../../../model-preparation/notebooks/04_semantic_target_head_retraining.ipynb) |
 | Retrofit / verification audit | [participant-evidence README](../../../../../../model-preparation/docs/experiments/participant-evidence/README.md) |
 
-The participant run does **not** confirm the scripted selection; the margin between the top
-configurations is 0.4 percentage points. 40.4 remains blocked until further collection and a
-re-confirmed configuration, and no participant-held-out claim is made (ADR-023, ADR-031).
+The re-run confirms configuration D under the pre-declared criteria, but the selection remains
+provisional: the margin between the top configurations is inside sampling noise. No
+participant-held-out claim is made (ADR-023, ADR-031). The training result is participant-derived
+engineering evidence: macro-F1 is above the majority baseline, accuracy is far below it, and the
+model is poorly calibrated.
 
 ## Risks
 

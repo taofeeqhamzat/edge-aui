@@ -197,6 +197,15 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
   2. Target Intervention Head graph (`public/models/intervention_head_int8.onnx`): evaluates 5
      uncalibrated logits (`simplify_options`, `highlight_primary_action`, `offer_assistance`,
      `expand_tooltip`, `no_op`).
+  3. Semantic task-outcome head (`public/models/task_outcome_head_v2_int8.onnx`, Task 40.5):
+     `sequence_input (batch, seq, 18)` + `context_input (batch, 6)` →
+     `task_outcome_logits (batch, 14)`. A v2 bundle manifest
+     (`public/models/task_outcome_head_v2.bundle.json`) supplies the ordered 14-ID target
+     vocabulary, its version and the artifact hash. The parser maps this graph into the
+     foundation slot — it replaces the outcome head by path and vocabulary, not by a new runtime
+     branch — and the gate feeds both tensors when the session declares two inputs. It reports
+     the semantic artifact version and provider; the legacy five-class head remains available
+     for compatibility.
 - **The deployed ONNX input topology is a dual-input encoder, not a hidden-state-only interface.**
   The graphs accept `sequence_input (batch, seq, 18)` and `context_input (batch, 6)` and produce
   `intervention_logits (batch, 5)`; the head concatenates the encoded sequence with the context

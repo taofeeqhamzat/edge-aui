@@ -27,6 +27,7 @@ import {
   OUTCOME_CLASS_ORDER,
   SLOW_GATE_NUM_CLASSES
 } from '../src/gates/slow/onnxSlowGate';
+import { parseBundleManifest } from '../src/config/modelManifest';
 import { SlowGateInput } from '../src/gates/slow/types';
 import { UIContext } from '../src/types/uiContext';
 
@@ -369,5 +370,36 @@ describe('Task 5.1: TargetInterventionHead ONNX Contract & Runtime Integration',
 
       await expect(gate.warmup()).rejects.toThrow();
     });
+  });
+});
+
+
+describe('Task 40.5: semantic task-outcome graph loads through the v2 bundle', () => {
+  const bundlePath = path.join(modelDir, 'task_outcome_head_v2.bundle.json');
+
+  beforeEach(() => {
+    resetOnnxSlowGateSession();
+  });
+
+  it('loads the real INT8 graph, feeds both inputs and reports the artifact version', async () => {
+    const bundle = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
+    const manifest = parseBundleManifest(bundle);
+    const gate = new OnnxSlowGate({ manifest });
+
+    const warm = await gate.warmup();
+    expect(warm.modelLoaded).toBe(true);
+    expect(warm.foundationLoaded).toBe(true);
+    expect(warm.interventionLoaded).toBe(false);
+    expect(warm.modelVersion).toContain(String(bundle.int8_hash_sha256).slice(0, 12));
+
+    const result = await gate.infer(createDummyInput({ seqLen: 12 }));
+    expect(result.source).toBe('slow');
+    expect(result.probabilities).toHaveLength(14);
+    const probabilitySum = result.probabilities!.reduce((a, b) => a + b, 0);
+    expect(probabilitySum).toBeCloseTo(1.0, 4);
+    expect(result.prediction?.vocabularyId).toBe('task-outcome');
+    expect(result.prediction?.vocabularyVersion).toBe('testbed-semantic-target/1.0.0');
+    expect(result.prediction?.modelVersion).toContain(String(bundle.int8_hash_sha256).slice(0, 12));
+    expect(result.prediction?.outcomeId).toBeTruthy();
   });
 });

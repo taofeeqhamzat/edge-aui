@@ -33,6 +33,24 @@ import { PrefixSpanFastGate } from '../src/gates/fast/prefixSpanFastGate';
 import type { UIContext } from '../src/types/uiContext';
 import type { OutcomeVocabulary } from '../src/gates/contracts';
 
+/** Approved 14-ID target vocabulary (ADR-030), in model-output order. */
+const SEMANTIC_TARGET_OUTCOMES = [
+  'navigate_overview',
+  'navigate_analytics',
+  'navigate_reports',
+  'select_report',
+  'open_filter_section',
+  'close_filter_section',
+  'select_region',
+  'select_date_range',
+  'select_category',
+  'apply_filter',
+  'reset_filter',
+  'export_report',
+  'backtrack',
+  'NO_OUTCOME'
+];
+
 const CONTEXT: UIContext = {
   route: 'Anywhere',
   primaryActionAvailable: true,
@@ -152,6 +170,96 @@ describe('model manifest', () => {
         intervention_vocabulary: ['no_op', 'offer_assistance']
       })
     ).toThrow(/vocabulary/i);
+  });
+
+  it('reads a v2 semantic bundle into the foundation slot and its 14-class order', () => {
+    const manifest = parseBundleManifest({
+      bundle_schema_version: '2.0.0',
+      model_artifact_int8: 'task_outcome_head_v2_int8.onnx',
+      int8_hash_sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      target_vocabulary_version: 'testbed-semantic-target/1.0.0',
+      output_contract: { task_outcome_logits: { shape: ['batch', 14] } },
+      task_outcome_vocabulary: SEMANTIC_TARGET_OUTCOMES
+    });
+
+    expect(manifest.foundation.vocabulary.id).toBe('task-outcome');
+    expect(manifest.foundation.vocabulary.version).toBe('testbed-semantic-target/1.0.0');
+    expect(manifest.foundation.vocabulary.outcomes).toEqual(SEMANTIC_TARGET_OUTCOMES);
+    expect(manifest.foundation.vocabulary.outcomes).toHaveLength(14);
+    expect(manifest.foundation.modelUrl).toContain('task_outcome_head_v2_int8.onnx');
+    expect(manifest.foundation.modelVersion).toContain('0123456789ab');
+    // A semantic bundle replaces the outcome head; it declares no intervention head.
+    expect(manifest.intervention).toBeUndefined();
+  });
+
+  it('rejects a semantic bundle whose vocabulary contradicts the 14-class output', () => {
+    expect(() =>
+      parseBundleManifest({
+        model_artifact_int8: 'task_outcome_head_v2_int8.onnx',
+        output_contract: { task_outcome_logits: { shape: ['batch', 14] } },
+        task_outcome_vocabulary: SEMANTIC_TARGET_OUTCOMES.slice(0, 13)
+      })
+    ).toThrow(/vocabulary/i);
+  });
+});
+
+/** Mock ONNX runtime for the two-input semantic graph. */
+function mockSemanticOrt(logits: number[]) {
+  return {
+    env: { wasm: { numThreads: 1, simd: true } },
+    Tensor: class {},
+    InferenceSession: {
+      create: async () => ({
+        inputNames: ['sequence_input', 'context_input'],
+        outputNames: ['task_outcome_logits'],
+        run: async () => ({ task_outcome_logits: { data: new Float32Array(logits) } }),
+        executionProvider: 'mock-wasm'
+      })
+    }
+  };
+}
+
+describe('Semantic task-outcome head loads through the manifest (Task 40.5)', () => {
+  beforeEach(() => {
+    resetOnnxSlowGateSession();
+  });
+
+  const bundle = {
+    bundle_schema_version: '2.0.0',
+    model_artifact_int8: 'task_outcome_head_v2_int8.onnx',
+    int8_hash_sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+    target_vocabulary_version: 'testbed-semantic-target/1.0.0',
+    output_contract: { task_outcome_logits: { shape: ['batch', 14] } },
+    task_outcome_vocabulary: SEMANTIC_TARGET_OUTCOMES
+  };
+
+  it('feeds sequence and context to the semantic graph and maps its index through the manifest', async () => {
+    const logits = new Array(14).fill(0);
+    logits[9] = 6.0; // apply_filter
+    const gate = new OnnxSlowGate({
+      ortModule: mockSemanticOrt(logits) as never,
+      manifest: parseBundleManifest(bundle)
+    });
+    const sequence = new Float32Array(12 * 18).fill(0.1);
+    const result = await gate.infer({ sequence, shape: [1, 12, 18], context: CONTEXT });
+
+    expect(result.prediction?.outcomeId).toBe('apply_filter');
+    expect(result.prediction?.outcomeIndex).toBe(9);
+    expect(result.prediction?.vocabularyId).toBe('task-outcome');
+    expect(result.prediction?.vocabularyVersion).toBe('testbed-semantic-target/1.0.0');
+    expect(result.prediction?.modelVersion).toContain('0123456789ab');
+  });
+
+  it('reports the semantic artifact version and provider after warmup', async () => {
+    const gate = new OnnxSlowGate({
+      ortModule: mockSemanticOrt(new Array(14).fill(0)) as never,
+      manifest: parseBundleManifest(bundle)
+    });
+    const warm = await gate.warmup();
+    expect(warm.foundationLoaded).toBe(true);
+    expect(warm.interventionLoaded).toBe(false);
+    expect(warm.modelVersion).toContain('0123456789ab');
+    expect(warm.providers.foundation).toBe('mock-wasm');
   });
 });
 

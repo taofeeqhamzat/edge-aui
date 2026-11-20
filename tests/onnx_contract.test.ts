@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { MICROTENSOR_DIM, DEFAULT_SEQUENCE_CONFIG } from '../src/microtensor/schema';
 import { OUTCOME_CLASS_ORDER, SLOW_GATE_NUM_CLASSES, softmax } from '../src/gates/slow/onnxSlowGate';
+import { parseBundleManifest } from '../src/config/modelManifest';
 
 const modelDir = path.resolve(import.meta.dirname, '..', 'public', 'models');
 
@@ -218,5 +219,52 @@ describe('ONNX deployment contract', () => {
     const probabilities = softmax(new Float32Array([1000, 999, -1000, 0, 0, 0, 0]));
     expect(probabilities.every((p) => Number.isFinite(p))).toBe(true);
     expect(probabilities.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 5);
+  });
+});
+
+describe('Semantic task-outcome deployment contract (Task 40.5)', () => {
+  for (const filename of ['task_outcome_head_v2.onnx', 'task_outcome_head_v2_int8.onnx']) {
+    describe(filename, () => {
+      const modelPath = path.join(modelDir, filename);
+
+      it('exists and is non-trivial', () => {
+        expect(fs.existsSync(modelPath)).toBe(true);
+        expect(fs.statSync(modelPath).size).toBeGreaterThan(1024);
+      });
+
+      it('declares sequence and context inputs and a 14-class output', () => {
+        const io = readModelIo(modelPath);
+        expect(io.inputs).toHaveLength(2);
+        expect(io.inputs[0]).toHaveLength(3);
+        expect(io.inputs[0][2]).toBe(MICROTENSOR_DIM);
+        expect(io.inputs[0][1]).toBeLessThan(0); // dynamic seq_len
+        expect(io.inputs[1]).toEqual([-1, 6]);
+        expect(io.outputs).toHaveLength(1);
+        expect(io.outputs[0][1]).toBe(14);
+      });
+
+      it('embeds its weights rather than referencing external files', () => {
+        expect(readModelIo(modelPath).hasExternalData).toBe(false);
+      });
+    });
+  }
+
+  it('has a bundle manifest whose vocabulary matches the graph output', () => {
+    const bundlePath = path.join(modelDir, 'task_outcome_head_v2.bundle.json');
+    expect(fs.existsSync(bundlePath)).toBe(true);
+    const bundle = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
+    const manifest = parseBundleManifest(bundle);
+    expect(manifest.foundation.vocabulary.outcomes).toHaveLength(14);
+    expect(manifest.foundation.vocabulary.version).toBe('testbed-semantic-target/1.0.0');
+    expect(manifest.intervention).toBeUndefined();
+    expect(manifest.foundation.modelUrl).toContain('task_outcome_head_v2_int8.onnx');
+  });
+
+  it('records its measured size instead of claiming the payload target', () => {
+    // Measured values are reported in the experiment report; this test only proves the
+    // int8 artifact is smaller than the fp32 export and self-contained.
+    const fp32 = fs.statSync(path.join(modelDir, 'task_outcome_head_v2.onnx')).size;
+    const int8 = fs.statSync(path.join(modelDir, 'task_outcome_head_v2_int8.onnx')).size;
+    expect(int8).toBeLessThan(fp32);
   });
 });
