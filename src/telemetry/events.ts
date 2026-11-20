@@ -269,6 +269,17 @@ export interface PredictionEvent {
   predictionContractVersion?: string;
   /** Vocabulary the predicted outcome belongs to. */
   predictedOutcomeVocabularyVersion?: string;
+  /**
+   * Version of the pattern set or model that produced the selected prediction, carried
+   * through arbitration from `PredictionProvenance` (Task 50.3). Additive to 1.4.0.
+   */
+  gateVersion?: string;
+  /**
+   * The macro sequence the Fast Gate matched, when it decided the prediction (Task 50.3).
+   * Without it the trace can say "the Fast Gate matched" but not *which* declared pattern
+   * fired, so a prediction cannot be attributed to a declaration.
+   */
+  matchedPattern?: string[];
   targetContext?: {
     route?: string;
     taskId?: string;

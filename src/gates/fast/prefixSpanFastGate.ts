@@ -37,15 +37,34 @@ export interface MinedPattern {
 }
 
 /**
+ * One mining call, bounds included.
+ *
+ * The bounds travel with the request rather than living only on the gate because the miner
+ * is the only component that can stop its own search. A gate that filters an unbounded
+ * result has already paid for it, which is the F-02 defect: the miner produced 2 452
+ * patterns for nine short sequences and the gate then sorted all of them.
+ */
+export interface PatternMiningRequest {
+  /**
+   * One entry per observed sequence boundary, in chronological order. Support counts
+   * sequences, so a sequence must not be repeated just to raise a pattern's support.
+   */
+  sequences: string[][];
+  /** Minimum number of sequences a pattern must occur in. */
+  minSupport: number;
+  /** Hard bound: the longest pattern the miner may emit, in symbols. */
+  maxPatternLength: number;
+  /** Hard bound: the most patterns the miner may emit. */
+  maxPatterns: number;
+}
+
+/**
  * Mines frequent patterns from a corpus of macro-symbol sequences.
  *
- * The corpus is `string[][]` (symbols only) because that is the wire shape the Rust
+ * Sequences are `string[][]` (symbols only) because that is the wire shape the Rust
  * PrefixSpan implementation consumes; callers project interactions down to symbols.
  */
-export type PatternMiner = (
-  sequences: string[][],
-  minSupport: number
-) => Promise<MinedPattern[]>;
+export type PatternMiner = (request: PatternMiningRequest) => Promise<MinedPattern[]>;
 
 export type PatternIntervention = PatternTarget;
 
@@ -156,7 +175,7 @@ export class PrefixSpanFastGate implements FastGate {
 
   public async evaluate(sequence: MacroInteraction[]): Promise<GateDecision> {
     if (!sequence || sequence.length === 0) {
-      return { matched: false, source: 'fast' };
+      return { matched: false, source: 'fast', reason: 'empty_sequence' };
     }
 
     const miner = this.options.mine ?? defaultMiner();
@@ -169,45 +188,61 @@ export class PrefixSpanFastGate implements FastGate {
           'the Fast Gate will always report a miss. Inject `mine` or run in a browser.'
       );
       this.reportOutcome('no_corpus');
-      return { matched: false, source: 'fast' };
+      return { matched: false, source: 'fast', reason: 'miner_unavailable' };
     }
 
     const currentSymbols = sequence.map((interaction) => interaction.symbol);
 
     // Bound the corpus before mining. Mining cost is driven by corpus size and symbol
-    // repetition, and the corpus was previously the entire macro history; truncating to the
-    // most recent entries bounds the work while keeping the current session, which is
-    // appended below and therefore always participates in mining.
+    // repetition, so the corpus is truncated to its most recent `maxCorpusSequences`
+    // entries, which bounds the work without discarding the current session.
+    //
+    // The composition root frequently supplies the corpus and the evaluated sequence from
+    // the same macro history. Appending unconditionally would then count that history twice
+    // and double the support of every pattern in it: one occurrence would satisfy
+    // `minSupport: 2` and the gate would "match" a pattern it has only seen once. The
+    // duplicate is detected on the untruncated history, because truncation would hide the
+    // equality while leaving the overlap in place.
     const history = this.options.getSequences();
+    const observedIsAlreadyInCorpus = sameSymbols(history, currentSymbols);
     const boundedHistory =
       history.length > this.options.maxCorpusSequences
         ? history.slice(history.length - this.options.maxCorpusSequences)
         : history;
 
     const corpus = [...boundedHistory];
-    corpus.push(currentSymbols);
+    if (!observedIsAlreadyInCorpus) {
+      corpus.push(currentSymbols);
+    }
 
     let patterns: MinedPattern[];
     let timedOut = false;
     try {
-      const outcome = await this.runBounded(() => miner(corpus, this.options.minSupport));
+      const outcome = await this.runBounded(() =>
+        miner({
+          sequences: corpus,
+          minSupport: this.options.minSupport,
+          maxPatternLength: this.options.maxPatternLength,
+          maxPatterns: this.options.maxPatterns
+        })
+      );
       patterns = outcome.patterns;
       timedOut = outcome.timedOut;
       // A deadline can expire and the mine still finish afterwards; either way the caller
       // must not treat a late result as a fresh evaluation.
       if (timedOut) {
         this.reportOutcome('timed_out');
-        return { matched: false, source: 'fast' };
+        return { matched: false, source: 'fast', reason: 'mining_timeout' };
       }
     } catch (err) {
       console.error('[PrefixSpanFastGate] Pattern mining failed:', err);
       this.reportOutcome(timedOut ? 'timed_out' : 'failed');
-      return { matched: false, source: 'fast' };
+      return { matched: false, source: 'fast', reason: 'mining_failed' };
     }
 
     if (!patterns || patterns.length === 0) {
       this.reportOutcome('executed');
-      return { matched: false, source: 'fast' };
+      return { matched: false, source: 'fast', reason: 'no_frequent_pattern' };
     }
 
     const ranked = [...patterns].sort((a, b) => {
@@ -224,6 +259,18 @@ export class PrefixSpanFastGate implements FastGate {
       .filter((pattern) => pattern.confidence >= this.options.minConfidence)
       .slice(0, this.options.maxPatterns);
 
+    if (candidates.length === 0) {
+      // Patterns were mined, but none survived the actionability filters (length, confidence,
+      // count). That is a different miss from "nothing frequent enough existed".
+      this.reportOutcome('executed');
+      return { matched: false, source: 'fast', reason: 'no_actionable_pattern' };
+    }
+
+    // Distinguishes "a frequent pattern matched but the application declares no target for
+    // it" from "no frequent pattern matched at all". Both are misses; only the first is a
+    // configuration gap a researcher can act on.
+    let matchedWithoutDeclaredTarget = false;
+
     for (const pattern of candidates) {
       if (!this.matches(currentSymbols, pattern.pattern)) continue;
 
@@ -234,7 +281,10 @@ export class PrefixSpanFastGate implements FastGate {
         : { type: 'no_op' as InterventionType };
 
       // A mined pattern with no declared target is not an actionable match.
-      if (!declaredTarget) continue;
+      if (!declaredTarget) {
+        matchedWithoutDeclaredTarget = true;
+        continue;
+      }
 
       // A pattern is configuration: an outcome outside the gate's vocabulary is a
       // configuration error, reported with the pattern that declared it.
@@ -279,7 +329,11 @@ export class PrefixSpanFastGate implements FastGate {
     }
 
     this.reportOutcome('executed');
-    return { matched: false, source: 'fast' };
+    return {
+      matched: false,
+      source: 'fast',
+      reason: matchedWithoutDeclaredTarget ? 'no_declared_target' : 'no_matching_pattern'
+    };
   }
 
   /** Reports how one evaluation ended, without letting a listener break the gate. */
@@ -367,6 +421,26 @@ export class PrefixSpanFastGate implements FastGate {
  *
  * The import is lazy so this module stays importable in environments without WebAssembly.
  */
+
+/**
+ * True when the corpus, read end to end, is exactly the observed sequence.
+ *
+ * This is the composition the runtime uses: the corpus is the macro history split into
+ * observation sequences, and the evaluated sequence is that same history. Flattening in
+ * order is therefore exact, and a mismatch (a different history, a different order, or a
+ * truncated corpus) means the observed sequence is genuinely a further sequence.
+ */
+function sameSymbols(corpus: string[][], observed: string[]): boolean {
+  let index = 0;
+  for (const sequence of corpus) {
+    for (const symbol of sequence) {
+      if (index >= observed.length || symbol !== observed[index]) return false;
+      index++;
+    }
+  }
+  return index === observed.length;
+}
+
 function defaultMiner(): PatternMiner | null {
   if (typeof WebAssembly === 'undefined') {
     return null;
@@ -381,9 +455,9 @@ function defaultMiner(): PatternMiner | null {
     return minerPromise;
   };
 
-  return async (sequences, minSupport) => {
+  return async (request) => {
     const miner = await getMiner();
-    return miner(sequences, minSupport);
+    return miner(request);
   };
 }
 

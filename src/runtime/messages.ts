@@ -75,6 +75,16 @@ export interface RuntimeInitRequest {
      * Omitted means the framework default, which declares no application vocabulary.
      */
     contextEncoding?: ContextEncodingConfig;
+    /**
+     * Vocabulary a declared Fast Gate pattern outcome must belong to. The gate uses it to
+     * validate a declaration at match time and to stamp `vocabularyId` on the prediction.
+     * Omitted means the legacy intervention vocabulary, which the old pattern form names.
+     */
+    outcomeVocabulary?: {
+      id: string;
+      version: string;
+      outcomes: readonly string[];
+    };
     enableFastGate?: boolean;
     enableSlowGate?: boolean;
     /**

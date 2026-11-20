@@ -18,7 +18,8 @@
     "preview": "vite preview",
     "parity:check": "node scripts/regenerate-parity-fixture.mjs --check",
     "parity:refresh": "node scripts/regenerate-parity-fixture.mjs",
-    "benchmark:runtime": "node scripts/benchmark-runtime.mjs"
+    "benchmark:runtime": "node scripts/benchmark-runtime.mjs",
+    "benchmark:fastgate": "node scripts/benchmark-fastgate.mjs"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

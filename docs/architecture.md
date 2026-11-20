@@ -181,14 +181,32 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
 
 - Mines frequent symbol sequences with the Rust/WASM PrefixSpan implementation
   (`src/gates/fast/prefixSpanMiner.ts` — the single WASM boundary in the framework).
-- Resolves a mined pattern through the application's declared pattern → intervention map
-  (`TESTBED_FAST_GATE_PATTERNS` in `src/testbed/config/fastGatePatterns.ts`, injected at the
-  composition root). The framework default map is empty.
+- The miner enforces its own bounds: a hard `max_pattern_length` and `max_patterns`, both
+  passed with the request, and support counted per **sequence**, not per occurrence. It ranks
+  candidate continuations by support so a bounded budget is spent on the strongest patterns,
+  and it returns a deterministic order, so the same corpus and bounds always produce the same
+  result. Confidence is the conditional probability `support(pattern) / support(prefix)`:
+  a length-1 pattern reports corpus coverage, a longer pattern reports continuation strength.
+- Resolves a mined pattern through the application's **declared pattern set**
+  (`validatePatternDeclarations` in `src/gates/fast/patternDeclaration.ts`;
+  `TESTBED_FAST_GATE_DECLARATIONS` in `src/testbed/config/fastGatePatterns.ts`). A
+  declaration carries its sequence, the **semantic outcome** it resolves to, and the measured
+  evidence (support, occurrences, task coverage, provenance). Declarations are validated at
+  composition time: unknown symbols, outcomes outside the gate vocabulary, or evidence below
+  the declared support floor fail loudly instead of becoming a silent miss. The framework
+  default map is empty.
 - Ranks deterministically: support desc, then length desc, then lexicographic.
 - Matches a pattern as an **in-order subsequence** of the recent sequence
   (`suffixMatchOnly: false`). Strict suffix matching was tried first and proved too strict
   here, because consecutive actions frequently straddle the window stride.
-- Fails safe: a miner error or an undeclared pattern yields a miss, never a fabricated match.
+- Does not count the observed sequence twice. When the composition supplies the corpus and
+  the evaluated sequence from the same macro history, the sequence is not appended again;
+  otherwise one occurrence would satisfy a support threshold of 2 and the gate would "match"
+  a pattern it has only seen once.
+- Fails safe and explains itself: a miner error, a deadline, an undeclared pattern or no
+  matching pattern yields `matched: false` with a `reason` (`mining_timeout`,
+  `no_frequent_pattern`, `no_declared_target`, `no_matching_pattern`, …), never a fabricated
+  prediction.
 
 ### Slow Gate — `src/gates/slow/onnxSlowGate.ts`
 
@@ -230,9 +248,19 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
 ### Arbitration — `src/gates/arbitration.ts`
 
 Implements Fast Gate precedence ([ADR-002](decisions/ADR-002-rust-wasm-prefixspan-boundary.md)): the Slow Gate is invoked only when the Fast Gate returns
-`matched: false`, or a match without an actionable (non-`no_op`) intervention. Both gate calls
-are individually guarded, and per-gate wall-clock latencies (`fastGateLatencyMs` and `slowGateLatencyMs`)
-are measured independently ([ADR-003](decisions/ADR-003-worker-main-thread-boundary.md)).
+`matched: false`, or a match without an actionable prediction. Both gate calls are
+individually guarded, and per-gate wall-clock latencies (`fastGateLatencyMs` and
+`slowGateLatencyMs`) are measured independently
+([ADR-003](decisions/ADR-003-worker-main-thread-boundary.md)).
+
+Both gates emit the same normalized `PredictionResult`, and arbitration is its only producer:
+it stamps `predictionId`, `timestamp` and `contractVersion`, merges the UI target, and reports
+`PredictionProvenance` (gate, gate version, mapping source, latency). A Slow Gate prediction is
+selected even when its compatibility command is `no_op`, because the policy — not the gate —
+decides the adaptation; selecting only on the command would report `matchedGate: 'none'`
+beside a matched Slow prediction. When neither gate asserts a prediction the result carries
+`matchedGate: 'none'` and a `noMatchReason`, which the trace records instead of an unexplained
+absence.
 
 ---
 

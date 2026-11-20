@@ -9,9 +9,13 @@ export function extract_micro_tensor(points_val: any, dwell_time_ms: number, scr
 export function get_wasm_gate_version(): string;
 
 /**
- * Deterministic Gate: Mines frequent macro-interaction sequences using PrefixSpan.
+ * Deterministic Gate: mines frequent macro-interaction sequences using PrefixSpan.
+ *
+ * `max_pattern_length` and `max_patterns` are required, not optional: the miner is the only
+ * place that can bound its own cost, and an unbounded call is the F-02 defect (see
+ * `prefix_span.rs`). Callers must pass the bounds they are prepared to pay for.
  */
-export function mine_macro_patterns(sequences_val: any, min_support: number): any;
+export function mine_macro_patterns(sequences_val: any, min_support: number, max_pattern_length: number, max_patterns: number): any;
 
 /**
  * Takes a raw interaction batch (points + macro queue) and converts it into a completed InteractionPacket.
@@ -43,7 +47,7 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly extract_micro_tensor: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly get_wasm_gate_version: (a: number) => void;
-    readonly mine_macro_patterns: (a: number, b: number, c: number) => void;
+    readonly mine_macro_patterns: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly process_interaction_batch: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => void;
     readonly vectorize_canonical_events: (a: number, b: number, c: number) => void;
     readonly vectorize_canonical_window: (a: number, b: number, c: number) => void;

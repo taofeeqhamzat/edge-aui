@@ -14,7 +14,13 @@ import { PrefixSpanFastGate, MinedPattern } from '../src/gates/fast/prefixSpanFa
 import { MockSlowGate } from '../src/gates/slow/mockSlowGate';
 import { AdaptiveInferenceEngine } from '../src/gates/arbitration';
 import { MacroInteraction } from '../src/telemetry/events';
-import { TESTBED_FAST_GATE_PATTERNS } from '../src/testbed/config/fastGatePatterns';
+import {
+  TESTBED_FAST_GATE_DECLARATIONS,
+  TESTBED_FAST_GATE_PATTERNS,
+  TESTBED_FAST_GATE_PATTERN_VERSION
+} from '../src/testbed/config/fastGatePatterns';
+import { TESTBED_SEMANTIC_VOCABULARY } from '../src/testbed/config/semanticOutcomes';
+import { RuntimeWorkerCore } from '../src/runtime/worker/core';
 import { TESTBED_VOCABULARY } from './helpers/testbedVocabulary';
 import { experimentRecorder } from '../src/telemetry/recorder';
 import { sessionManager } from '../src/telemetry/session';
@@ -240,5 +246,123 @@ describe('PrefixSpanFastGate resolves patterns through the declared map', () => 
 
     const decision = await gate.evaluate([{ timestamp: 0, symbol: 'UNKNOWN_SYMBOL' }]);
     expect(decision.matched).toBe(false);
+  });
+});
+
+/**
+ * Pattern semantics at the composition boundary (Task 50.2)
+ *
+ * These drive the worker with the testbed's participant-derived declaration set, so they
+ * test the wiring a browser build uses: the declared targets travel to the worker, the
+ * gate validates them against the supplied outcome vocabulary, and a match produces a
+ * normalized semantic prediction. The first test pins session isolation: a reset must clear
+ * the mining corpus, otherwise a pattern from one task can be supported by another task's
+ * session and "recognition" would span unrelated work.
+ */
+describe('Pattern semantics through the worker (Task 50.2)', () => {
+  const uiContext = {
+    route: 'Analytics',
+    availableActions: ['click'],
+    primaryActionAvailable: true,
+    helpAvailable: false,
+    expandable: true
+  };
+
+  async function initCore(overrides: Record<string, unknown> = {}): Promise<RuntimeWorkerCore> {
+    const core = new RuntimeWorkerCore();
+    const response = await core.handleRequest({
+      id: 'init',
+      type: 'INIT',
+      payload: {
+        fastGateMode: 'mock',
+        slowGateMode: 'mock',
+        fastGatePatterns: TESTBED_FAST_GATE_DECLARATIONS,
+        fastGatePatternVersion: TESTBED_FAST_GATE_PATTERN_VERSION,
+        outcomeVocabulary: TESTBED_SEMANTIC_VOCABULARY,
+        ...overrides
+      }
+    });
+    expect(response.success).toBe(true);
+    return core;
+  }
+
+  async function pushMacro(
+    core: RuntimeWorkerCore,
+    id: string,
+    timestamp: number,
+    symbol: string,
+    windowId = 1
+  ): Promise<void> {
+    const response = await core.handleRequest({
+      id,
+      type: 'PUSH_MACRO',
+      payload: { macro: { timestamp, symbol, windowId } }
+    });
+    expect(response.success).toBe(true);
+  }
+
+  async function evaluate(core: RuntimeWorkerCore, id: string) {
+    const response = await core.handleRequest({
+      id,
+      type: 'EVALUATE',
+      payload: { uiContext }
+    });
+    if (response.type !== 'EVALUATION_RESULT' || !response.success) {
+      throw new Error(`Unexpected evaluation response: ${JSON.stringify(response)}`);
+    }
+    return response.data;
+  }
+
+  it('clears the mining corpus at a session boundary', async () => {
+    const core = await initCore();
+
+    await pushMacro(core, 'm1', 1000, 'CLOSE_FILTERS');
+    await pushMacro(core, 'm2', 1100, 'OPEN_FILTERS');
+    const first = await evaluate(core, 'e1');
+    expect(first.diagnostics?.workerCorpusSize).toBe(1);
+
+    await core.handleRequest({ id: 'reset', type: 'RESET' });
+    await pushMacro(core, 'm3', 5000, 'NAV_REPORTS');
+    const second = await evaluate(core, 'e2');
+
+    // One sequence from the new session only: the previous session's CLOSE/OPEN pair is
+    // gone, so no pattern can be supported by work from another task.
+    expect(second.diagnostics?.workerCorpusSize).toBe(1);
+  });
+
+  it('emits a normalized semantic prediction for a declared participant pattern', async () => {
+    const core = await initCore();
+
+    await pushMacro(core, 'm1', 1000, 'CLOSE_FILTERS');
+    await pushMacro(core, 'm2', 1100, 'OPEN_FILTERS');
+    const result = await evaluate(core, 'e1');
+
+    expect(result.matchedGate).toBe('fast');
+    expect(result.prediction?.outcomeId).toBe('open_filter_section');
+    expect(result.prediction?.vocabularyId).toBe('testbed-semantic');
+    expect(result.prediction?.vocabularyVersion).toBe(
+      TESTBED_SEMANTIC_VOCABULARY.version
+    );
+    expect(result.prediction?.mappingSource).toBe('fast_gate_pattern');
+    expect(result.fastDecision.matchedPattern).toEqual(['CLOSE_FILTERS', 'OPEN_FILTERS']);
+    // Provenance: the prediction names the declared pattern set that produced it.
+    expect(result.provenance.gate).toBe('fast');
+    expect(result.provenance.gateVersion).toBe(TESTBED_FAST_GATE_PATTERN_VERSION);
+  });
+
+  it('reports a reason instead of a prediction when no declared pattern matches', async () => {
+    const core = await initCore({ enableSlowGate: false });
+
+    // A navigation and hover-only episode: no declared participant pattern ends this way.
+    await pushMacro(core, 'm1', 1000, 'NAV_OVERVIEW');
+    await pushMacro(core, 'm2', 1100, 'HOVER_KPI');
+    await pushMacro(core, 'm3', 1200, 'HOVER_HELP');
+    const result = await evaluate(core, 'e1');
+
+    expect(result.matchedGate).toBe('none');
+    expect(result.prediction).toBeUndefined();
+    expect(result.noMatchReason).toBe('fast:no_matching_pattern');
+    expect(result.fastDecision.matched).toBe(false);
+    expect(result.fastDecision.reason).toBe('no_matching_pattern');
   });
 });

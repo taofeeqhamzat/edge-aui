@@ -45,6 +45,11 @@ export interface InferenceResult {
   /** Lineage of the decision: gate, versions, mapping source and latency. */
   provenance: PredictionProvenance;
   matchedGate: 'fast' | 'slow' | 'none';
+  /**
+   * Why no gate asserted a prediction. Present only when `matchedGate` is `'none'`, so a
+   * no-match result carries a reason instead of an unexplained absence (Task 50.2/50.3).
+   */
+  noMatchReason?: string;
   fastDecision: GateDecision;
   slowResult?: SlowGateResult;
   latencyMs: number;
@@ -167,7 +172,16 @@ export class AdaptiveInferenceEngine {
       }
       slowGateLatencyMs = performance.now() - slowStart;
 
-      if (slowResult?.intervention && slowResult.intervention.type !== 'no_op') {
+      // A Slow Gate prediction is the decision even when its compatibility command is
+      // `no_op`: the policy, not the gate, decides the adaptation. Selecting only on the
+      // command left `matchedGate: 'none'` alongside a matched Slow prediction, so the trace
+      // said "no gate matched" about a gate that had just predicted.
+      const slowAsserts =
+        slowResult !== undefined &&
+        (slowResult.prediction?.matched === true ||
+          (slowResult.intervention !== undefined && slowResult.intervention.type !== 'no_op'));
+
+      if (slowResult && slowAsserts) {
         const latencyMs = performance.now() - startTime;
         const prediction = this.stamp(slowResult.prediction, timestamp, contextTarget);
         return {
@@ -196,18 +210,24 @@ export class AdaptiveInferenceEngine {
     // gate produced one, so "predicted, no adaptation" stays distinguishable from
     // "no prediction" in the trace.
     const selected = selectPrediction(fastDecision.prediction, slowResult?.prediction);
+    // A matched prediction that did not short-circuit (it declared `no_op`, so the Slow Gate
+    // was still tried) is still the decision the policy acts on. Reporting `matchedGate:
+    // 'none'` there would contradict the prediction beside it.
+    const asserted = selected?.matched === true;
+    const decidingGate = asserted ? selected.source : 'none';
     const latencyMs = performance.now() - startTime;
     return {
       prediction: this.stamp(selected, timestamp, contextTarget),
+      noMatchReason: asserted ? undefined : describeNoMatch(fastDecision, slowResult),
       provenance: {
-        gate: selected?.source ?? 'none',
+        gate: decidingGate,
         contractVersion: PREDICTION_CONTRACT_VERSION,
         gateVersion: selected?.source === 'slow' ? slowResult?.gateVersion : fastDecision.gateVersion,
         mappingSource: selected?.mappingSource,
         latencyMs,
         gateLatencyMs: selected?.source === 'slow' ? slowGateLatencyMs : fastGateLatencyMs
       },
-      matchedGate: 'none',
+      matchedGate: decidingGate,
       fastDecision,
       slowResult,
       latencyMs,
@@ -254,6 +274,21 @@ export class AdaptiveInferenceEngine {
   public isSlowGateEnabled(): boolean {
     return this.enableSlowGate;
   }
+}
+
+/**
+ * Why neither gate asserted a prediction.
+ *
+ * The Fast Gate states its own reason (`mining_timeout`, `no_frequent_pattern`,
+ * `no_matching_pattern`, …). The Slow Gate has no such vocabulary, so its absence is named
+ * by whether it ran and whether it produced a non-assertive prediction.
+ */
+function describeNoMatch(fastDecision: GateDecision, slowResult: SlowGateResult | undefined): string {
+  // A Fast match that declined to short-circuit is a deliberate no-adaptation, not a miss.
+  if (fastDecision.matched) return 'fast:not_actionable';
+  if (fastDecision.reason) return `fast:${fastDecision.reason}`;
+  if (!slowResult) return 'slow:not_evaluated';
+  return slowResult.prediction ? 'slow:not_assertive' : 'slow:no_prediction';
 }
 
 /**

@@ -20,7 +20,7 @@ import initWasm, {
   mine_macro_patterns,
   get_wasm_gate_version
 } from '../../../wasm-vectorizer/pkg/wasm_vectorizer.js';
-import type { PatternMiner, MinedPattern } from './prefixSpanFastGate';
+import type { PatternMiner, MinedPattern, PatternMiningRequest } from './prefixSpanFastGate';
 
 let initPromise: Promise<void> | null = null;
 let wasmUnavailableReason: string | null = null;
@@ -67,19 +67,25 @@ export function getWasmUnavailableReason(): string | null {
  * Mines frequent macro-interaction patterns with the real PrefixSpan implementation.
  * Returns null when the module is unavailable, so callers can distinguish "no frequent
  * patterns" from "no miner".
+ *
+ * The bounds are passed straight through to the Rust miner, which enforces them while it
+ * searches. Filtering an already-materialised unbounded result would keep the cost that
+ * F-02 records.
  */
 export async function minePatternsDirect(
-  sequences: string[][],
-  minSupport: number
+  request: PatternMiningRequest
 ): Promise<MinedPattern[] | null> {
   const version = await ensurePrefixSpanWasm();
   if (version === null) {
     return null;
   }
 
-  const raw = mine_macro_patterns(sequences, minSupport) as
-    | { pattern: string[]; support: number; confidence: number }[]
-    | null;
+  const raw = mine_macro_patterns(
+    request.sequences,
+    request.minSupport,
+    request.maxPatternLength,
+    request.maxPatterns
+  ) as { pattern: string[]; support: number; confidence: number }[] | null;
 
   if (!Array.isArray(raw)) {
     return [];
@@ -93,8 +99,8 @@ export async function minePatternsDirect(
 }
 
 /** A `PatternMiner` bound to the real WASM implementation. */
-export const wasmPatternMiner: PatternMiner = async (sequences, minSupport) => {
-  const mined = await minePatternsDirect(sequences, minSupport);
+export const wasmPatternMiner: PatternMiner = async (request) => {
+  const mined = await minePatternsDirect(request);
   // A missing miner is a real failure, not an empty result; surface it.
   if (mined === null) {
     throw new Error(

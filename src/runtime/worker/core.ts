@@ -19,6 +19,7 @@ import {
 import { FastGate } from '../../gates/fast/types';
 import { MockFastGate, PatternIntervention } from '../../gates/fast/mockFastGate';
 import { PrefixSpanFastGate } from '../../gates/fast/prefixSpanFastGate';
+import type { PatternMiningRequest } from '../../gates/fast/prefixSpanFastGate';
 import { MockSlowGate } from '../../gates/slow/mockSlowGate';
 import { OnnxSlowGate, resetOnnxSlowGateSession } from '../../gates/slow/onnxSlowGate';
 import { SlowGate } from '../../gates/slow/types';
@@ -31,6 +32,7 @@ import {
 } from '../messages';
 import { defaultCollector } from '../instrumentation';
 import type { ContextEncodingConfig } from '../../types/contextVector';
+import type { OutcomeVocabulary } from '../../gates/contracts';
 
 export class RuntimeWorkerCore {
   private sequenceBuilder: SequenceBuilder;
@@ -52,6 +54,11 @@ export class RuntimeWorkerCore {
   private fastGatePatternVersion?: string;
   private minPatternSupport = 2;
   private minPatternConfidence = 0;
+  /**
+   * Vocabulary a declared Fast Gate pattern outcome must belong to. Application vocabulary:
+   * the worker never invents an outcome id, it validates the declared ones against this.
+   */
+  private outcomeVocabulary?: OutcomeVocabulary;
   private executionProvider = 'none';
   private modelLoaded = false;
 
@@ -144,16 +151,21 @@ export class RuntimeWorkerCore {
         miningTimeoutMs: this.fastGateBounds.miningTimeoutMs,
         resolveIntervention: (patternKey) => this.fastGatePatterns[patternKey] ?? null,
         gateVersion: this.fastGatePatternVersion,
+        outcomeVocabulary: this.outcomeVocabulary,
         onEvaluationOutcome: (outcome) => {
           // Bounded-execution counters live in this scope so a timed-out or failed
           // evaluation is reported to the main thread instead of vanishing (F-02).
           this.miningOutcomes[outcome] = (this.miningOutcomes[outcome] ?? 0) + 1;
         },
-        mine: async (sequences, minSupport) => (await this.minePatterns(sequences, minSupport)) ?? []
+        mine: async (request) => (await this.minePatterns(request)) ?? []
       });
     }
 
-    return new MockFastGate({ patterns: this.fastGatePatterns, gateVersion: this.fastGatePatternVersion });
+    return new MockFastGate({
+      patterns: this.fastGatePatterns,
+      gateVersion: this.fastGatePatternVersion,
+      outcomeVocabulary: this.outcomeVocabulary
+    });
   }
 
   /**
@@ -184,13 +196,12 @@ export class RuntimeWorkerCore {
    * is reported explicitly rather than surfacing as an indistinguishable empty result.
    */
   private async minePatterns(
-    sequences: string[][],
-    minSupport: number
+    request: PatternMiningRequest
   ): Promise<{ pattern: string[]; support: number; confidence: number }[] | null> {
     return defaultCollector.timeAsync('PrefixSpan mining', 'wasm', async () => {
       try {
         const { minePatternsDirect } = await import('../../gates/fast/prefixSpanMiner');
-        return await minePatternsDirect(sequences, minSupport);
+        return await minePatternsDirect(request);
       } catch (err) {
         console.error('[RuntimeWorkerCore] In-worker pattern mining failed:', err);
         return null;
@@ -221,6 +232,7 @@ export class RuntimeWorkerCore {
           this.fastGatePatterns = request.payload?.fastGatePatterns ?? {};
           this.fastGatePatternVersion = request.payload?.fastGatePatternVersion;
           this.contextEncoding = request.payload?.contextEncoding;
+          this.outcomeVocabulary = request.payload?.outcomeVocabulary;
           this.minPatternSupport = request.payload?.minPatternSupport ?? 2;
           if (request.payload?.fastGateBounds) {
             this.fastGateBounds = {
@@ -356,7 +368,12 @@ export class RuntimeWorkerCore {
 
         case 'MINE_PATTERNS': {
           const { sequences, minSupport } = request.payload;
-          const mined = await this.minePatterns(sequences, minSupport);
+          const mined = await this.minePatterns({
+            sequences,
+            minSupport,
+            maxPatternLength: this.fastGateBounds.maxPatternLength,
+            maxPatterns: this.fastGateBounds.maxPatterns
+          });
 
           response = {
             id: request.id,

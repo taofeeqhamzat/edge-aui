@@ -339,6 +339,13 @@ part of it; the rest is still open and must not be treated as closed by the voca
 | `EXPAND_TOOLTIP` reachable by clicking a tooltip `<span>` but produces no visible expansion | **Open** — the affordance is a native `title`; the click emits the symbol but nothing expands | WS50 / macro follow-up |
 | `BACKTRACK`, `IDLE_DWELL`, `RAPID_SCROLL` have no producer | **Open in the macro stream.** The generic outcome layer derives `BACKTRACK`/`RAPID_SCROLL`, but no event action feeds the macro mapping | WS50 / macro follow-up |
 
+**WS50 disposition (2026-11-20).** The macro-stream fixes are still open and were not folded into
+this workstream. 50.2 therefore chose the other allowed path — explicit exclusion: no declared
+Fast Gate pattern uses `SELECT_REGION`, `TABLE_ROW_SELECT`, `TABLE_SORT`, `TABLE_PAGE_*`,
+`SELECT_SEGMENT`, `BACKTRACK`, `IDLE_DWELL`, `RAPID_SCROLL` or `EXPAND_TOOLTIP`. The declared set
+uses only symbols the mapper can produce, and a test enforces the exclusion list. The macro fix
+remains a tracked follow-up; the semantic layer is unaffected.
+
 The semantic target decision (§3.4, ADR-030) deliberately keeps the tooltip **exclusion rule** and
 only narrows the target set to 14. Removing the rule, or mining symbols that no control produces,
 would reintroduce the defect the assessment recorded.
@@ -1324,7 +1331,7 @@ claims; the deployment uses WASM.
 | 6 | Exact semantic vocabulary | Model output dimension | **Settled 2026-11-18:** 14 target IDs in §3.4; `inspect_help` recorded but not targeted ([ADR-030](../../decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)) |
 | 7 | Participant study protocol/counterbalancing | Validity | Deferred (ADR-014 D7); not part of this plan |
 | 8 | Browser scope | Deployment claim | Chromium current; state intended environment; no cross-browser claim |
-| 9 | Fast Gate pattern set | Gate behaviour | **Basis settled:** participant-derived candidates exist (159 at ≥3-session support, 35 sessions); 50.2 validates/declares them. Scripted-derived sequences are not the basis |
+| 9 | Fast Gate pattern set | Gate behaviour | **Settled by 50.2:** declared from the participant candidates (159 at ≥3-session support, 35 sessions) with measured support, occurrences and task coverage. Scripted-derived sequences are declared nowhere; the old scripted-only entries were removed |
 | 10 | Reports catalogue visual treatment | UI scope | Existing styles; list + Open + current report; no counts |
 | 11 | Dataset split unit | Leakage control / evaluation claim | **Settled 2026-11-18:** session-bounded with task coverage; participant-bounded when ADR-023 lands ([ADR-031](../../decisions/ADR-031-session-bounded-dataset-splits.md)) |
 

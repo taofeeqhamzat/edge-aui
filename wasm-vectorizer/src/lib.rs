@@ -71,16 +71,27 @@ pub fn process_interaction_batch(
         .map_err(|e| JsValue::from_str(&format!("Failed to serialize InteractionPacket: {}", e)))
 }
 
-/// Deterministic Gate: Mines frequent macro-interaction sequences using PrefixSpan.
+/// Deterministic Gate: mines frequent macro-interaction sequences using PrefixSpan.
+///
+/// `max_pattern_length` and `max_patterns` are required, not optional: the miner is the only
+/// place that can bound its own cost, and an unbounded call is the F-02 defect (see
+/// `prefix_span.rs`). Callers must pass the bounds they are prepared to pay for.
 #[wasm_bindgen]
 pub fn mine_macro_patterns(
     sequences_val: JsValue,
     min_support: usize,
+    max_pattern_length: usize,
+    max_patterns: usize,
 ) -> Result<JsValue, JsValue> {
     let sequences: Vec<Vec<String>> = serde_wasm_bindgen::from_value(sequences_val)
         .map_err(|e| JsValue::from_str(&format!("Failed to deserialize sequences: {}", e)))?;
 
-    let patterns = prefix_span::mine_prefix_span(&sequences, min_support);
+    let patterns = prefix_span::mine_prefix_span(
+        &sequences,
+        min_support,
+        max_pattern_length,
+        max_patterns,
+    );
 
     serde_wasm_bindgen::to_value(&patterns)
         .map_err(|e| JsValue::from_str(&format!("Failed to serialize PrefixSpan patterns: {}", e)))

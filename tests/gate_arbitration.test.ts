@@ -8,6 +8,8 @@ import { MockFastGate } from '../src/gates/fast/mockFastGate';
 import { MockSlowGate } from '../src/gates/slow/mockSlowGate';
 import { MacroInteraction } from '../src/telemetry/events';
 import { UIContext } from '../src/types/uiContext';
+import { PREDICTION_CONTRACT_VERSION } from '../src/gates/contracts';
+import { createTestbedCandidateResolver } from '../src/testbed/config/policyAdapter';
 
 function createMockContext(macroSymbols: string[] = []): InferenceContext {
   const macroSequence: MacroInteraction[] = macroSymbols.map((sym, idx) => ({
@@ -245,5 +247,198 @@ describe('AdaptiveInferenceEngine Dual-Gate Arbitration', () => {
     // Should catch Fast Gate error, treat as miss, and fall back to Slow Gate
     expect(result.matchedGate).toBe('slow');
     expect(result.intervention?.type).toBe('expand_tooltip');
+  });
+});
+
+/**
+ * Shared normalized contract (Task 50.3)
+ *
+ * Arbitration is the single place that promotes a gate prediction to `PredictionResult`.
+ * These tests pin what both gates must agree on, that provenance survives the decision, and
+ * that "no gate predicted" is a result with a reason rather than an unexplained absence.
+ */
+describe('Shared arbitration contract (Task 50.3)', () => {
+  const uiContext: UIContext = {
+    route: 'Analytics',
+    activeComponentId: 'filter-drawer',
+    componentRole: 'accordion',
+    availableActions: ['click'],
+    primaryActionAvailable: true,
+    helpAvailable: true,
+    expandable: true
+  };
+
+  function contextFor(symbols: string[]): InferenceContext {
+    return {
+      macroSequence: symbols.map((symbol, index) => ({ timestamp: index * 100, symbol })),
+      microTensorSequence: new Float32Array(8 * 18),
+      tensorShape: [1, 8, 18],
+      uiContext
+    };
+  }
+
+  it('both gates produce the same normalized PredictionResult fields', async () => {
+    const fast = createAdaptiveInferenceEngine({
+      fastGate: new MockFastGate({ patterns: { 'NAV_ANALYTICS': 'highlight_primary_action' } }),
+      slowGate: new MockSlowGate({ intervention: 'offer_assistance' })
+    });
+    const fastResult = await fast.evaluate(contextFor(['NAV_ANALYTICS']));
+    expect(fastResult.matchedGate).toBe('fast');
+
+    const slow = createAdaptiveInferenceEngine({
+      fastGate: new MockFastGate(),
+      slowGate: new MockSlowGate({ outcome: 'HOVER_DWELL', intervention: 'expand_tooltip' })
+    });
+    const slowResult = await slow.evaluate(contextFor(['NAV_SETTINGS']));
+    expect(slowResult.matchedGate).toBe('slow');
+
+    const requiredFields = [
+      'outcomeId',
+      'vocabularyVersion',
+      'confidence',
+      'matched',
+      'source',
+      'predictionId',
+      'timestamp',
+      'contractVersion'
+    ];
+
+    for (const field of requiredFields) {
+      expect(fastResult.prediction).toHaveProperty(field);
+      expect(slowResult.prediction).toHaveProperty(field);
+    }
+    expect(fastResult.prediction?.contractVersion).toBe(PREDICTION_CONTRACT_VERSION);
+    expect(slowResult.prediction?.contractVersion).toBe(PREDICTION_CONTRACT_VERSION);
+    expect(fastResult.prediction?.predictionId).toMatch(/^pred_/);
+    expect(slowResult.prediction?.predictionId).toMatch(/^pred_/);
+    // Identity is issued once, so two predictions cannot share an id.
+    expect(fastResult.prediction?.predictionId).not.toBe(slowResult.prediction?.predictionId);
+  });
+
+  it('preserves gate, pattern, version, mapping source and latency for a Fast decision', async () => {
+    const fastGate = new MockFastGate({
+      patterns: {
+        'CLOSE_FILTERS > OPEN_FILTERS': { outcomeId: 'open_filter_section' }
+      },
+      outcomeVocabulary: {
+        id: 'testbed-semantic',
+        version: 'testbed-semantic/1.0.0',
+        outcomes: ['open_filter_section']
+      },
+      gateVersion: 'testbed-patterns/2.0.0'
+    });
+
+    const engine = createAdaptiveInferenceEngine({
+      fastGate,
+      slowGate: new MockSlowGate({ intervention: 'offer_assistance' })
+    });
+    const result = await engine.evaluate(contextFor(['CLOSE_FILTERS', 'OPEN_FILTERS']));
+
+    expect(result.matchedGate).toBe('fast');
+    expect(result.prediction?.outcomeId).toBe('open_filter_section');
+    expect(result.fastDecision.matchedPattern).toEqual(['CLOSE_FILTERS', 'OPEN_FILTERS']);
+    expect(result.provenance).toMatchObject({
+      gate: 'fast',
+      gateVersion: 'testbed-patterns/2.0.0',
+      mappingSource: 'fast_gate_pattern',
+      contractVersion: PREDICTION_CONTRACT_VERSION
+    });
+    expect(result.provenance.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.provenance.gateLatencyMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('selects the Slow Gate when it asserts a prediction even without an actionable command', async () => {
+    const slowGate = {
+      async infer() {
+        return {
+          source: 'slow' as const,
+          gateVersion: 'slow-head/2.0.0',
+          outcome: 'HOVER_DWELL' as const,
+          confidence: 0.9,
+          prediction: {
+            outcomeId: 'HOVER_DWELL',
+            vocabularyVersion: 'foundation/1.0.0',
+            confidence: 0.9,
+            matched: true,
+            source: 'slow' as const,
+            mappingSource: 'learned_head' as const
+          },
+          intervention: {
+            type: 'no_op' as const,
+            source: 'slow' as const,
+            confidence: 0.9,
+            issuedAt: 0,
+            reason: 'compatibility command'
+          }
+        };
+      }
+    };
+
+    const engine = createAdaptiveInferenceEngine({
+      fastGate: new MockFastGate(),
+      slowGate
+    });
+    const result = await engine.evaluate(contextFor(['NAV_SETTINGS']));
+
+    // A matched prediction is the decision. Selecting only on the command left
+    // `matchedGate: 'none'` beside a matched Slow prediction.
+    expect(result.matchedGate).toBe('slow');
+    expect(result.prediction?.matched).toBe(true);
+    expect(result.prediction?.outcomeId).toBe('HOVER_DWELL');
+    expect(result.provenance.gate).toBe('slow');
+    expect(result.provenance.gateVersion).toBe('slow-head/2.0.0');
+    expect(result.provenance.mappingSource).toBe('learned_head');
+  });
+
+  it('reports the Fast Gate as deciding when it matched but declared no adaptation', async () => {
+    // A match that resolves to `no_op` does not short-circuit (the Slow Gate gets a chance),
+    // but if the Slow Gate has nothing, the Fast prediction is still the decision. The
+    // decision and the prediction must not disagree about which gate produced it.
+    const engine = createAdaptiveInferenceEngine({
+      fastGate: new MockFastGate({ patterns: { 'NAV_ANALYTICS': 'no_op' } }),
+      slowGate: new MockSlowGate({ outcome: 'NO_OUTCOME', intervention: undefined })
+    });
+    const result = await engine.evaluate(contextFor(['NAV_ANALYTICS']));
+
+    expect(result.matchedGate).toBe('fast');
+    expect(result.prediction?.matched).toBe(true);
+    expect(result.provenance.gate).toBe('fast');
+    expect(result.noMatchReason).toBeUndefined();
+  });
+
+  it('returns a no-match reason and no asserted prediction when both gates miss', async () => {
+    const engine = createAdaptiveInferenceEngine({
+      fastGate: new MockFastGate({ patterns: { 'NAV_ANALYTICS': 'highlight_primary_action' } }),
+      slowGate: new MockSlowGate({ outcome: 'NO_OUTCOME', intervention: undefined })
+    });
+    const result = await engine.evaluate(contextFor(['NAV_SETTINGS']));
+
+    expect(result.matchedGate).toBe('none');
+    expect(result.prediction?.matched).toBe(false);
+    expect(result.noMatchReason).toBe('fast:no_matching_pattern');
+  });
+
+  it('hands the policy the selected normalized prediction and context, not a gate command', async () => {
+    const fastGate = new MockFastGate({
+      patterns: { 'CLOSE_FILTERS > OPEN_FILTERS': { outcomeId: 'open_filter_section' } },
+      outcomeVocabulary: {
+        id: 'testbed-semantic',
+        version: 'testbed-semantic/1.0.0',
+        outcomes: ['open_filter_section']
+      }
+    });
+    const engine = createAdaptiveInferenceEngine({
+      fastGate,
+      slowGate: new MockSlowGate({ intervention: 'offer_assistance' })
+    });
+    const result = await engine.evaluate(contextFor(['CLOSE_FILTERS', 'OPEN_FILTERS']));
+
+    expect(result.prediction).toBeDefined();
+    // The testbed's candidate resolver turns the semantic outcome into an adaptation; the
+    // gate itself need not have emitted a command.
+    const command = createTestbedCandidateResolver().resolve(result.prediction!, uiContext);
+    expect(command?.type).toBe('simplify_options');
+    expect(command?.source).toBe('fast');
+    expect(command?.reason).toContain('open_filter_section');
   });
 });

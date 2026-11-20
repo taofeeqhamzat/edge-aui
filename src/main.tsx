@@ -12,7 +12,7 @@ import { testbedAdapter } from './testbed/adapter';
 import { TESTBED_MACRO_MAPPER } from './testbed/config/macroVocabulary';
 import { TESTBED_CONTEXT_ENCODING_CONFIG } from './testbed/config/contextEncoding';
 import {
-  TESTBED_FAST_GATE_PATTERNS,
+  TESTBED_FAST_GATE_DECLARATIONS,
   TESTBED_FAST_GATE_PATTERN_VERSION
 } from './testbed/config/fastGatePatterns';
 import { TESTBED_EXPERIMENT_CONFIG } from './testbed/config/experiment';
@@ -35,8 +35,9 @@ registerRuntimeDefaults({
   adapter: testbedAdapter,
   macroMapper: TESTBED_MACRO_MAPPER,
   contextEncoding: TESTBED_CONTEXT_ENCODING_CONFIG,
-  fastGatePatterns: TESTBED_FAST_GATE_PATTERNS,
+  fastGatePatterns: TESTBED_FAST_GATE_DECLARATIONS,
   fastGatePatternVersion: TESTBED_FAST_GATE_PATTERN_VERSION,
+  outcomeVocabulary: TESTBED_SEMANTIC_VOCABULARY,
   candidateResolver: createTestbedCandidateResolver(),
   // Semantic outcomes are application vocabulary: the testbed supplies its own rules and
   // the framework records whatever it derives (Task 20.4).

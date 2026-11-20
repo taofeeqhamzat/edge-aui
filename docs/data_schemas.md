@@ -77,6 +77,12 @@ export interface SerializableExperimentTrace {
   `predictedOutcomeVocabularyVersion`, `predictionContractVersion` and `targetContext`
   record the application outcome the gates asserted and the UI context it was computed
   against. `PredictionEvent.outcome` remains the generic label.
+- **Prediction provenance (1.4.0, additive):** `PredictionEvent.gateVersion` names the
+  declared pattern set or model artifact that served the prediction, and
+  `PredictionEvent.matchedPattern` records the Fast Gate macro sequence that matched. Without
+  them a trace could say "the Fast Gate matched" but not which declared pattern fired, so a
+  prediction could not be attributed to a declaration. Both are optional; a trace that omits
+  them remains valid.
 - **Version attribution (1.4.0):** `metadata.taskDefinitionVersion`,
   `metadata.semanticOutcomeVocabularyVersion` and `metadata.predictionContractVersion`.
   Validation requires each version exactly when a record of the corresponding kind is

@@ -62,6 +62,8 @@ import type { MiningCounters } from '../telemetry/traceSchema';
 import { InferenceResult } from '../gates/arbitration';
 import { nextPredictionId, PREDICTION_CONTRACT_VERSION } from '../gates/contracts';
 import { InterventionCommand, InterventionType } from '../intervention/types';
+import type { PatternTarget } from '../gates/fast/patternTarget';
+import type { OutcomeVocabulary } from '../gates/contracts';
 import { UIContext } from '../types/uiContext.js';
 import {
   encodeUIContext,
@@ -91,10 +93,19 @@ export interface AdaptiveRuntimeOptions {
   trackableSelector?: string;
   /** Minimum support for the PrefixSpan miner. Default 2. */
   minPatternSupport?: number;
-  /** Declared pattern → intervention map for the Fast Gate. */
-  fastGatePatterns?: Record<string, InterventionType | Partial<InterventionCommand>>;
+  /**
+   * Declared pattern → target map for the Fast Gate. A target is either a semantic outcome
+   * (the current form) or a legacy intervention value, which stays readable during the
+   * migration (Task 50.2).
+   */
+  fastGatePatterns?: Record<string, PatternTarget>;
   /** Version of the declared pattern set, reported on every Fast Gate prediction. */
   fastGatePatternVersion?: string;
+  /**
+   * Vocabulary a declared Fast Gate pattern outcome must belong to (Task 50.2). The
+   * application supplies it because the outcome ids are application vocabulary.
+   */
+  outcomeVocabulary?: OutcomeVocabulary;
   /** Policy configuration overrides. */
   policyConfig?: Partial<PolicyConfig>;
   /**
@@ -376,6 +387,7 @@ export class AdaptiveRuntime {
           | 'mock',
         fastGatePatterns: patternMap,
         fastGatePatternVersion: this.options.fastGatePatternVersion,
+        outcomeVocabulary: this.options.outcomeVocabulary,
         minPatternSupport: this.options.minPatternSupport ?? 2,
         enableFastGate: true,
         enableSlowGate: this.options.enableSlowGate !== false,
@@ -879,10 +891,20 @@ export class AdaptiveRuntime {
         predictedOutcome: prediction?.outcomeId,
         predictionContractVersion: prediction?.contractVersion,
         predictedOutcomeVocabularyVersion: prediction?.vocabularyVersion,
+        // Provenance survives arbitration: which gate, which declared pattern, which
+        // version of the pattern set or model (Task 50.3).
+        gateVersion: result.provenance.gateVersion,
+        matchedPattern: result.fastDecision.matched ? result.fastDecision.matchedPattern : undefined,
         targetContext: prediction?.target,
         interventionType: result.intervention?.type,
         mappingSource: resolvedMappingSource,
-        confidence: result.intervention?.confidence ?? result.slowResult?.confidence,
+        // The selected prediction's confidence is the value the policy reasoned about. A
+        // gate that emits a prediction without a legacy command used to record no confidence
+        // at all, so the trace could not show why the policy accepted or rejected it.
+        confidence:
+          result.intervention?.confidence ??
+          prediction?.confidence ??
+          result.slowResult?.confidence,
         latencyMs: result.latencyMs,
         fastGateLatencyMs: result.fastGateLatencyMs,
         slowGateLatencyMs: result.slowGateLatencyMs,
@@ -940,7 +962,7 @@ export class AdaptiveRuntime {
           policyDecision: 'no_prediction',
           policyReason:
             result.matchedGate === 'none'
-              ? 'No intervention: both gates evaluated and returned no candidate'
+              ? `No prediction: no gate asserted one (${result.noMatchReason ?? 'reason not reported'})`
               : `No intervention: ${result.matchedGate} gate produced no candidate`,
           candidateCount: 0,
           cooldownRemainingMs: this.policy.cooldownRemainingMs(),

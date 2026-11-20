@@ -22,7 +22,8 @@ import { AdaptiveRuntime, AdaptiveRuntimeOptions } from './adaptiveRuntime';
 import type { CandidateResolver } from '../intervention/policy';
 import { ExperimentalCondition } from '../telemetry/events';
 import { resolveExperimentCondition } from '../config/experimentCondition';
-import { InterventionType } from '../intervention/types';
+import type { PatternTarget } from '../gates/fast/patternTarget';
+import type { OutcomeVocabulary } from '../gates/contracts';
 import { sessionManager } from '../telemetry/session';
 import { experimentRecorder } from '../telemetry/recorder';
 import { ResearchCollection } from '../telemetry/collection';
@@ -50,10 +51,15 @@ export interface RegisteredRuntimeDefaults {
   macroMapper?: MacroMapper;
   /** Route/action/task vocabulary for the R^6 context encoding. */
   contextEncoding?: ContextEncodingConfig;
-  /** Declared Fast Gate patterns: macro-symbol sequence → adaptation. */
-  fastGatePatterns?: Record<string, InterventionType | Partial<import('../intervention/types').InterventionCommand>>;
+  /**
+   * Declared Fast Gate patterns: macro-symbol sequence → target (a semantic outcome, or the
+   * legacy intervention form during migration).
+   */
+  fastGatePatterns?: Record<string, PatternTarget>;
   /** Version of the declared pattern set, recorded with predictions. */
   fastGatePatternVersion?: string;
+  /** Vocabulary the declared Fast Gate pattern outcomes belong to. */
+  outcomeVocabulary?: OutcomeVocabulary;
   /** Predicted outcome → candidate adaptation. */
   candidateResolver?: CandidateResolver;
   /** Application semantic outcome derivation (Task 20.4). */
@@ -225,6 +231,7 @@ export async function bootRuntime(
     minPatternSupport: 1,
     fastGatePatterns: registeredDefaults.fastGatePatterns,
     fastGatePatternVersion: registeredDefaults.fastGatePatternVersion,
+    outcomeVocabulary: registeredDefaults.outcomeVocabulary,
     policyConfig: { confidenceThreshold: 0.75, requiredConsecutiveWindows: 2 },
     enableSlowGate: true,
     enableInstrumentation,

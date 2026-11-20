@@ -15,15 +15,42 @@ import { InterventionCommand, InterventionType, isInterventionType } from '../..
 import { DEFAULT_OUTCOME_INTERVENTIONS } from '../../gates/slow/onnxSlowGate';
 
 /**
+ * Semantic outcome → adaptation map for the testbed (Task 50.2).
+ *
+ * The Fast Gate now predicts a semantic outcome (`open_filter_section`, `apply_filter`, …)
+ * rather than an intervention class, so the policy needs a decision for that vocabulary.
+ * This table is a **policy choice**, not evidence: it says which outcomes the testbed chooses
+ * to adapt to. Outcomes absent from it produce a recorded decision-only verdict rather than
+ * an invented adaptation — closing a filter, resetting filters and navigating are recognised
+ * but never adapted.
+ *
+ * The adaptations mirror the intent of the legacy per-pattern table: the filter surface is
+ * the heavy one, so its selection steps simplify the options, while committing a filter or a
+ * report highlights the primary action.
+ */
+export const TESTBED_SEMANTIC_OUTCOME_INTERVENTIONS: Readonly<
+  Partial<Record<string, InterventionType>>
+> = {
+  open_filter_section: 'simplify_options',
+  select_date_range: 'simplify_options',
+  select_category: 'simplify_options',
+  apply_filter: 'highlight_primary_action',
+  select_report: 'highlight_primary_action',
+  export_report: 'highlight_primary_action'
+};
+
+/**
  * Testbed outcome → adaptation map.
  *
- * Keys are the foundation outcome classes (the vocabulary the bundled INT8 graph emits).
- * Values are declared system adaptations, never user actions.
+ * Keys are the foundation outcome classes (the vocabulary the bundled INT8 graph emits)
+ * plus the semantic outcomes the Fast Gate can predict (Task 50.2). Values are declared
+ * system adaptations, never user actions.
  */
 export const TESTBED_OUTCOME_INTERVENTIONS: Readonly<
   Partial<Record<string, InterventionType>>
 > = {
-  ...DEFAULT_OUTCOME_INTERVENTIONS
+  ...DEFAULT_OUTCOME_INTERVENTIONS,
+  ...TESTBED_SEMANTIC_OUTCOME_INTERVENTIONS
 };
 
 function buildCommand(
