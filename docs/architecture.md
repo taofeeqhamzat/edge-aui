@@ -272,9 +272,13 @@ absence.
 2. `no_op` pass-through;
 3. **cooldown** — refractory period after an accepted intervention (default 5 s);
 4. **dismissal feedback** — a dismissed intervention type is suppressed (default 15 s);
-5. **confidence threshold** (default 0.75, an uncalibrated engineering baseline);
-6. **UI-context eligibility** — e.g. `highlight_primary_action` requires a primary action;
-7. **persistence** — the identical candidate must appear in 2 consecutive windows.
+5. **repeat suppression** — one accepted adaptation answers one observed act. The gate
+   re-evaluates every window and keeps the act in its macro history, so without this an idle
+   participant was re-adapted every cooldown period from a single act. A new macro interaction
+   re-arms the policy (`rejectionCategory: 'already_adapted'`);
+6. **confidence threshold** (default 0.75, an uncalibrated engineering baseline);
+7. **UI-context eligibility** — e.g. `highlight_primary_action` requires a primary action;
+8. **persistence** — the identical candidate must appear in 2 consecutive windows.
 
 `UIActuator` applies four declarations non-destructively, each with a precise reversal
 closure, and enforces `ttlMs`:
@@ -283,15 +287,34 @@ closure, and enforces `ttlMs`:
 |---|---|---|
 | `no_op` | no DOM change; emits an event | n/a |
 | `highlight_primary_action` | `edge-aui-highlight` class + data attribute | restores the exact prior `class` |
-| `simplify_options` | collapses expanded accordions, tags the target surface | re-expands; restores focus and class |
-| `expand_tooltip` | inserts a `role="tooltip"` bubble, links `aria-describedby` | removes the bubble; restores attributes |
+| `simplify_options` | collapses expanded accordions inside the declared surface, tags that surface | re-expands; restores focus and class |
+| `expand_tooltip` | inserts a `role="tooltip"` bubble carrying the target's own `title`/`data-tooltip` text, links `aria-describedby` | removes the bubble; restores attributes |
 | `offer_assistance` | appends a `role="status" aria-live="polite"` banner | removes the node and listeners |
 
 `targetComponentId` is escaped before selector interpolation, and focus is never stolen.
-A `targetResolver` supplied in `UIActuator` options is authoritative: it turns the declared
-target reference into an element, and a declared target it cannot resolve is a recorded
-actuation failure rather than a fallback to some other control (Task 20.5). Without a
-resolver the framework falls back to the `data-aui-component` annotation contract.
+Every element-changing adaptation must declare a target. A command without one, or one whose
+declared target does not resolve, is a recorded actuation failure with no DOM mutation —
+there is no fallback to the first primary action, tooltip or accordion (Task 20.5/60.1). With
+no resolver the framework resolves the declared target through the `data-aui-component`
+annotation contract.
+
+The testbed supplies the resolver (`src/testbed/config/interventionTargets.ts`) and the
+outcome→adaptation policy (`src/testbed/config/policyAdapter.ts`):
+
+- `highlight_primary_action` declares the logical target `primary-action`;
+- `simplify_options` declares `filter-options` (the filter drawer surface). The target is
+  configuration, not a framework constant;
+- `expand_tooltip` uses the target the prediction names, because "a tooltip was inspected"
+  does not identify which one;
+- the resolver refuses an element that cannot accept the adaptation — a non-actionable
+  element, a surface with no accordions, or a tooltip with no real text;
+- the adaptation target never comes from `context.activeComponentId`, so a prediction about
+  a filter cannot be applied to the last hovered table cell.
+
+The semantic outcome→adaptation map is deliberately conservative: filter-selection outcomes
+simplify the options, committing outcomes highlight the primary action, `inspect_help`
+expands the inspected tooltip, and every other outcome — including `select_region`,
+`reset_filter`, navigation and `NO_OUTCOME` — records a decision-only `no_op`.
 
 ---
 
