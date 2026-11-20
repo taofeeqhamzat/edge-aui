@@ -172,3 +172,56 @@ describe('UIActuator TTL and selector safety (assessment §13.1 / §25 P1-5)', (
     expect(button.classList.contains('edge-aui-highlight')).toBe(false);
   });
 });
+
+describe('InterventionPolicy repeat suppression for one observed act (Task 60.1)', () => {
+  function createPolicy(overrides: Partial<ConstructorParameters<typeof InterventionPolicy>[0]> = {}) {
+    return new InterventionPolicy({
+      confidenceThreshold: 0.75,
+      requiredConsecutiveWindows: 1,
+      enforceContextEligibility: true,
+      cooldownMs: 0,
+      dismissalCooldownMs: 15000,
+      ...overrides
+    });
+  }
+
+  it('does not re-apply the same adaptation while no new act has occurred', () => {
+    const policy = createPolicy();
+
+    expect(policy.accept(command(), context).accepted).toBe(true);
+
+    // A later window still sees the same act in the gate's macro history. Re-adapting it
+    // would repeat an intervention the participant never asked for again.
+    const repeat = policy.accept(command(), context);
+    expect(repeat.accepted).toBe(false);
+    expect(repeat.rejectionCategory).toBe('already_adapted');
+    expect(repeat.command.type).toBe('no_op');
+  });
+
+  it('allows the same adaptation again after a new observed act', () => {
+    const policy = createPolicy();
+
+    expect(policy.accept(command(), context).accepted).toBe(true);
+    policy.notifyUserAction('SELECT_CATEGORY');
+    expect(policy.accept(command(), context).accepted).toBe(true);
+  });
+
+  it('does not suppress a different adaptation of the same act', () => {
+    const policy = createPolicy();
+
+    expect(policy.accept(command(), context).accepted).toBe(true);
+    const different = policy.accept(
+      command({ type: 'expand_tooltip', targetComponentId: 'tooltip-region' }),
+      context
+    );
+    expect(different.accepted).toBe(true);
+  });
+
+  it('clears repeat suppression when the task changes', () => {
+    const policy = createPolicy();
+
+    expect(policy.accept(command(), { ...context, taskId: 'T1' }).accepted).toBe(true);
+    const nextTask = policy.accept(command(), { ...context, taskId: 'T2' });
+    expect(nextTask.accepted).toBe(true);
+  });
+});

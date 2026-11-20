@@ -341,6 +341,7 @@ export type PolicyRejectionCategory =
   | 'below_threshold'
   | 'ineligible_context'
   | 'pending_persistence'
+  | 'already_adapted'
   | 'unknown_candidate'
   | 'baseline_condition'
   | 'actuation_failed';

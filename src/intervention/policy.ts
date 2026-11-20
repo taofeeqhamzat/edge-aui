@@ -115,7 +115,13 @@ export const DEFAULT_POLICY_CONFIG: PolicyConfig = {
  */
 export type PolicyRefusalCategory = Extract<
   PolicyRejectionCategory,
-  'cooldown' | 'dismissed' | 'below_threshold' | 'ineligible_context' | 'pending_persistence' | 'unknown_candidate'
+  | 'cooldown'
+  | 'dismissed'
+  | 'below_threshold'
+  | 'ineligible_context'
+  | 'pending_persistence'
+  | 'already_adapted'
+  | 'unknown_candidate'
 > | 'none';
 
 export interface PolicyDecision {
@@ -140,6 +146,17 @@ export class InterventionPolicy {
   private candidateTarget?: string;
   private candidateCount = 0;
   private lastTaskId?: string;
+  /**
+   * The candidate accepted most recently, and whether a new act has been observed since.
+   *
+   * A gate re-evaluates every window, and its macro history keeps the act that produced a
+   * pattern until newer symbols displace it. Without this, an idle participant was
+   * re-adapted every cooldown period from one act: the same prediction arrived on every
+   * window and the timer, not a new decision, gated the repeat (observed live in Task 60.2).
+   * The policy therefore answers one act with one adaptation, and waits for the next act.
+   */
+  private acceptedCandidateKey: string | null = null;
+  private newActSinceAccept = true;
 
   /** Timestamp (ms) until which no intervention may be accepted. */
   private cooldownUntilMs = 0;
@@ -250,7 +267,25 @@ export class InterventionPolicy {
       };
     }
 
-    // 5. Confidence Threshold Gate
+    // 5. Repeat suppression: the accepted adaptation is the response to the current act.
+    //    The same candidate in later windows is that act still in the gate's macro history,
+    //    not new evidence, so it is refused even after the cooldown timer has elapsed.
+    if (this.acceptedCandidateKey === this.candidateKey(command) && !this.newActSinceAccept) {
+      this.resetCandidate();
+      return {
+        accepted: false,
+        command: createNoOpCommand(
+          command.source,
+          `'${command.type}' already responds to the current act`
+        ),
+        reason: `Already adapted for the current act ('${command.type}'); awaiting a new interaction`,
+        candidateCount: 0,
+        rejectionCategory: 'already_adapted',
+        cooldownRemainingMs: this.cooldownRemainingMs()
+      };
+    }
+
+    // 6. Confidence Threshold Gate
     if (command.confidence !== undefined && command.confidence < this.config.confidenceThreshold) {
       this.resetCandidate();
       return {
@@ -266,7 +301,7 @@ export class InterventionPolicy {
       };
     }
 
-    // 6. UI Context Eligibility Gate
+    // 7. UI Context Eligibility Gate
     if (this.config.enforceContextEligibility) {
       const eligibility = this.checkContextEligibility(command, context);
       if (!eligibility.eligible) {
@@ -282,7 +317,7 @@ export class InterventionPolicy {
       }
     }
 
-    // 7. Consecutive Window Persistence Gate
+    // 8. Consecutive Window Persistence Gate
     const isSameCandidate =
       this.candidateType === command.type &&
       this.candidateTarget === command.targetComponentId;
@@ -297,8 +332,10 @@ export class InterventionPolicy {
 
     if (this.candidateCount >= this.config.requiredConsecutiveWindows) {
       // Enter the cooldown window so the same adaptation is not re-applied on every
-      // subsequent window.
+      // subsequent window, and remember which act it answered.
       this.cooldownUntilMs = now + this.config.cooldownMs;
+      this.acceptedCandidateKey = this.candidateKey(command);
+      this.newActSinceAccept = false;
       return {
         accepted: true,
         // The adaptation lifetime is attached here, at the one place every accepted
@@ -334,6 +371,8 @@ export class InterventionPolicy {
     this.lastTaskId = undefined;
     this.cooldownUntilMs = 0;
     this.dismissedUntilMs.clear();
+    this.acceptedCandidateKey = null;
+    this.newActSinceAccept = true;
   }
 
   /**
@@ -341,6 +380,8 @@ export class InterventionPolicy {
    * candidate streak.
    */
   public notifyUserAction(_action: string): void {
+    // A new act is new evidence: the previous adaptation answered the previous act.
+    this.newActSinceAccept = true;
     this.resetCandidate();
   }
 
@@ -373,6 +414,13 @@ export class InterventionPolicy {
     this.candidateType = null;
     this.candidateTarget = undefined;
     this.candidateCount = 0;
+  }
+
+  /** Identity of a candidate for repeat suppression: its type and its target. */
+  private candidateKey(command: InterventionCommand): string {
+    return command.targetComponentId
+      ? `${command.type}|${command.targetComponentId}`
+      : command.type;
   }
 
   private checkContextEligibility(
