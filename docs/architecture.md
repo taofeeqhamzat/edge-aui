@@ -389,6 +389,10 @@ interface PredictionEvent {
   predictedOutcome?: string;
   predictedOutcomeVocabularyVersion?: string;
   predictionContractVersion?: string;
+  // Provenance of the selected prediction (Task 50.3): which pattern set or model served
+  // it, and which macro pattern the Fast Gate matched.
+  gateVersion?: string;
+  matchedPattern?: string[];
   targetContext?: { route?: string; taskId?: string; taskStepId?: string; componentId?: string };
 }
 
