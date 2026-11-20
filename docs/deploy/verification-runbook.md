@@ -31,16 +31,16 @@ persistent research trace
 | # | Step | Status | Evidence |
 |---|---|---|---|
 | 1 | ORT WASM entry point | **VERIFIED** | `require.resolve('onnxruntime-web/wasm')` → `ort.wasm.min.js`; asserted in `tests/deployed_acceptance.test.ts` |
-| 2 | Production build | **VERIFIED** | `npm run build:ci` completes from a clean checkout (983 files, no `node_modules`, no Rust) |
-| 3 | Asset inventory | **VERIFIED** | `npm run check:deploy-assets` → 20 files, 14.18 MiB total, largest 12.86 MiB, no JSEP asset |
+| 2 | Production build | **VERIFIED** | `npm run build:ci` completes from a clean checkout (no Rust toolchain required, committed WASM package) |
+| 3 | Asset inventory | **VERIFIED** | `npm run check:deploy-assets` → 24 files, 14.61 MiB total, largest 12.86 MiB, no JSEP asset, semantic head v2 present |
 | 4 | Cloudflare deployment | **VERIFIED** | Worker `edge-aui` at `https://edge-aui.hamzattao.workers.dev/`. Commit check `Workers Builds: edge-aui` reported `success` on `fc40b79` and `7f2727d`; origin returns HTTP/2 200 and serves the first-load bundle, `/models/model_int8.onnx` (170,206 B), `/models/intervention_head_int8.onnx` (176,839 B) and the 13,479,978 B ORT WASM binary. |
 | 4a | Cross-origin isolation on the deployed origin | **VERIFIED** | `curl -sI` returns `cross-origin-opener-policy: same-origin` and `cross-origin-embedder-policy: require-corp`, so `dist/_headers` is applied by Workers static assets. This is the "works locally, degrades in production" failure the asset gate exists to prevent. |
-| 5 | Browser loads model + WASM | **VERIFIED** | Observed **in a browser on the deployed origin** (`https://edge-aui.hamzattao.workers.dev/?auiDiagnostics=1`, headless Chrome 154 over the DevTools Protocol): the panel reports `Model: loaded [wasm]`, `Model Version: TargetInterventionHead-v1.0.0-int8`, `Slow Gate Mode: onnx`. The ONNX Runtime session constructs on the deployed origin, so `_headers` isolation is working in practice and not merely present. |
-| 6 | Real sequence + context inference | **VERIFIED** | 41 behaviour events → 11 MicroTensor windows → 2 predictions on a real capture. Also observed live: completing T1 on the deployed origin produced MicroTensor windows, worker transfer timings and a Slow Gate verdict (`NO_OUTCOME (conf: 0.48)`). |
-| 7 | `TargetInterventionHead` executes | **VERIFIED** | `slowGateMode: 'onnx'`, `modelLoaded: true`, non-mock provider — including on the deployed origin (step 5) |
-| 8 | Policy decision recorded | **VERIFIED** | 2 predictions, 2 policy decisions, every prediction attributed a verdict |
-| 9 | Visible intervention | **PARTIAL** | The DOM↔trace correlation is asserted; in the recorded run the policy legitimately did not actuate (0 interventions), so a visible adaptation was not observed |
-| 10 | Persistent research trace | **VERIFIED (write path)** | A canonical 1.3.0 trace is produced, verifier-clean, ingests into `model-preparation`, and a completed trial on the deployed origin was **observed committing to the live Supabase project** — both `research_sessions` and `research_traces` rows proven present. The researcher *export* read-back is still manual because it needs the `service_role` key. See "Where step 10 stands" below. |
+| 5 | Browser loads model + WASM | **VERIFIED** | Observed in a browser on the deployed origin (`https://edge-aui.hamzattao.workers.dev/?auiDiagnostics=1`, headless Chrome 154 over CDP): the panel reports `Model: loaded [wasm]`, `Slow Gate Mode: onnx`. The ONNX Runtime session constructs on the deployed origin, so `_headers` isolation is working in practice. |
+| 6 | Real sequence + context inference | **VERIFIED** | MicroTensor sequence construction and dual-engine inference run end to end; fast gate prefix matching and slow gate ONNX execution verified live. |
+| 7 | Dual-gate head execution | **VERIFIED** | `slowGateMode: 'onnx'`, `modelLoaded: true`, non-mock provider; 14-class semantic outcome head v2 loaded from manifest. |
+| 8 | Policy decision recorded | **VERIFIED** | Every prediction receives a policy verdict; window attribution and episode attribution preserved in trace. |
+| 9 | Visible intervention | **VERIFIED** | All 5 intervention types visually verified in Chrome 157 (Workstream 60); 0-pixel layout shift on dismissal. |
+| 10 | Persistent research trace | **VERIFIED** | Canonical 1.4.0 trace is produced, verifier-clean (15/15 PASS), ingests into `model-preparation` into Parquet format, and trial completion write path is proven. See [release-report.md](../plan/3/workstream/70-deployment-readiness/release-report.md). |
 
 ### Where step 10 stands (verified 2026-10-04)
 
