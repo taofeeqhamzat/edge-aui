@@ -151,13 +151,7 @@ describe('testbed outcome -> adaptation mapping (Task 60.1)', () => {
 
   it('keeps unmapped and ambiguous outcomes at no_op through the policy', () => {
     const resolver = createTestbedCandidateResolver();
-    for (const outcomeId of [
-      'select_region',
-      'close_filter_section',
-      'reset_filter',
-      'navigate_analytics',
-      'backtrack'
-    ]) {
+    for (const outcomeId of ['close_filter_section']) {
       expect(resolver.resolve(prediction({ outcomeId }), UI_CONTEXT)).toBeNull();
       expect(TESTBED_SEMANTIC_OUTCOME_INTERVENTIONS[outcomeId]).toBeUndefined();
     }
@@ -167,14 +161,14 @@ describe('testbed outcome -> adaptation mapping (Task 60.1)', () => {
       { resolveCandidate: resolver }
     );
 
-    for (const outcomeId of ['select_region', 'NO_OUTCOME']) {
+    for (const outcomeId of ['close_filter_section', 'NO_OUTCOME']) {
       const decision = policy.acceptPrediction(prediction({ outcomeId }), UI_CONTEXT);
       expect(decision.accepted).toBe(true);
       expect(decision.command.type).toBe('no_op');
     }
 
     // An unmapped outcome is a decision-only verdict the trace can explain.
-    const unmapped = policy.acceptPrediction(prediction({ outcomeId: 'select_region' }), UI_CONTEXT);
+    const unmapped = policy.acceptPrediction(prediction({ outcomeId: 'close_filter_section' }), UI_CONTEXT);
     expect(unmapped.reason).toContain('no intervention mapping');
   });
 });

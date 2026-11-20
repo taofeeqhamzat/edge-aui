@@ -70,7 +70,51 @@ describe('testbed candidate resolver', () => {
 
   it('refuses an outcome it has no mapping for instead of guessing', () => {
     const resolver = createTestbedCandidateResolver();
-    expect(resolver.resolve(prediction({ outcomeId: 'select_region' }), UI_CONTEXT)).toBeNull();
+    expect(resolver.resolve(prediction({ outcomeId: 'close_filter_section' }), UI_CONTEXT)).toBeNull();
+  });
+
+  it('maps select_region to simplify_options targeting filter drawer', () => {
+    const resolver = createTestbedCandidateResolver();
+    const command = resolver.resolve(prediction({ outcomeId: 'select_region' }), UI_CONTEXT);
+    expect(command?.type).toBe('simplify_options');
+    expect(command?.targetComponentId).toBe('filter-options');
+  });
+
+  it('maps navigation outcomes to offer_assistance with next step hint when in active task', () => {
+    const resolver = createTestbedCandidateResolver();
+    const contextWithTask: UIContext = {
+      ...UI_CONTEXT,
+      taskId: 'TD1',
+      taskStepId: 'TD1-1'
+    };
+    const command = resolver.resolve(prediction({ outcomeId: 'navigate_analytics' }), contextWithTask);
+    expect(command?.type).toBe('offer_assistance');
+    expect(command?.reason).toBe('Next step: Navigate to Analytics');
+
+    // Without active task, navigation outcomes return null (no_op)
+    expect(resolver.resolve(prediction({ outcomeId: 'navigate_analytics' }), UI_CONTEXT)).toBeNull();
+  });
+
+  it('maps reset_filter and backtrack to offer_assistance with filter guidance hint', () => {
+    const resolver = createTestbedCandidateResolver();
+    const resetCmd = resolver.resolve(prediction({ outcomeId: 'reset_filter' }), UI_CONTEXT);
+    expect(resetCmd?.type).toBe('offer_assistance');
+    expect(resetCmd?.reason).toContain('Tip: Use the filter drawer options to refine your report data.');
+
+    const backtrackCmd = resolver.resolve(prediction({ outcomeId: 'backtrack' }), UI_CONTEXT);
+    expect(backtrackCmd?.type).toBe('offer_assistance');
+    expect(backtrackCmd?.reason).toContain('Tip: Use the filter drawer options to refine your report data.');
+  });
+
+  it('maps apply_filter and export_report to the primary action target', () => {
+    const resolver = createTestbedCandidateResolver();
+    const applyCmd = resolver.resolve(prediction({ outcomeId: 'apply_filter' }), UI_CONTEXT);
+    expect(applyCmd?.type).toBe('highlight_primary_action');
+    expect(applyCmd?.targetComponentId).toBe('primary-action');
+
+    const exportCmd = resolver.resolve(prediction({ outcomeId: 'export_report' }), UI_CONTEXT);
+    expect(exportCmd?.type).toBe('highlight_primary_action');
+    expect(exportCmd?.targetComponentId).toBe('primary-action');
   });
 });
 

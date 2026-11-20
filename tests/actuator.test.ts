@@ -199,6 +199,36 @@ describe('Task 8.3: UIActuator (Non-Destructive & Accessible Adaptation)', () =>
     expect(dismissedEvent?.intervention).toBe('offer_assistance');
   });
 
+  it('applies offer_assistance banner, handles accept button click and emits accepted signal', () => {
+    const cmd = createInterventionCommand({
+      type: 'offer_assistance',
+      source: 'slow',
+      confidence: 0.92,
+      reason: 'Next step: Open Region filter'
+    });
+
+    actuator.apply(cmd);
+
+    const banner = document.querySelector('.edge-aui-assistance-banner');
+    expect(banner).not.toBeNull();
+    expect(banner?.textContent).toContain('Next step: Open Region filter');
+
+    // Click "Got it" accept button
+    const acceptBtn = banner?.querySelector('.edge-aui-assistance-accept') as HTMLButtonElement;
+    expect(acceptBtn).not.toBeNull();
+    expect(acceptBtn.textContent).toBe('Got it');
+    acceptBtn.click();
+
+    // Banner should be removed
+    expect(document.querySelector('.edge-aui-assistance-banner')).toBeNull();
+
+    // Event should reflect accepted with user_acceptance reason
+    const acceptedEvent = emittedEvents.find((e) => e.type === 'accepted');
+    expect(acceptedEvent).toBeDefined();
+    expect(acceptedEvent?.intervention).toBe('offer_assistance');
+    expect(acceptedEvent?.reason).toBe('user_acceptance');
+  });
+
   it('handles no_op without DOM modification and records applied event', () => {
     const htmlBefore = container.innerHTML;
     const noOp = createNoOpCommand('rule', 'System idle');

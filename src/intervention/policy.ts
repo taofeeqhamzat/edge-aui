@@ -71,6 +71,11 @@ export interface PolicyConfig {
    */
   confidenceThreshold: number;
   /**
+   * Optional per-adaptation confidence thresholds (e.g. { highlight_primary_action: 0.30, offer_assistance: 0.25 }).
+   * When unset for a given intervention type, falls back to `confidenceThreshold`.
+   */
+  confidenceThresholdByType?: Partial<Record<InterventionType, number>>;
+  /**
    * Number of consecutive windows the identical candidate intervention must be recommended
    * before it is accepted, filtering out transient, noisy single-window inferences.
    */
@@ -286,15 +291,18 @@ export class InterventionPolicy {
     }
 
     // 6. Confidence Threshold Gate
-    if (command.confidence !== undefined && command.confidence < this.config.confidenceThreshold) {
+    const threshold =
+      this.config.confidenceThresholdByType?.[command.type] ??
+      this.config.confidenceThreshold;
+    if (command.confidence !== undefined && command.confidence < threshold) {
       this.resetCandidate();
       return {
         accepted: false,
         command: createNoOpCommand(
           command.source,
-          `Confidence (${command.confidence.toFixed(2)}) below threshold (${this.config.confidenceThreshold})`
+          `Confidence (${command.confidence.toFixed(2)}) below threshold (${threshold})`
         ),
-        reason: `Confidence ${command.confidence.toFixed(2)} below threshold ${this.config.confidenceThreshold}`,
+        reason: `Confidence ${command.confidence.toFixed(2)} below threshold ${threshold}`,
         candidateCount: 0,
         rejectionCategory: 'below_threshold',
         cooldownRemainingMs: 0

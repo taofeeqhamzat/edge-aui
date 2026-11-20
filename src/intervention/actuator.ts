@@ -627,17 +627,44 @@ export class UIActuator {
     content.appendChild(title);
     content.appendChild(text);
 
+    const actions = doc.createElement('div');
+    actions.className = 'edge-aui-assistance-actions';
+
+    const acceptBtn = doc.createElement('button');
+    acceptBtn.className = 'edge-aui-assistance-accept';
+    acceptBtn.setAttribute('aria-label', 'Acknowledge guidance tip');
+    acceptBtn.setAttribute('type', 'button');
+    acceptBtn.textContent = 'Got it';
+
     const dismissBtn = doc.createElement('button');
     dismissBtn.className = 'edge-aui-assistance-dismiss';
     dismissBtn.setAttribute('aria-label', 'Dismiss guidance tip');
     dismissBtn.setAttribute('type', 'button');
     dismissBtn.innerHTML = '&times;';
 
+    actions.appendChild(acceptBtn);
+    actions.appendChild(dismissBtn);
+
     banner.appendChild(content);
-    banner.appendChild(dismissBtn);
+    banner.appendChild(actions);
 
     const container = doc.body || doc.documentElement;
     container.appendChild(banner);
+
+    const onAccept = () => {
+      this.clear(command, 'user_acceptance');
+      this.emitEvent({
+        timestamp: getWallClockTimestamp(),
+        type: 'accepted',
+        intervention: command.type,
+        componentId: command.targetComponentId,
+        source: command.source,
+        mappingSource: command.mappingSource,
+        confidence: command.confidence,
+        interventionEpisodeId: command.episodeId,
+        reason: 'user_acceptance'
+      });
+    };
 
     const onDismiss = () => {
       this.clear(command, 'user_dismissal');
@@ -661,6 +688,7 @@ export class UIActuator {
       }
     };
 
+    acceptBtn.addEventListener('click', onAccept);
     dismissBtn.addEventListener('click', onDismiss);
     doc.addEventListener('keydown', onKeyDown);
 
@@ -668,6 +696,7 @@ export class UIActuator {
       // The banner itself is the element the adaptation is observable on.
       element: banner,
       cleanup: () => {
+        acceptBtn.removeEventListener('click', onAccept);
         dismissBtn.removeEventListener('click', onDismiss);
         doc.removeEventListener('keydown', onKeyDown);
         if (banner.parentNode) {

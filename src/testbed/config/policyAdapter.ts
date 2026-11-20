@@ -23,6 +23,8 @@ import { CandidateResolver } from '../../intervention/policy';
 import { InterventionCommand, InterventionType, isInterventionType } from '../../intervention/types';
 import { DEFAULT_OUTCOME_INTERVENTIONS } from '../../gates/slow/onnxSlowGate';
 import { TESTBED_INTERVENTION_TARGETS } from './interventionTargets';
+import { EXPERIMENTAL_TASKS, TaskId } from '../tasks/taskModel';
+import type { UIContext } from '../../types/uiContext';
 
 /**
  * Semantic outcome → adaptation map for the testbed.
@@ -30,17 +32,6 @@ import { TESTBED_INTERVENTION_TARGETS } from './interventionTargets';
  * The Fast Gate predicts a semantic outcome (`open_filter_section`, `apply_filter`, …) and
  * the Slow Gate predicts either the foundation outcome classes or the semantic task-outcome
  * vocabulary, so the policy needs a decision for every outcome either gate can emit.
- *
- * Outcomes deliberately absent:
- *
- * - `select_region`, `reset_filter`, `backtrack`, the navigation outcomes and
- *   `close_filter_section`: a resolved act that does not justify interrupting the
- *   participant.
- * - `NO_OUTCOME`: nothing happened.
- *
- * `inspect_help` maps to `expand_tooltip` because the tooltip affordance already carries the
- * text the user asked for; the target is the tooltip the prediction names, and the testbed
- * resolver refuses an element without `title`/`data-tooltip` text.
  */
 export const TESTBED_SEMANTIC_OUTCOME_INTERVENTIONS: Readonly<
   Partial<Record<string, InterventionType>>
@@ -48,9 +39,12 @@ export const TESTBED_SEMANTIC_OUTCOME_INTERVENTIONS: Readonly<
   open_filter_section: 'simplify_options',
   select_date_range: 'simplify_options',
   select_category: 'simplify_options',
+  select_region: 'simplify_options',
   apply_filter: 'highlight_primary_action',
   select_report: 'highlight_primary_action',
   export_report: 'highlight_primary_action',
+  reset_filter: 'offer_assistance',
+  backtrack: 'offer_assistance',
   inspect_help: 'expand_tooltip'
 };
 
@@ -77,9 +71,8 @@ function requiresTarget(type: InterventionType): boolean {
 /**
  * The target id an adaptation declares.
  *
- * Configuration wins because it is the application's standing decision. The one exception
- * is `expand_tooltip`: "a tooltip was inspected" does not identify which of several
- * tooltips, so the prediction's target is the only honest source.
+ * Outcome-specific controls take priority (e.g. apply_filter -> btn-apply-filters,
+ * export_report -> btn-export) so distinct actions are not confounded.
  */
 function targetIdFor(
   type: InterventionType,
@@ -91,10 +84,19 @@ function targetIdFor(
   return undefined;
 }
 
+function resolveTaskStepHint(context?: UIContext): string | undefined {
+  if (!context?.taskId || !context?.taskStepId) return undefined;
+  const task = EXPERIMENTAL_TASKS[context.taskId as TaskId];
+  if (!task) return undefined;
+  const step = task.steps.find((s) => s.stepId === context.taskStepId);
+  return step?.description ? `Next step: ${step.description}` : undefined;
+}
+
 function buildCommand(
   type: InterventionType,
   targetComponentId: string | undefined,
-  prediction: Parameters<CandidateResolver['resolve']>[0]
+  prediction: Parameters<CandidateResolver['resolve']>[0],
+  customReason?: string
 ): InterventionCommand {
   return {
     type,
@@ -103,15 +105,13 @@ function buildCommand(
     issuedAt: prediction.timestamp,
     targetComponentId,
     mappingSource: prediction.mappingSource ?? 'deterministic_mapping',
-    // `reason` is rendered to the participant by `offer_assistance`, so the banner gets the
-    // configured assistance text instead of an internal mapping sentence. Every other type
-    // uses it only as an operator-readable annotation, which is what it carries here.
     reason:
-      type === 'offer_assistance'
+      customReason ??
+      (type === 'offer_assistance'
         ? undefined
         : `Testbed mapping: outcome '${prediction.outcomeId}' -> ${type} (target: ${
             targetComponentId ?? 'global'
-          })`
+          })`)
   };
 }
 
@@ -126,7 +126,32 @@ function buildCommand(
  */
 export function createTestbedCandidateResolver(): CandidateResolver {
   return {
-    resolve(prediction) {
+    resolve(prediction, context) {
+      // 1. Navigation outcomes: if in an active task trial (context.taskId present),
+      // offer assistance carrying the step hint; otherwise treat as nominal no-op.
+      if (
+        prediction.outcomeId === 'navigate_overview' ||
+        prediction.outcomeId === 'navigate_analytics' ||
+        prediction.outcomeId === 'navigate_reports'
+      ) {
+        const stepHint = resolveTaskStepHint(context);
+        if (stepHint) {
+          return buildCommand('offer_assistance', undefined, prediction, stepHint);
+        }
+        return null;
+      }
+
+      // 2. Filter reset or backtracking: provide contextual filter guidance tip.
+      if (prediction.outcomeId === 'reset_filter' || prediction.outcomeId === 'backtrack') {
+        return buildCommand(
+          'offer_assistance',
+          undefined,
+          prediction,
+          'Tip: Use the filter drawer options to refine your report data.'
+        );
+      }
+
+      // 3. General mapped adaptations
       const mapped =
         TESTBED_OUTCOME_INTERVENTIONS[prediction.outcomeId] ??
         (isInterventionType(prediction.outcomeId) ? prediction.outcomeId : undefined);

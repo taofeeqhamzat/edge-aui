@@ -207,4 +207,51 @@ describe('Task 8.2: InterventionPolicy (Confidence & Consecutive Window Gates)',
     expect(decision.command.type).toBe('no_op');
     expect(decision.candidateCount).toBe(0);
   });
+
+  it('supports per-adaptation confidence thresholds with fallback to global threshold', () => {
+    const customPolicy = createInterventionPolicy({
+      confidenceThreshold: 0.35,
+      confidenceThresholdByType: {
+        offer_assistance: 0.25,
+        simplify_options: 0.40
+      },
+      requiredConsecutiveWindows: 1,
+      enforceContextEligibility: false
+    });
+    const context = createMockUIContext();
+
+    // offer_assistance with confidence 0.28 >= 0.25 -> accepted
+    const assistCmd = createInterventionCommand({
+      type: 'offer_assistance',
+      confidence: 0.28,
+      source: 'slow'
+    });
+    const assistDecision = customPolicy.accept(assistCmd, context);
+    expect(assistDecision.accepted).toBe(true);
+
+    customPolicy.reset();
+
+    // simplify_options with confidence 0.36 < 0.40 -> rejected
+    const simplifyCmd = createInterventionCommand({
+      type: 'simplify_options',
+      targetComponentId: 'filter-drawer',
+      confidence: 0.36,
+      source: 'slow'
+    });
+    const simplifyDecision = customPolicy.accept(simplifyCmd, context);
+    expect(simplifyDecision.accepted).toBe(false);
+    expect(simplifyDecision.reason).toContain('below threshold 0.4');
+
+    customPolicy.reset();
+
+    // highlight_primary_action (unset in confidenceThresholdByType) with confidence 0.36 >= global 0.35 -> accepted
+    const highlightCmd = createInterventionCommand({
+      type: 'highlight_primary_action',
+      targetComponentId: 'btn-export',
+      confidence: 0.36,
+      source: 'slow'
+    });
+    const highlightDecision = customPolicy.accept(highlightCmd, context);
+    expect(highlightDecision.accepted).toBe(true);
+  });
 });

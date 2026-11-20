@@ -19,7 +19,7 @@
  */
 
 import { AdaptiveRuntime, AdaptiveRuntimeOptions } from './adaptiveRuntime';
-import type { CandidateResolver } from '../intervention/policy';
+import type { CandidateResolver, PolicyConfig } from '../intervention/policy';
 import type { ActuationTargetResolver } from '../intervention/actuator';
 import { ExperimentalCondition } from '../telemetry/events';
 import { resolveExperimentCondition } from '../config/experimentCondition';
@@ -70,6 +70,8 @@ export interface RegisteredRuntimeDefaults {
   semanticOutcomes?: SemanticOutcomeDeriver;
   /** Manifest describing the Slow Gate model artifacts and their vocabularies. */
   manifest?: SlowGateManifest;
+  /** Application policy configuration: confidence threshold, per-type thresholds, persistence windows, etc. */
+  policyConfig?: Partial<PolicyConfig>;
   /** Study schedule: trial order and per-task timeouts. */
   experiment?: {
     trialOrder?: string[];
@@ -170,6 +172,21 @@ function resolveInstrumentationOption(options: BootOptions): boolean | undefined
   }
 }
 
+/** In development mode only, allow on-the-fly threshold calibration via URL query params. */
+function resolveDevConfidenceOverride(): number | undefined {
+  if (typeof window === 'undefined') return undefined;
+  if (!import.meta.env.DEV) return undefined;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('auiConfidence') ?? params.get('confidenceThreshold');
+    if (!raw) return undefined;
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The adapter is resolved once because trial completion is wired through the adapter
  * contract, not through the testbed: `src/runtime` must not depend on `src/testbed`
@@ -240,7 +257,15 @@ export async function bootRuntime(
     fastGatePatterns: registeredDefaults.fastGatePatterns,
     fastGatePatternVersion: registeredDefaults.fastGatePatternVersion,
     outcomeVocabulary: registeredDefaults.outcomeVocabulary,
-    policyConfig: { confidenceThreshold: 0.75, requiredConsecutiveWindows: 2 },
+    policyConfig: {
+      confidenceThreshold: resolveDevConfidenceOverride() ?? 0.35,
+      requiredConsecutiveWindows: 1,
+      ...registeredDefaults.policyConfig,
+      ...options.policyConfig,
+      ...(resolveDevConfidenceOverride() !== undefined
+        ? { confidenceThreshold: resolveDevConfidenceOverride() }
+        : {})
+    },
     enableSlowGate: true,
     enableInstrumentation,
     ...options,

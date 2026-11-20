@@ -374,7 +374,7 @@ export interface InterventionEvent {
    * Why the episode terminated. An `applied` episode with no terminal event is the F-03
    * defect: the adaptation silently persisted for the rest of the session.
    */
-  reason?: 'ttl' | 'user_dismissal' | 'session_end' | 'reset' | 'replaced';
+  reason?: 'ttl' | 'user_dismissal' | 'user_acceptance' | 'session_end' | 'reset' | 'replaced';
   sessionId?: string;
   experimentId?: string;
   conditionId?: string;

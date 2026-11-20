@@ -33,12 +33,15 @@ export const TESTBED_PRIMARY_ACTION_TARGET = 'primary-action';
 /** Logical target for the filter drawer surface whose options may be simplified. */
 export const TESTBED_FILTER_OPTIONS_TARGET = 'filter-options';
 
+/** Logical fallback target for contextual tooltips. */
+export const TESTBED_TOOLTIP_TARGET = 'tooltip-context';
+
 /**
  * Target each adaptation type declares when the outcome does not name an element.
  *
  * `expand_tooltip` is deliberately absent: it acts on the tooltip the prediction refers to,
- * so the target comes from the prediction. `offer_assistance` is deliberately absent: the
- * banner is global and anchors to no control.
+ * so the target comes from the prediction (falling back to TESTBED_TOOLTIP_TARGET).
+ * `offer_assistance` is deliberately absent: the banner is global and anchors to no control.
  */
 export const TESTBED_INTERVENTION_TARGETS: Readonly<Partial<Record<InterventionType, string>>> = {
   highlight_primary_action: TESTBED_PRIMARY_ACTION_TARGET,
@@ -49,12 +52,14 @@ export const TESTBED_INTERVENTION_TARGETS: Readonly<Partial<Record<InterventionT
  * Selectors for the logical target ids.
  *
  * An id that is not listed here is read as a component annotation id, which is how a
- * prediction names a specific element (for example `tooltip-region`).
+ * prediction names a specific element (for example `tooltip-region` or `btn-apply-filters`).
  */
 const LOGICAL_TARGET_SELECTORS: Readonly<Record<string, string>> = {
   [TESTBED_PRIMARY_ACTION_TARGET]:
-    '[data-aui-role="primary-action"]:not([disabled]):not([aria-disabled="true"])',
-  [TESTBED_FILTER_OPTIONS_TARGET]: '[data-aui-component="filter-drawer"]'
+    '[data-aui-role="primary-action"]:not([disabled]):not([aria-disabled="true"]), [data-aui-component^="open-report-"]:not([disabled])',
+  [TESTBED_FILTER_OPTIONS_TARGET]: '[data-aui-component="filter-drawer"]',
+  [TESTBED_TOOLTIP_TARGET]:
+    '[data-aui-component="tooltip-region"], [data-aui-role="tooltip"][title], [data-aui-role="tooltip"][data-tooltip]'
 };
 
 const ACTIONABLE_TAGS = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'SUMMARY']);
@@ -100,7 +105,10 @@ export function createTestbedTargetResolver(): ActuationTargetResolver {
   return (targetId, { root, command }) => {
     if (!root) return null;
 
-    const element = findElement(root, targetId);
+    let element = findElement(root, targetId);
+    if (!element && command.type === 'expand_tooltip') {
+      element = findElement(root, TESTBED_TOOLTIP_TARGET);
+    }
     if (!element) return null;
 
     switch (command.type) {

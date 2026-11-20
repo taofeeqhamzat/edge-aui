@@ -46,6 +46,16 @@ registerRuntimeDefaults({
   candidateResolver: createTestbedCandidateResolver(),
   targetResolver: createTestbedTargetResolver(),
   manifest: slowGateManifest,
+  policyConfig: {
+    confidenceThreshold: 0.35,
+    confidenceThresholdByType: {
+      highlight_primary_action: 0.30,
+      simplify_options: 0.35,
+      offer_assistance: 0.25,
+      expand_tooltip: 0.25
+    },
+    requiredConsecutiveWindows: 1
+  },
   // Semantic outcomes are application vocabulary: the testbed supplies its own rules and
   // the framework records whatever it derives (Task 20.4).
   semanticOutcomes: new SemanticOutcomeDeriver({
