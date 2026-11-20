@@ -31,8 +31,16 @@
 /* ==========================================================================
    2. Simplify Options (.edge-aui-simplified)
    ========================================================================== */
+/*
+ * The collapsed sections are the functional change; this inset bar is the visible one. It
+ * matters because in the canonical flow the only expanded section is the one that contains
+ * the participant's focus, which the adaptation must not close — so without a surface
+ * treatment a "simplified" drawer could look identical to an untouched one. Inset shadow
+ * paints inside the existing box, so nothing reflows.
+ */
 .edge-aui-simplified {
-  transition: opacity 0.2s ease;
+  box-shadow: inset 3px 0 0 var(--accent-cyan, #0284c7);
+  transition: box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -57,12 +65,32 @@
    3. Expand Tooltip (.edge-aui-tooltip-expanded)
    Contextual help bubble: non-modal, non-layout-shifting (PRD §28.4, §45).
    ========================================================================== */
+.edge-aui-tooltip-expanded {
+  /*
+   * Anchors the absolutely-positioned bubble to the tooltip trigger. Without it the bubble
+   * is placed against the nearest positioned ancestor (or the viewport), which can put the
+   * text far from the column it describes. `position: relative` on an inline element does
+   * not move it in flow.
+   */
+  position: relative;
+}
+
 .edge-aui-tooltip-bubble {
   position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
   background-color: #1e293b;
   color: #f8fafc;
   font-size: 12px;
   line-height: 1.4;
+  /*
+   * Reset the typography the bubble inherits from its parent. A tooltip trigger inside a
+   * table header inherits the header's uppercase/letter-spacing/tracking, which renders the
+   * help text as a shouty label instead of a sentence (found by visual verification).
+   */
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
   padding: 6px 10px;
   border-radius: 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
@@ -82,13 +110,14 @@
 .edge-aui-tooltip-bubble::after {
   content: '';
   position: absolute;
-  bottom: -4px;
+  /* The bubble is placed below its trigger, so the pointer belongs on the top edge. */
+  top: -4px;
   left: 12px;
   width: 8px;
   height: 8px;
   background-color: #1e293b;
-  border-right: 1px solid #334155;
-  border-bottom: 1px solid #334155;
+  border-left: 1px solid #334155;
+  border-top: 1px solid #334155;
   transform: rotate(45deg);
 }
 
