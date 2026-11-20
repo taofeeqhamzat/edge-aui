@@ -77,6 +77,7 @@ import {
   resolveRuntimeConfig,
   DeepPartial
 } from '../config/runtimeConfig';
+import type { SlowGateManifest } from '../config/modelManifest';
 
 
 
@@ -130,6 +131,8 @@ export interface AdaptiveRuntimeOptions {
    * ONNX Runtime Web cannot initialise) and `onnx` in a browser.
    */
   slowGateMode?: 'mock' | 'onnx';
+  /** Manifest describing the model artifacts and their vocabularies. Overrides defaults. */
+  manifest?: SlowGateManifest;
   /** URL of the foundation ONNX graph. Defaults to the bundled INT8 artifact. */
   modelUrl?: string;
   /** URL of the learned intervention head ONNX graph. Defaults to /models/intervention_head_int8.onnx. */
@@ -181,6 +184,7 @@ export interface AdaptiveRuntimeStatus {
   /** The execution provider that actually served the model session. */
   executionProvider: string;
   modelLoaded: boolean;
+  modelVersion?: string | null;
   instrumentationEnabled: boolean;
   timingSummary?: Record<string, StageTimingStats>;
 }
@@ -410,6 +414,7 @@ export class AdaptiveRuntime {
       const initResult = await this.workerClient.init({
         ...baseInit,
         slowGateMode: desiredSlowGate,
+        manifest: this.options.manifest,
         modelUrl: this.options.modelUrl,
         interventionModelUrl: this.options.interventionModelUrl,
         useDeterministicMapping: this.options.useDeterministicMapping,
@@ -1332,6 +1337,7 @@ export class AdaptiveRuntime {
       slowGateMode: this.slowGateMode ?? this.resolveSlowGateMode(),
       executionProvider: this.executionProvider,
       modelLoaded: this.modelLoaded,
+      modelVersion: this.reportedModelVersion,
       instrumentationEnabled: this.collector.isEnabled(),
       timingSummary: this.collector.getSummary()
     };

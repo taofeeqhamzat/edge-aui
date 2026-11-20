@@ -23,8 +23,12 @@ import {
   TESTBED_SEMANTIC_VOCABULARY,
   createTestbedSemanticRules
 } from './testbed/config/semanticOutcomes';
+import { parseBundleManifest } from './config/modelManifest';
+import semanticBundle from '../public/models/task_outcome_head_v2.bundle.json';
 import { startRuntimeDiagnostics } from './runtime/diagnostics';
 import { installTestbedGate } from './testbed/entry/entryGate';
+
+const slowGateManifest = parseBundleManifest(semanticBundle);
 
 /**
  * The testbed supplies every piece of application vocabulary and application policy the
@@ -41,6 +45,7 @@ registerRuntimeDefaults({
   outcomeVocabulary: TESTBED_SEMANTIC_VOCABULARY,
   candidateResolver: createTestbedCandidateResolver(),
   targetResolver: createTestbedTargetResolver(),
+  manifest: slowGateManifest,
   // Semantic outcomes are application vocabulary: the testbed supplies its own rules and
   // the framework records whatever it derives (Task 20.4).
   semanticOutcomes: new SemanticOutcomeDeriver({

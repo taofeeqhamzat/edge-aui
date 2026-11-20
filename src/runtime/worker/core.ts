@@ -33,6 +33,7 @@ import {
 import { defaultCollector } from '../instrumentation';
 import type { ContextEncodingConfig } from '../../types/contextVector';
 import type { OutcomeVocabulary } from '../../gates/contracts';
+import type { SlowGateManifest } from '../../config/modelManifest';
 
 export class RuntimeWorkerCore {
   private sequenceBuilder: SequenceBuilder;
@@ -43,6 +44,7 @@ export class RuntimeWorkerCore {
     interventionModelUrl?: string;
     useDeterministicMapping?: boolean;
     minOutcomeConfidence?: number;
+    manifest?: SlowGateManifest;
   } | null = null;
 
   /** Application context vocabulary supplied by the runtime at INIT. */
@@ -110,7 +112,8 @@ export class RuntimeWorkerCore {
       interventionModelUrl: this.options?.interventionModelUrl,
       confidenceThreshold: this.options?.minOutcomeConfidence,
       useDeterministicMapping: this.options?.useDeterministicMapping,
-      contextEncoding: this.contextEncoding
+      contextEncoding: this.contextEncoding,
+      manifest: this.options?.manifest
     });
 
     try {
@@ -251,7 +254,8 @@ export class RuntimeWorkerCore {
             modelUrl: request.payload?.modelUrl,
             interventionModelUrl: request.payload?.interventionModelUrl,
             useDeterministicMapping: request.payload?.useDeterministicMapping,
-            minOutcomeConfidence: request.payload?.minOutcomeConfidence
+            minOutcomeConfidence: request.payload?.minOutcomeConfidence,
+            manifest: request.payload?.manifest
           };
 
           // The Fast Gate is constructed from the registry so the PrefixSpan miner can

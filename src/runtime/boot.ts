@@ -34,6 +34,7 @@ import { UiAdapter, DefaultUiAdapter, type UiTaskLifecycleEvent } from '../integ
 import type { MacroMapper } from '../macro/mapper';
 import type { SemanticOutcomeDeriver } from '../outcome/semantic';
 import type { ContextEncodingConfig } from '../types/contextVector';
+import type { SlowGateManifest } from '../config/modelManifest';
 
 export interface BootOptions extends AdaptiveRuntimeOptions {
   conditionId?: ExperimentalCondition;
@@ -67,6 +68,8 @@ export interface RegisteredRuntimeDefaults {
   targetResolver?: ActuationTargetResolver;
   /** Application semantic outcome derivation (Task 20.4). */
   semanticOutcomes?: SemanticOutcomeDeriver;
+  /** Manifest describing the Slow Gate model artifacts and their vocabularies. */
+  manifest?: SlowGateManifest;
   /** Study schedule: trial order and per-task timeouts. */
   experiment?: {
     trialOrder?: string[];
@@ -224,6 +227,7 @@ export async function bootRuntime(
   const runtime = new AdaptiveRuntime({
     experimentId,
     config: buildRuntimeConfig(options),
+    manifest: options.manifest ?? registeredDefaults.manifest,
     candidateResolver: registeredDefaults.candidateResolver,
     targetResolver: registeredDefaults.targetResolver,
     semanticOutcomes: registeredDefaults.semanticOutcomes,
