@@ -43,7 +43,7 @@ import {
   StageTimingStats
 } from './instrumentation';
 import { InterventionPolicy, PolicyConfig, CandidateResolver } from '../intervention/policy';
-import { UIActuator } from '../intervention/actuator';
+import { UIActuator, ActuationTargetResolver } from '../intervention/actuator';
 import { experimentRecorder } from '../telemetry/recorder';
 import { sessionManager, type SessionContext } from '../telemetry/session';
 import { UiAdapter, DefaultUiAdapter, DEFAULT_TASK_ACTION_BY_EVENT } from '../integration/index';
@@ -116,6 +116,13 @@ export interface AdaptiveRuntimeOptions {
    * (Task 20.1); no outcome→intervention table lives in core.
    */
   candidateResolver?: CandidateResolver;
+  /**
+   * Application port turning a declared target reference into a DOM element.
+   *
+   * When supplied it is authoritative: a target it cannot resolve is an actuation failure
+   * with no DOM mutation, rather than a fallback to a different control (Task 20.5/60.1).
+   */
+  targetResolver?: ActuationTargetResolver;
   /** Provide a slow gate; defaults to the deterministic mock. */
   enableSlowGate?: boolean;
   /**
@@ -337,7 +344,8 @@ export class AdaptiveRuntime {
       { resolveCandidate: options.candidateResolver }
     );
     this.actuator = new UIActuator({
-      defaultAssistanceText: this.config.actuation.defaultAssistanceText
+      defaultAssistanceText: this.config.actuation.defaultAssistanceText,
+      targetResolver: options.targetResolver
     });
 
     if (options.autoStart) {
@@ -475,6 +483,9 @@ export class AdaptiveRuntime {
     this.unsubscribers.push(
       this.macroStream.subscribe((interaction) => {
         this.counters.macroInteractions++;
+        // Each macro symbol is a completed act. The policy uses it to stop answering the
+        // same act repeatedly once its adaptation has been accepted (Task 60.1).
+        this.policy.notifyUserAction(interaction.symbol);
         // Mirrored into the worker so its PrefixSpan corpus accumulates window-tagged
         // sequences for the mining path.
         void this.workerClient.pushMacro(interaction).catch((err) => {

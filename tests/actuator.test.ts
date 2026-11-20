@@ -100,6 +100,7 @@ describe('Task 8.3: UIActuator (Non-Destructive & Accessible Adaptation)', () =>
 
     const cmd = createInterventionCommand({
       type: 'simplify_options',
+      targetComponentId: 'filter-drawer',
       source: 'slow',
       confidence: 0.90
     });

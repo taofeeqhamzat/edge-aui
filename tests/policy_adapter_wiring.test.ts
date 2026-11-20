@@ -20,6 +20,7 @@ import {
 } from '../src/testbed/config/policyAdapter';
 import { PREDICTION_CONTRACT_VERSION, type PredictionResult } from '../src/gates/contracts';
 import type { UIContext } from '../src/types/uiContext';
+import { setTrackedUIElement } from '../src/telemetry/contextProvider';
 
 const UI_CONTEXT: UIContext = {
   route: 'Analytics',
@@ -94,7 +95,7 @@ describe('runtime actuation through the prediction contract', () => {
     root.innerHTML = `
       <button data-aui-component="nav-Analytics" data-aui-role="navigation" data-aui-action="click">Analytics</button>
       <button data-aui-component="btn-export" data-aui-role="primary-action" data-aui-action="click">Export</button>
-      <div data-aui-component="tooltip-region" data-aui-role="tooltip" data-aui-action="hover">Region help</div>
+      <div data-aui-component="tooltip-region" data-aui-role="tooltip" data-aui-action="hover" title="Geographical sales region">Region help</div>
     `;
     document.body.appendChild(root);
   }
@@ -124,6 +125,12 @@ describe('runtime actuation through the prediction contract', () => {
       candidateResolver: createTestbedCandidateResolver()
     });
     await runtime.start();
+
+    // The prediction that reaches the policy must name the element the adaptation acts on.
+    // `HOVER_DWELL` maps to `expand_tooltip`, whose target is the inspected tooltip, so the
+    // tracker has to see the tooltip before the evaluation window closes.
+    const tooltip = document.querySelector('[data-aui-component="tooltip-region"]')!;
+    setTrackedUIElement(tooltip);
 
     const started = Date.now();
     while (Date.now() - started < 3000) {
@@ -180,5 +187,48 @@ describe('runtime actuation through the prediction contract', () => {
     expect(decisions.length).toBeGreaterThan(0);
     expect(decisions[0].accepted).toBe(true);
     expect(decisions[0].policyReason).toContain('no adaptation engaged');
+  }, 30000);
+
+  it('decides but never applies an adaptation in the baseline condition', async () => {
+    renderAnnotatedDom();
+    runtime = new AdaptiveRuntime({
+      forceInProcessWorker: true,
+      conditionId: 'baseline',
+      policyConfig: { requiredConsecutiveWindows: 1, confidenceThreshold: 0.5, cooldownMs: 0 },
+      candidateResolver: createTestbedCandidateResolver()
+    });
+    await runtime.start();
+
+    const tooltip = document.querySelector('[data-aui-component="tooltip-region"]')!;
+    setTrackedUIElement(tooltip);
+
+    const started = Date.now();
+    while (Date.now() - started < 3000) {
+      window.dispatchEvent(
+        new MouseEvent('mousemove', { bubbles: true, clientX: 40, clientY: 80 })
+      );
+      await new Promise((r) => setTimeout(r, 40));
+    }
+
+    await waitFor(
+      () =>
+        experimentRecorder
+          .export()
+          .policyDecisions.some((d) => d.rejectionCategory === 'baseline_condition'),
+      { label: 'a baseline decision-only policy record' }
+    );
+
+    const trace = experimentRecorder.export();
+    const decided = trace.policyDecisions.filter(
+      (d) => d.rejectionCategory === 'baseline_condition'
+    );
+    expect(decided.length).toBeGreaterThan(0);
+    expect(decided[0].accepted).toBe(true);
+    expect(decided[0].policyReason).toContain('baseline condition');
+    // The decision named a candidate; the interface never changed.
+    expect(decided[0].candidate).toBe('expand_tooltip');
+    expect(runtime.getStatus().interventionsApplied).toBe(0);
+    expect(trace.interventions.filter((event) => event.type === 'applied')).toHaveLength(0);
+    expect(document.querySelectorAll('[data-aui-active-adaptation]').length).toBe(0);
   }, 30000);
 });

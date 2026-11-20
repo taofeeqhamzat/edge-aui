@@ -211,6 +211,17 @@ export class UIActuator {
         return false;
       }
 
+      // Every element-changing adaptation must declare what it acts on. Without a target
+      // there is no honest element, and the old framework guessed one (the first primary
+      // action, tooltip or accordion). Guessing is how a filter prediction ended up
+      // highlighting Export (assessment §5.3), so a missing declaration is a failure.
+      if (command.type !== 'offer_assistance' && !command.targetComponentId) {
+        console.warn(
+          `[UIActuator] '${command.type}' declared no target; no adaptation was applied.`
+        );
+        return false;
+      }
+
       // If an adaptation of this type is already active, clear it first
       if (this.activeAdaptations.has(command.type)) {
         this.clear(command);
@@ -366,15 +377,9 @@ export class UIActuator {
   private applyHighlightPrimaryAction(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
-    let targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
-    if (!targetEl && !this.targetResolver) {
-      // Framework default only: a configured resolver is authoritative, so its "no element"
-      // answer is an actuation failure rather than a licence to adapt a different control.
-      targetEl = this.root.querySelector(
-        '[data-aui-role="primary-action"]:not([disabled])'
-      );
-    }
-
+    // The declared target is the whole instruction. No role-based fallback: an application
+    // that means a specific control names it, and one that does not gets no adaptation.
+    const targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
     if (!targetEl) return null;
 
     const hadClass = targetEl.hasAttribute('class');
@@ -402,18 +407,18 @@ export class UIActuator {
   private applySimplifyOptions(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
+    // A declared surface bounds the mutation: only the options inside it are simplified.
+    // Collapsing every accordion in the document was how an unrelated panel was altered.
+    const declaredSurface = this.resolveDeclaredTarget(command) as HTMLElement | null;
+    if (!declaredSurface) return null;
+
     const accordionButtons = Array.from(
-      this.root.querySelectorAll('[data-aui-role="accordion"]')
+      declaredSurface.querySelectorAll('[data-aui-role="accordion"]')
     ) as HTMLElement[];
 
     if (accordionButtons.length === 0) return null;
 
-    // A configured resolver is authoritative: it names the surface to simplify, and a
-    // missing target fails instead of collapsing unrelated accordions.
-    const declaredSurface = this.resolveDeclaredTarget(command) as HTMLElement | null;
-    if (this.targetResolver && !declaredSurface) return null;
-    const simplifiedSurface =
-      declaredSurface ?? (accordionButtons[0]?.parentElement ?? null);
+    const simplifiedSurface = declaredSurface;
 
     const activeEl = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
     const collapsedItems: Array<{
@@ -423,12 +428,10 @@ export class UIActuator {
     }> = [];
 
     // Tag the surface that contains the options being simplified.
-    const surfaceHadClass = simplifiedSurface?.hasAttribute('class');
-    const surfaceInitialClass = simplifiedSurface?.getAttribute('class');
+    const surfaceHadClass = simplifiedSurface.hasAttribute('class');
+    const surfaceInitialClass = simplifiedSurface.getAttribute('class');
 
-    if (simplifiedSurface) {
-      simplifiedSurface.classList.add('edge-aui-simplified');
-    }
+    simplifiedSurface.classList.add('edge-aui-simplified');
 
     for (const btn of accordionButtons) {
       const parentSection = btn.parentElement;
@@ -460,12 +463,10 @@ export class UIActuator {
       // correlation attributes go there rather than on a wrapper the user cannot see.
       element: accordionButtons[0],
       cleanup: () => {
-        if (simplifiedSurface) {
-          if (surfaceHadClass && typeof surfaceInitialClass === 'string') {
-            simplifiedSurface.setAttribute('class', surfaceInitialClass);
-          } else {
-            simplifiedSurface.removeAttribute('class');
-          }
+        if (surfaceHadClass && typeof surfaceInitialClass === 'string') {
+          simplifiedSurface.setAttribute('class', surfaceInitialClass);
+        } else {
+          simplifiedSurface.removeAttribute('class');
         }
         // Restore previously open accordions
         for (const item of collapsedItems) {
@@ -487,12 +488,18 @@ export class UIActuator {
   private applyExpandTooltip(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
-    let targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
-    if (!targetEl && !this.targetResolver) {
-      targetEl = this.root.querySelector('[data-aui-role="tooltip"]');
-    }
-
+    // The declared target identifies the one element whose help text is expanded. A
+    // missing declaration fails instead of expanding the first tooltip on the page, which
+    // could be about a different column (assessment §5.3).
+    const targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
     if (!targetEl) return null;
+
+    // The bubble shows the element's own help text. Falling back to a generic sentence or
+    // to `command.reason` would put words in the interface the interface never said.
+    const tooltipText = (
+      targetEl.getAttribute('title') ?? targetEl.getAttribute('data-tooltip') ?? ''
+    ).trim();
+    if (!tooltipText) return null;
 
     const hadClass = targetEl.hasAttribute('class');
     const initialClass = targetEl.getAttribute('class');
@@ -501,13 +508,6 @@ export class UIActuator {
 
     targetEl.classList.add('edge-aui-tooltip-expanded');
     targetEl.setAttribute('aria-expanded', 'true');
-
-    // Extract text from title or data attribute
-    const tooltipText =
-      targetEl.getAttribute('title') ||
-      targetEl.getAttribute('data-tooltip') ||
-      command.reason ||
-      'Contextual guidance available';
 
     // Store original title so browser tooltip doesn't clash
     const originalTitle = targetEl.getAttribute('title');

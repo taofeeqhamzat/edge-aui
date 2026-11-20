@@ -20,6 +20,7 @@
 
 import { AdaptiveRuntime, AdaptiveRuntimeOptions } from './adaptiveRuntime';
 import type { CandidateResolver } from '../intervention/policy';
+import type { ActuationTargetResolver } from '../intervention/actuator';
 import { ExperimentalCondition } from '../telemetry/events';
 import { resolveExperimentCondition } from '../config/experimentCondition';
 import type { PatternTarget } from '../gates/fast/patternTarget';
@@ -62,6 +63,8 @@ export interface RegisteredRuntimeDefaults {
   outcomeVocabulary?: OutcomeVocabulary;
   /** Predicted outcome → candidate adaptation. */
   candidateResolver?: CandidateResolver;
+  /** Declared target reference → DOM element for actuation. */
+  targetResolver?: ActuationTargetResolver;
   /** Application semantic outcome derivation (Task 20.4). */
   semanticOutcomes?: SemanticOutcomeDeriver;
   /** Study schedule: trial order and per-task timeouts. */
@@ -222,6 +225,7 @@ export async function bootRuntime(
     experimentId,
     config: buildRuntimeConfig(options),
     candidateResolver: registeredDefaults.candidateResolver,
+    targetResolver: registeredDefaults.targetResolver,
     semanticOutcomes: registeredDefaults.semanticOutcomes,
     macroMapper: registeredDefaults.macroMapper,
     contextEncoding: registeredDefaults.contextEncoding,
