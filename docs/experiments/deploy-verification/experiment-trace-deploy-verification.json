@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.4.0",
-  "exportedAt": "2026-11-21T02:14:12.016Z",
+  "exportedAt": "2026-11-21T03:03:17.320Z",
   "session": {
-    "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
-    "startedAt": 9527.526667,
-    "startedAtEpochMs": 1795227248281,
+    "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
+    "startedAt": 9719.556708,
+    "startedAtEpochMs": 1795230193570,
     "experimentId": "exp-deploy-verification",
     "conditionId": "adaptive",
     "provenance": "scripted",
@@ -18,7 +18,7 @@
     "errors": 0
   },
   "metadata": {
-    "durationMs": 3734.483642578125,
+    "durationMs": 3749.51318359375,
     "totalEvents": 121,
     "behaviourCount": 46,
     "microTensorCount": 12,
@@ -278,7 +278,7 @@
   },
   "behaviourEvents": [
     {
-      "timestamp": 1795227248286.2898,
+      "timestamp": 1795230193577.764,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -299,7 +299,7 @@
       }
     },
     {
-      "timestamp": 1795227248287.574,
+      "timestamp": 1795230193584.0508,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -321,7 +321,7 @@
       }
     },
     {
-      "timestamp": 1795227248288.9,
+      "timestamp": 1795230193589.116,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -342,7 +342,7 @@
       }
     },
     {
-      "timestamp": 1795227248290.5596,
+      "timestamp": 1795230193600.647,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -362,7 +362,7 @@
       }
     },
     {
-      "timestamp": 1795227248291.53,
+      "timestamp": 1795230193602.3723,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -383,7 +383,7 @@
       }
     },
     {
-      "timestamp": 1795227248645.2363,
+      "timestamp": 1795230193954.886,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -404,7 +404,7 @@
       }
     },
     {
-      "timestamp": 1795227248645.7334,
+      "timestamp": 1795230193955.691,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -426,7 +426,7 @@
       }
     },
     {
-      "timestamp": 1795227248646.3408,
+      "timestamp": 1795230193956.0818,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -447,7 +447,7 @@
       }
     },
     {
-      "timestamp": 1795227248646.826,
+      "timestamp": 1795230193956.5452,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -467,7 +467,7 @@
       }
     },
     {
-      "timestamp": 1795227248647.4148,
+      "timestamp": 1795230193957.1333,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -488,7 +488,7 @@
       }
     },
     {
-      "timestamp": 1795227248999.8628,
+      "timestamp": 1795230194308.6084,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -509,7 +509,7 @@
       }
     },
     {
-      "timestamp": 1795227249001.453,
+      "timestamp": 1795230194309.6577,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -531,7 +531,7 @@
       }
     },
     {
-      "timestamp": 1795227249002.7961,
+      "timestamp": 1795230194310.248,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -552,7 +552,7 @@
       }
     },
     {
-      "timestamp": 1795227249004.4631,
+      "timestamp": 1795230194310.7048,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -572,7 +572,7 @@
       }
     },
     {
-      "timestamp": 1795227249005.7092,
+      "timestamp": 1795230194311.104,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -593,7 +593,7 @@
       }
     },
     {
-      "timestamp": 1795227249363.4631,
+      "timestamp": 1795230194668.1257,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -614,7 +614,7 @@
       }
     },
     {
-      "timestamp": 1795227249364.862,
+      "timestamp": 1795230194669.6094,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -636,7 +636,7 @@
       }
     },
     {
-      "timestamp": 1795227249366.4795,
+      "timestamp": 1795230194671.3406,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -657,7 +657,7 @@
       }
     },
     {
-      "timestamp": 1795227249368.0117,
+      "timestamp": 1795230194672.694,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -677,7 +677,7 @@
       }
     },
     {
-      "timestamp": 1795227249369.854,
+      "timestamp": 1795230194674.6216,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -698,7 +698,7 @@
       }
     },
     {
-      "timestamp": 1795227249721.9187,
+      "timestamp": 1795230195028.308,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -719,7 +719,7 @@
       }
     },
     {
-      "timestamp": 1795227249722.99,
+      "timestamp": 1795230195029.5806,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -741,7 +741,7 @@
       }
     },
     {
-      "timestamp": 1795227249724.197,
+      "timestamp": 1795230195030.7454,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -762,7 +762,7 @@
       }
     },
     {
-      "timestamp": 1795227249725.6372,
+      "timestamp": 1795230195031.7437,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -782,7 +782,7 @@
       }
     },
     {
-      "timestamp": 1795227249727.036,
+      "timestamp": 1795230195033.165,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -803,7 +803,7 @@
       }
     },
     {
-      "timestamp": 1795227250082.074,
+      "timestamp": 1795230195387.0754,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -824,7 +824,7 @@
       }
     },
     {
-      "timestamp": 1795227250084.3948,
+      "timestamp": 1795230195388.2478,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -846,7 +846,7 @@
       }
     },
     {
-      "timestamp": 1795227250085.483,
+      "timestamp": 1795230195389.2646,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -867,7 +867,7 @@
       }
     },
     {
-      "timestamp": 1795227250086.242,
+      "timestamp": 1795230195390.7776,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -887,7 +887,7 @@
       }
     },
     {
-      "timestamp": 1795227250086.928,
+      "timestamp": 1795230195392.13,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -908,7 +908,7 @@
       }
     },
     {
-      "timestamp": 1795227250439.7402,
+      "timestamp": 1795230195743.999,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -929,7 +929,7 @@
       }
     },
     {
-      "timestamp": 1795227250441.4712,
+      "timestamp": 1795230195744.3728,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -951,7 +951,7 @@
       }
     },
     {
-      "timestamp": 1795227250442.78,
+      "timestamp": 1795230195744.693,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -972,7 +972,7 @@
       }
     },
     {
-      "timestamp": 1795227250444.159,
+      "timestamp": 1795230195745.025,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -992,7 +992,7 @@
       }
     },
     {
-      "timestamp": 1795227250446.6465,
+      "timestamp": 1795230195745.3948,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1013,7 +1013,7 @@
       }
     },
     {
-      "timestamp": 1795227250800.2646,
+      "timestamp": 1795230196098.887,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1034,7 +1034,7 @@
       }
     },
     {
-      "timestamp": 1795227250801.4946,
+      "timestamp": 1795230196099.6848,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1056,7 +1056,7 @@
       }
     },
     {
-      "timestamp": 1795227250802.782,
+      "timestamp": 1795230196100.3513,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1077,7 +1077,7 @@
       }
     },
     {
-      "timestamp": 1795227250803.9285,
+      "timestamp": 1795230196101.0256,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -1097,7 +1097,7 @@
       }
     },
     {
-      "timestamp": 1795227250805.4119,
+      "timestamp": 1795230196101.7415,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1118,7 +1118,7 @@
       }
     },
     {
-      "timestamp": 1795227251159.3103,
+      "timestamp": 1795230196455.8433,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1139,7 +1139,7 @@
       }
     },
     {
-      "timestamp": 1795227251159.962,
+      "timestamp": 1795230196458.3147,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1161,7 +1161,7 @@
       }
     },
     {
-      "timestamp": 1795227251160.3345,
+      "timestamp": 1795230196459.853,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1182,7 +1182,7 @@
       }
     },
     {
-      "timestamp": 1795227251160.6997,
+      "timestamp": 1795230196460.8208,
       "type": "submit",
       "componentId": "filter-drawer",
       "componentRole": "filter",
@@ -1202,7 +1202,7 @@
       }
     },
     {
-      "timestamp": 1795227251161.1294,
+      "timestamp": 1795230196461.9094,
       "type": "click",
       "x": 0.0390625,
       "y": 0.052083333333333336,
@@ -1223,7 +1223,7 @@
       }
     },
     {
-      "timestamp": 1795227251513.6978,
+      "timestamp": 1795230196816.5308,
       "type": "pagehide",
       "route": "",
       "action": "pagehide"
@@ -1232,8 +1232,8 @@
   "microTensors": [
     {
       "windowId": 0,
-      "windowStart": 1795227248286.2898,
-      "windowEnd": 1795227248536.2898,
+      "windowStart": 1795230193577.764,
+      "windowEnd": 1795230193827.764,
       "values": [
         0,
         0,
@@ -1259,8 +1259,8 @@
     },
     {
       "windowId": 1,
-      "windowStart": 1795227248536.2898,
-      "windowEnd": 1795227248786.2898,
+      "windowStart": 1795230193827.764,
+      "windowEnd": 1795230194077.764,
       "values": [
         0,
         0,
@@ -1286,8 +1286,8 @@
     },
     {
       "windowId": 2,
-      "windowStart": 1795227248786.2898,
-      "windowEnd": 1795227249036.2898,
+      "windowStart": 1795230194077.764,
+      "windowEnd": 1795230194327.764,
       "values": [
         0,
         0,
@@ -1313,8 +1313,8 @@
     },
     {
       "windowId": 3,
-      "windowStart": 1795227249036.2898,
-      "windowEnd": 1795227249286.2898,
+      "windowStart": 1795230194327.764,
+      "windowEnd": 1795230194577.764,
       "values": [
         0,
         0,
@@ -1340,8 +1340,8 @@
     },
     {
       "windowId": 4,
-      "windowStart": 1795227249286.2898,
-      "windowEnd": 1795227249536.2898,
+      "windowStart": 1795230194577.764,
+      "windowEnd": 1795230194827.764,
       "values": [
         0,
         0,
@@ -1367,8 +1367,8 @@
     },
     {
       "windowId": 5,
-      "windowStart": 1795227249536.2898,
-      "windowEnd": 1795227249786.2898,
+      "windowStart": 1795230194827.764,
+      "windowEnd": 1795230195077.764,
       "values": [
         0,
         0,
@@ -1394,8 +1394,8 @@
     },
     {
       "windowId": 6,
-      "windowStart": 1795227249786.2898,
-      "windowEnd": 1795227250036.2898,
+      "windowStart": 1795230195077.764,
+      "windowEnd": 1795230195327.764,
       "values": [
         0,
         0,
@@ -1421,8 +1421,8 @@
     },
     {
       "windowId": 7,
-      "windowStart": 1795227250036.2898,
-      "windowEnd": 1795227250286.2898,
+      "windowStart": 1795230195327.764,
+      "windowEnd": 1795230195577.764,
       "values": [
         0,
         0,
@@ -1448,8 +1448,8 @@
     },
     {
       "windowId": 8,
-      "windowStart": 1795227250286.2898,
-      "windowEnd": 1795227250536.2898,
+      "windowStart": 1795230195577.764,
+      "windowEnd": 1795230195827.764,
       "values": [
         0,
         0,
@@ -1475,8 +1475,8 @@
     },
     {
       "windowId": 9,
-      "windowStart": 1795227250536.2898,
-      "windowEnd": 1795227250786.2898,
+      "windowStart": 1795230195827.764,
+      "windowEnd": 1795230196077.764,
       "values": [
         0,
         0,
@@ -1502,8 +1502,8 @@
     },
     {
       "windowId": 10,
-      "windowStart": 1795227250786.2898,
-      "windowEnd": 1795227251036.2898,
+      "windowStart": 1795230196077.764,
+      "windowEnd": 1795230196327.764,
       "values": [
         0,
         0,
@@ -1529,8 +1529,8 @@
     },
     {
       "windowId": 11,
-      "windowStart": 1795227251036.2898,
-      "windowEnd": 1795227251286.2898,
+      "windowStart": 1795230196327.764,
+      "windowEnd": 1795230196577.764,
       "values": [
         0,
         0,
@@ -1557,486 +1557,486 @@
   ],
   "macroInteractions": [
     {
-      "timestamp": 1795227248286.2898,
+      "timestamp": 1795230193577.764,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248287.574,
+      "timestamp": 1795230193584.0508,
       "symbol": "EXPAND_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248288.9,
+      "timestamp": 1795230193589.116,
       "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248290.5596,
+      "timestamp": 1795230193600.647,
       "symbol": "SUBMIT_FILTER_DRAWER",
       "componentId": "filter-drawer",
       "action": "submit",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248291.53,
+      "timestamp": 1795230193602.3723,
       "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248645.2363,
+      "timestamp": 1795230193954.886,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248645.7334,
+      "timestamp": 1795230193955.691,
       "symbol": "EXPAND_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248646.3408,
+      "timestamp": 1795230193956.0818,
       "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248646.826,
+      "timestamp": 1795230193956.5452,
       "symbol": "SUBMIT_FILTER_DRAWER",
       "componentId": "filter-drawer",
       "action": "submit",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248647.4148,
+      "timestamp": 1795230193957.1333,
       "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive"
     },
     {
-      "timestamp": 1795227248999.8628,
+      "timestamp": 1795230194308.6084,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1795227249001.453,
+      "timestamp": 1795230194309.6577,
       "symbol": "EXPAND_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1795227249002.7961,
+      "timestamp": 1795230194310.248,
       "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1795227249004.4631,
+      "timestamp": 1795230194310.7048,
       "symbol": "SUBMIT_FILTER_DRAWER",
       "componentId": "filter-drawer",
       "action": "submit",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1795227249005.7092,
+      "timestamp": 1795230194311.104,
       "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 0
     },
     {
-      "timestamp": 1795227249363.4631,
+      "timestamp": 1795230194668.1257,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 2
     },
     {
-      "timestamp": 1795227249364.862,
+      "timestamp": 1795230194669.6094,
       "symbol": "EXPAND_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 2
     },
     {
-      "timestamp": 1795227249366.4795,
+      "timestamp": 1795230194671.3406,
       "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 2
     },
     {
-      "timestamp": 1795227249368.0117,
+      "timestamp": 1795230194672.694,
       "symbol": "SUBMIT_FILTER_DRAWER",
       "componentId": "filter-drawer",
       "action": "submit",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 2
     },
     {
-      "timestamp": 1795227249369.854,
+      "timestamp": 1795230194674.6216,
       "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 2
     },
     {
-      "timestamp": 1795227249721.9187,
+      "timestamp": 1795230195028.308,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1795227249722.99,
+      "timestamp": 1795230195029.5806,
       "symbol": "EXPAND_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1795227249724.197,
+      "timestamp": 1795230195030.7454,
       "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1795227249725.6372,
+      "timestamp": 1795230195031.7437,
       "symbol": "SUBMIT_FILTER_DRAWER",
       "componentId": "filter-drawer",
       "action": "submit",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1795227249727.036,
+      "timestamp": 1795230195033.165,
       "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 3
     },
     {
-      "timestamp": 1795227250082.074,
+      "timestamp": 1795230195387.0754,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1795227250084.3948,
+      "timestamp": 1795230195388.2478,
       "symbol": "EXPAND_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1795227250085.483,
+      "timestamp": 1795230195389.2646,
       "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1795227250086.242,
+      "timestamp": 1795230195390.7776,
       "symbol": "SUBMIT_FILTER_DRAWER",
       "componentId": "filter-drawer",
       "action": "submit",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1795227250086.928,
+      "timestamp": 1795230195392.13,
       "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 5
     },
     {
-      "timestamp": 1795227250439.7402,
+      "timestamp": 1795230195743.999,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 6
     },
     {
-      "timestamp": 1795227250441.4712,
+      "timestamp": 1795230195744.3728,
       "symbol": "EXPAND_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 6
     },
     {
-      "timestamp": 1795227250442.78,
+      "timestamp": 1795230195744.693,
       "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 6
     },
     {
-      "timestamp": 1795227250444.159,
+      "timestamp": 1795230195745.025,
       "symbol": "SUBMIT_FILTER_DRAWER",
       "componentId": "filter-drawer",
       "action": "submit",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 6
     },
     {
-      "timestamp": 1795227250446.6465,
+      "timestamp": 1795230195745.3948,
       "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 6
     },
     {
-      "timestamp": 1795227250800.2646,
+      "timestamp": 1795230196098.887,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 7
     },
     {
-      "timestamp": 1795227250801.4946,
+      "timestamp": 1795230196099.6848,
       "symbol": "EXPAND_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 7
     },
     {
-      "timestamp": 1795227250802.782,
+      "timestamp": 1795230196100.3513,
       "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 7
     },
     {
-      "timestamp": 1795227250803.9285,
+      "timestamp": 1795230196101.0256,
       "symbol": "SUBMIT_FILTER_DRAWER",
       "componentId": "filter-drawer",
       "action": "submit",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 7
     },
     {
-      "timestamp": 1795227250805.4119,
+      "timestamp": 1795230196101.7415,
       "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 7
     },
     {
-      "timestamp": 1795227251159.3103,
+      "timestamp": 1795230196455.8433,
       "symbol": "NAV_ANALYTICS",
       "componentId": "nav-Analytics",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1795227251159.962,
+      "timestamp": 1795230196458.3147,
       "symbol": "EXPAND_FILTER_REGION",
       "componentId": "filter-Region",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1795227251160.3345,
+      "timestamp": 1795230196459.853,
       "symbol": "CLICK_BTN_APPLY_FILTERS",
       "componentId": "btn-apply-filters",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1795227251160.6997,
+      "timestamp": 1795230196460.8208,
       "symbol": "SUBMIT_FILTER_DRAWER",
       "componentId": "filter-drawer",
       "action": "submit",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
     },
     {
-      "timestamp": 1795227251161.1294,
+      "timestamp": 1795230196461.9094,
       "symbol": "CLICK_KPI_CARD_REVENUE",
       "componentId": "kpi-card-revenue",
       "action": "click",
       "route": "",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 9
@@ -2044,22 +2044,22 @@
   ],
   "outcomes": [
     {
-      "timestamp": 1795227249363.4631,
+      "timestamp": 1795230194668.1257,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "windowId": 0,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227249363.4631,
+      "sourceEventTimestamp": 1795230194668.1257,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "",
       "derivation": {
-        "lookaheadStartMs": 1795227249036.2898,
-        "lookaheadEndMs": 1795227250036.2898,
+        "lookaheadStartMs": 1795230194327.764,
+        "lookaheadEndMs": 1795230195327.764,
         "candidateCount": 10,
-        "earliestTimestampMs": 1795227249363.4631,
+        "earliestTimestampMs": 1795230194668.1257,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
@@ -2070,22 +2070,22 @@
       "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1795227249363.4631,
+      "timestamp": 1795230194668.1257,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "windowId": 1,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227249363.4631,
+      "sourceEventTimestamp": 1795230194668.1257,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "",
       "derivation": {
-        "lookaheadStartMs": 1795227249286.2898,
-        "lookaheadEndMs": 1795227250286.2898,
+        "lookaheadStartMs": 1795230194577.764,
+        "lookaheadEndMs": 1795230195577.764,
         "candidateCount": 15,
-        "earliestTimestampMs": 1795227249363.4631,
+        "earliestTimestampMs": 1795230194668.1257,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
@@ -2096,22 +2096,22 @@
       "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1795227249721.9187,
+      "timestamp": 1795230195028.308,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "windowId": 2,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227249721.9187,
+      "sourceEventTimestamp": 1795230195028.308,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "",
       "derivation": {
-        "lookaheadStartMs": 1795227249536.2898,
-        "lookaheadEndMs": 1795227250536.2898,
+        "lookaheadStartMs": 1795230194827.764,
+        "lookaheadEndMs": 1795230195827.764,
         "candidateCount": 15,
-        "earliestTimestampMs": 1795227249721.9187,
+        "earliestTimestampMs": 1795230195028.308,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
@@ -2122,22 +2122,22 @@
       "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1795227250082.074,
+      "timestamp": 1795230195387.0754,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "windowId": 3,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227250082.074,
+      "sourceEventTimestamp": 1795230195387.0754,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "",
       "derivation": {
-        "lookaheadStartMs": 1795227249786.2898,
-        "lookaheadEndMs": 1795227250786.2898,
+        "lookaheadStartMs": 1795230195077.764,
+        "lookaheadEndMs": 1795230196077.764,
         "candidateCount": 10,
-        "earliestTimestampMs": 1795227250082.074,
+        "earliestTimestampMs": 1795230195387.0754,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
@@ -2148,22 +2148,22 @@
       "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1795227250082.074,
+      "timestamp": 1795230195387.0754,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "windowId": 4,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227250082.074,
+      "sourceEventTimestamp": 1795230195387.0754,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "",
       "derivation": {
-        "lookaheadStartMs": 1795227250036.2898,
-        "lookaheadEndMs": 1795227251036.2898,
+        "lookaheadStartMs": 1795230195327.764,
+        "lookaheadEndMs": 1795230196327.764,
         "candidateCount": 15,
-        "earliestTimestampMs": 1795227250082.074,
+        "earliestTimestampMs": 1795230195387.0754,
         "tieBroken": false,
         "source": "dom_action",
         "observableTermination": false
@@ -2174,100 +2174,22 @@
       "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1795227250439.7402,
+      "timestamp": 1795230195743.999,
       "outcome": "CLICK",
       "lookaheadComplete": true,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "windowId": 5,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227250439.7402,
+      "sourceEventTimestamp": 1795230195743.999,
       "sourceEventType": "click",
       "componentId": "nav-Analytics",
       "route": "",
       "derivation": {
-        "lookaheadStartMs": 1795227250286.2898,
-        "lookaheadEndMs": 1795227251286.2898,
+        "lookaheadStartMs": 1795230195577.764,
+        "lookaheadEndMs": 1795230196577.764,
         "candidateCount": 15,
-        "earliestTimestampMs": 1795227250439.7402,
-        "tieBroken": false,
-        "source": "dom_action",
-        "observableTermination": false
-      },
-      "taskOutcome": "navigate_analytics",
-      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
-      "taskOutcomeSource": "application_rule",
-      "taskOutcomeRuleId": "navigate_analytics"
-    },
-    {
-      "timestamp": 1795227250800.2646,
-      "outcome": "CLICK",
-      "lookaheadComplete": false,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
-      "windowId": 6,
-      "experimentId": "exp-deploy-verification",
-      "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227250800.2646,
-      "sourceEventType": "click",
-      "componentId": "nav-Analytics",
-      "route": "",
-      "derivation": {
-        "lookaheadStartMs": 1795227250536.2898,
-        "lookaheadEndMs": 1795227251536.2898,
-        "candidateCount": 11,
-        "earliestTimestampMs": 1795227250800.2646,
-        "tieBroken": false,
-        "source": "dom_action",
-        "observableTermination": false
-      },
-      "taskOutcome": "navigate_analytics",
-      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
-      "taskOutcomeSource": "application_rule",
-      "taskOutcomeRuleId": "navigate_analytics"
-    },
-    {
-      "timestamp": 1795227250800.2646,
-      "outcome": "CLICK",
-      "lookaheadComplete": false,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
-      "windowId": 7,
-      "experimentId": "exp-deploy-verification",
-      "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227250800.2646,
-      "sourceEventType": "click",
-      "componentId": "nav-Analytics",
-      "route": "",
-      "derivation": {
-        "lookaheadStartMs": 1795227250786.2898,
-        "lookaheadEndMs": 1795227251786.2898,
-        "candidateCount": 11,
-        "earliestTimestampMs": 1795227250800.2646,
-        "tieBroken": false,
-        "source": "dom_action",
-        "observableTermination": false
-      },
-      "taskOutcome": "navigate_analytics",
-      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
-      "taskOutcomeSource": "application_rule",
-      "taskOutcomeRuleId": "navigate_analytics"
-    },
-    {
-      "timestamp": 1795227251159.3103,
-      "outcome": "CLICK",
-      "lookaheadComplete": false,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
-      "windowId": 8,
-      "experimentId": "exp-deploy-verification",
-      "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227251159.3103,
-      "sourceEventType": "click",
-      "componentId": "nav-Analytics",
-      "route": "",
-      "derivation": {
-        "lookaheadStartMs": 1795227251036.2898,
-        "lookaheadEndMs": 1795227252036.2898,
-        "candidateCount": 6,
-        "earliestTimestampMs": 1795227251159.3103,
+        "earliestTimestampMs": 1795230195743.999,
         "tieBroken": true,
         "source": "dom_action",
         "observableTermination": false
@@ -2278,37 +2200,115 @@
       "taskOutcomeRuleId": "navigate_analytics"
     },
     {
-      "timestamp": 1795227251513.6978,
+      "timestamp": 1795230196098.887,
+      "outcome": "CLICK",
+      "lookaheadComplete": false,
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
+      "windowId": 6,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1795230196098.887,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "",
+      "derivation": {
+        "lookaheadStartMs": 1795230195827.764,
+        "lookaheadEndMs": 1795230196827.764,
+        "candidateCount": 11,
+        "earliestTimestampMs": 1795230196098.887,
+        "tieBroken": true,
+        "source": "dom_action",
+        "observableTermination": false
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
+    },
+    {
+      "timestamp": 1795230196098.887,
+      "outcome": "CLICK",
+      "lookaheadComplete": false,
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
+      "windowId": 7,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1795230196098.887,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "",
+      "derivation": {
+        "lookaheadStartMs": 1795230196077.764,
+        "lookaheadEndMs": 1795230197077.764,
+        "candidateCount": 11,
+        "earliestTimestampMs": 1795230196098.887,
+        "tieBroken": true,
+        "source": "dom_action",
+        "observableTermination": false
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
+    },
+    {
+      "timestamp": 1795230196455.8433,
+      "outcome": "CLICK",
+      "lookaheadComplete": false,
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
+      "windowId": 8,
+      "experimentId": "exp-deploy-verification",
+      "conditionId": "adaptive",
+      "sourceEventTimestamp": 1795230196455.8433,
+      "sourceEventType": "click",
+      "componentId": "nav-Analytics",
+      "route": "",
+      "derivation": {
+        "lookaheadStartMs": 1795230196327.764,
+        "lookaheadEndMs": 1795230197327.764,
+        "candidateCount": 6,
+        "earliestTimestampMs": 1795230196455.8433,
+        "tieBroken": false,
+        "source": "dom_action",
+        "observableTermination": false
+      },
+      "taskOutcome": "navigate_analytics",
+      "taskOutcomeVocabularyVersion": "testbed-semantic/1.0.0",
+      "taskOutcomeSource": "application_rule",
+      "taskOutcomeRuleId": "navigate_analytics"
+    },
+    {
+      "timestamp": 1795230196816.5308,
       "outcome": "ABANDON",
       "lookaheadComplete": false,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "windowId": 9,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
-      "sourceEventTimestamp": 1795227251513.6978,
+      "sourceEventTimestamp": 1795230196816.5308,
       "sourceEventType": "pagehide",
       "route": "",
       "derivation": {
-        "lookaheadStartMs": 1795227251286.2898,
-        "lookaheadEndMs": 1795227252286.2898,
+        "lookaheadStartMs": 1795230196577.764,
+        "lookaheadEndMs": 1795230197577.764,
         "candidateCount": 1,
-        "earliestTimestampMs": 1795227251513.6978,
+        "earliestTimestampMs": 1795230196816.5308,
         "tieBroken": false,
         "source": "lifecycle_event",
         "observableTermination": true
       }
     },
     {
-      "timestamp": 1795227251036.2898,
+      "timestamp": 1795230196327.764,
       "outcome": "ABANDON",
       "lookaheadComplete": false,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "windowId": 10,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "derivation": {
-        "lookaheadStartMs": 1795227251536.2898,
-        "lookaheadEndMs": 1795227252536.2898,
+        "lookaheadStartMs": 1795230196827.764,
+        "lookaheadEndMs": 1795230197827.764,
         "candidateCount": 0,
         "earliestTimestampMs": null,
         "tieBroken": false,
@@ -2317,16 +2317,16 @@
       }
     },
     {
-      "timestamp": 1795227251286.2898,
+      "timestamp": 1795230196577.764,
       "outcome": "ABANDON",
       "lookaheadComplete": false,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "windowId": 11,
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "derivation": {
-        "lookaheadStartMs": 1795227251786.2898,
-        "lookaheadEndMs": 1795227252786.2898,
+        "lookaheadStartMs": 1795230197077.764,
+        "lookaheadEndMs": 1795230198077.764,
         "candidateCount": 0,
         "earliestTimestampMs": null,
         "tieBroken": false,
@@ -2337,9 +2337,9 @@
   ],
   "predictions": [
     {
-      "timestamp": 1795227250837.1392,
-      "predictionId": "pred_6",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "timestamp": 1795230196127.935,
+      "predictionId": "pred_7",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 8,
@@ -2361,17 +2361,17 @@
       "gateVersion": "onnx-slow-gate/1.0.0",
       "targetContext": {},
       "confidence": 0.22174011170864105,
-      "latencyMs": 1.7797499999996944,
-      "fastGateLatencyMs": 0.02237500000046566,
-      "slowGateLatencyMs": 1.7470410000005359,
+      "latencyMs": 1.139541000000463,
+      "fastGateLatencyMs": 0.012375000000247383,
+      "slowGateLatencyMs": 1.117167000000336,
       "modelVersion": "TargetInterventionHead-v1.0.0-int8",
       "contextEncodingVersion": "R6-v1.0.0",
       "bothGatesEvaluated": true
     },
     {
-      "timestamp": 1795227251346.0598,
-      "predictionId": "pred_7",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "timestamp": 1795230196636.824,
+      "predictionId": "pred_8",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 10,
@@ -2394,17 +2394,17 @@
       "targetContext": {},
       "mappingSource": "learned_head",
       "confidence": 0.22524797916412354,
-      "latencyMs": 2.3584160000009433,
-      "fastGateLatencyMs": 0.031083999998372747,
-      "slowGateLatencyMs": 2.3026669999999285,
+      "latencyMs": 1.5143330000009882,
+      "fastGateLatencyMs": 0.03245799999967858,
+      "slowGateLatencyMs": 1.4674999999988358,
       "modelVersion": "TargetInterventionHead-v1.0.0-int8",
       "contextEncodingVersion": "R6-v1.0.0",
       "bothGatesEvaluated": false
     },
     {
-      "timestamp": 1795227251597.8372,
-      "predictionId": "pred_8",
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "timestamp": 1795230196891.9026,
+      "predictionId": "pred_9",
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 11,
@@ -2426,9 +2426,9 @@
       "gateVersion": "onnx-slow-gate/1.0.0",
       "targetContext": {},
       "confidence": 0.22174011170864105,
-      "latencyMs": 0.40962500000023283,
-      "fastGateLatencyMs": 0.007790999999997439,
-      "slowGateLatencyMs": 0.39737499999864667,
+      "latencyMs": 1.8884579999994457,
+      "fastGateLatencyMs": 0.05799999999908323,
+      "slowGateLatencyMs": 1.8106669999997393,
       "modelVersion": "TargetInterventionHead-v1.0.0-int8",
       "contextEncodingVersion": "R6-v1.0.0",
       "bothGatesEvaluated": true
@@ -2436,12 +2436,12 @@
   ],
   "policyDecisions": [
     {
-      "timestamp": 1795227250839.0422,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "timestamp": 1795230196129.1953,
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 8,
-      "predictionId": "pred_6",
+      "predictionId": "pred_7",
       "accepted": false,
       "policyDecision": "no_prediction",
       "policyReason": "No prediction: no gate asserted one (fast:no_matching_pattern)",
@@ -2450,12 +2450,12 @@
       "phase": "no_prediction"
     },
     {
-      "timestamp": 1795227251348.7092,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "timestamp": 1795230196638.6401,
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 10,
-      "predictionId": "pred_7",
+      "predictionId": "pred_8",
       "candidate": "no_op",
       "confidence": 0.22524797916412354,
       "accepted": false,
@@ -2467,12 +2467,12 @@
       "phase": "policy"
     },
     {
-      "timestamp": 1795227251598.317,
-      "sessionId": "59e2834e-8acb-4377-bf10-a54ab037f98c",
+      "timestamp": 1795230196894.1016,
+      "sessionId": "40613a0d-bb4f-48c3-88e9-f69601ecabde",
       "experimentId": "exp-deploy-verification",
       "conditionId": "adaptive",
       "windowId": 11,
-      "predictionId": "pred_8",
+      "predictionId": "pred_9",
       "accepted": false,
       "policyDecision": "no_prediction",
       "policyReason": "No prediction: no gate asserted one (fast:no_matching_pattern)",

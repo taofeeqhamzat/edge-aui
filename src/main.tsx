@@ -1,35 +1,35 @@
-import React from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { App } from './app/App';
-import './style.css';
+import React from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { App } from "./app/App";
+import "./style.css";
 import {
   bootRuntime,
   getLastCompletedTrialTrace,
   registerRuntimeDefaults,
-  stopTestbed
-} from './runtime/boot';
-import { testbedAdapter } from './testbed/adapter';
-import { TESTBED_MACRO_MAPPER } from './testbed/config/macroVocabulary';
-import { TESTBED_CONTEXT_ENCODING_CONFIG } from './testbed/config/contextEncoding';
+  stopTestbed,
+} from "./runtime/boot";
+import { testbedAdapter } from "./testbed/adapter";
+import { TESTBED_MACRO_MAPPER } from "./testbed/config/macroVocabulary";
+import { TESTBED_CONTEXT_ENCODING_CONFIG } from "./testbed/config/contextEncoding";
 import {
   TESTBED_FAST_GATE_DECLARATIONS,
-  TESTBED_FAST_GATE_PATTERN_VERSION
-} from './testbed/config/fastGatePatterns';
-import { TESTBED_EXPERIMENT_CONFIG } from './testbed/config/experiment';
+  TESTBED_FAST_GATE_PATTERN_VERSION,
+} from "./testbed/config/fastGatePatterns";
+import { TESTBED_EXPERIMENT_CONFIG } from "./testbed/config/experiment";
 import {
   createTestbedCandidateResolver,
-  TESTBED_PASSIVE_ACTIONS
-} from './testbed/config/policyAdapter';
-import { createTestbedTargetResolver } from './testbed/config/interventionTargets';
-import { SemanticOutcomeDeriver } from './outcome/semantic';
+  TESTBED_PASSIVE_ACTIONS,
+} from "./testbed/config/policyAdapter";
+import { createTestbedTargetResolver } from "./testbed/config/interventionTargets";
+import { SemanticOutcomeDeriver } from "./outcome/semantic";
 import {
   TESTBED_SEMANTIC_VOCABULARY,
-  createTestbedSemanticRules
-} from './testbed/config/semanticOutcomes';
-import { parseBundleManifest } from './config/modelManifest';
-import semanticBundle from '../public/models/task_outcome_head_v2.bundle.json';
-import { startRuntimeDiagnostics } from './runtime/diagnostics';
-import { installTestbedGate } from './testbed/entry/entryGate';
+  createTestbedSemanticRules,
+} from "./testbed/config/semanticOutcomes";
+import { parseBundleManifest } from "./config/modelManifest";
+import semanticBundle from "../public/models/task_outcome_head_v2.bundle.json";
+import { startRuntimeDiagnostics } from "./runtime/diagnostics";
+import { installTestbedGate } from "./testbed/entry/entryGate";
 
 const slowGateManifest = parseBundleManifest(semanticBundle);
 
@@ -52,31 +52,31 @@ registerRuntimeDefaults({
   policyConfig: {
     confidenceThreshold: 0.35,
     confidenceThresholdByType: {
-      highlight_primary_action: 0.30,
+      highlight_primary_action: 0.3,
       simplify_options: 0.35,
       offer_assistance: 0.25,
-      expand_tooltip: 0.25
+      expand_tooltip: 0.25,
     },
     ttlMs: 4000,
     ttlMsByType: {
       highlight_primary_action: 3500,
       expand_tooltip: 4000,
-      offer_assistance: 4500
+      offer_assistance: 4500,
     },
     cooldownMs: 8000,
     dismissalCooldownMs: 15000,
     acceptanceCooldownMs: 15000,
-    maxInterventionsPerTaskStep: 2,
+    maxInterventionsPerTaskStep: 4,
     requiredConsecutiveWindows: 1,
-    passiveActions: [...TESTBED_PASSIVE_ACTIONS]
+    passiveActions: [...TESTBED_PASSIVE_ACTIONS],
   },
   // Semantic outcomes are application vocabulary: the testbed supplies its own rules and
   // the framework records whatever it derives (Task 20.4).
   semanticOutcomes: new SemanticOutcomeDeriver({
     vocabulary: TESTBED_SEMANTIC_VOCABULARY,
-    rules: createTestbedSemanticRules()
+    rules: createTestbedSemanticRules(),
   }),
-  experiment: TESTBED_EXPERIMENT_CONFIG
+  experiment: TESTBED_EXPERIMENT_CONFIG,
 });
 
 /**
@@ -91,7 +91,7 @@ registerRuntimeDefaults({
  * be composed at all. Re-evaluation on capability/navigation events is handled inside the
  * gate so a responsive layout change or orientation change cannot reveal the testbed.
  */
-const rootElement = document.getElementById('app')!;
+const rootElement = document.getElementById("app")!;
 let reactRoot: Root | null = null;
 
 installTestbedGate({
@@ -101,7 +101,7 @@ installTestbedGate({
     reactRoot.render(
       <React.StrictMode>
         <App />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     void start();
   },
@@ -110,7 +110,7 @@ installTestbedGate({
     stopTestbed();
     reactRoot?.unmount();
     reactRoot = null;
-  }
+  },
 });
 
 /**
@@ -129,15 +129,17 @@ async function start(): Promise<void> {
     const runtime = await bootRuntime();
     const status = runtime.getStatus();
 
-    console.log('[Edge-AUI] Adaptive runtime started', {
+    console.log("[Edge-AUI] Adaptive runtime started", {
       sessionId: status.sessionId,
       experimentId: status.experimentId,
-      conditionId: status.conditionId
+      conditionId: status.conditionId,
     });
 
     // Development diagnostics: proves the pipeline produces telemetry end to end.
-    startRuntimeDiagnostics(runtime, { getCompletedTrace: getLastCompletedTrialTrace });
+    startRuntimeDiagnostics(runtime, {
+      getCompletedTrace: getLastCompletedTrialTrace,
+    });
   } catch (err) {
-    console.error('[Edge-AUI] Failed to start the adaptive runtime:', err);
+    console.error("[Edge-AUI] Failed to start the adaptive runtime:", err);
   }
 }

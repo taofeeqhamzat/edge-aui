@@ -332,6 +332,40 @@ describe('missing target fails safely (Task 60.1)', () => {
     expect(document.querySelectorAll('.edge-aui-tooltip-bubble').length).toBe(0);
   });
 
+  it('anchors expand_tooltip inside the reports-header-action th', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Report</th>
+            <th data-aui-component="reports-header-action" data-aui-role="tooltip" title="Open a report to view and compare detailed metrics">Action</th>
+          </tr>
+        </thead>
+      </table>
+    `;
+    document.body.appendChild(root);
+    const before = document.body.innerHTML;
+    const actuator = new UIActuator({ root, targetResolver: createTestbedTargetResolver() });
+
+    const cmd = tooltipCommand('reports-header-action');
+    expect(actuator.apply(cmd)).toBe(true);
+
+    const th = root.querySelector('[data-aui-component="reports-header-action"]') as HTMLElement;
+    expect(th.classList.contains('edge-aui-tooltip-expanded')).toBe(true);
+
+    // The bubble must be anchored inside the th, not escaped as a sibling in tr
+    const bubble = th.querySelector('.edge-aui-tooltip-bubble');
+    expect(bubble).not.toBeNull();
+    expect(bubble?.parentElement).toBe(th);
+    expect(bubble?.textContent).toBe('Open a report to view and compare detailed metrics');
+
+    actuator.clear(cmd);
+    expect(th.classList.contains('edge-aui-tooltip-expanded')).toBe(false);
+    expect(th.querySelector('.edge-aui-tooltip-bubble')).toBeNull();
+    expect(document.body.innerHTML).toBe(before);
+  });
+
   it('refuses an actionable command that declares no target', () => {
     renderAnalyticsDom();
     const before = document.body.innerHTML;

@@ -544,10 +544,10 @@ export class UIActuator {
       initialAriaDescribedby ? `${initialAriaDescribedby} ${tooltipId}` : tooltipId
     );
 
-    // Attach bubble next to target (non-destructive sibling insertion)
-    if (targetEl.parentNode) {
-      targetEl.parentNode.insertBefore(bubble, targetEl.nextSibling);
-    }
+    // Attach bubble anchored inside target element so absolute positioning
+    // stays within targetEl's containing block (.edge-aui-tooltip-expanded)
+    // rather than escaping to the parent (which breaks table layout when target is a TH/TD).
+    targetEl.appendChild(bubble);
 
     // Keyboard dismissibility without stealing focus (PRD §28.4, §45)
     const onKeyDown = (e: KeyboardEvent) => {
