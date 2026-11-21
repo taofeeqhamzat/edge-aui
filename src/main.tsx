@@ -66,7 +66,7 @@ registerRuntimeDefaults({
     cooldownMs: 8000,
     dismissalCooldownMs: 15000,
     acceptanceCooldownMs: 15000,
-    maxInterventionsPerTaskStep: 4,
+    maxInterventionsPerTaskStep: 2,
     requiredConsecutiveWindows: 1,
     passiveActions: [...TESTBED_PASSIVE_ACTIONS],
   },

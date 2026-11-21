@@ -24,7 +24,7 @@ export function ReportsCatalogue({ onOpen, currentReportId }: ReportsCataloguePr
             <th
               data-aui-component="reports-header-action"
               data-aui-role="tooltip"
-              title="Open a report to view and compare detailed metrics"
+              title="Open a report to compare"
               data-tooltip="Open a report to view and compare detailed metrics"
             >
               Action
