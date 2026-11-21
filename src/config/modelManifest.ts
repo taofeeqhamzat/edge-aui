@@ -43,6 +43,8 @@ export const INTERVENTION_CLASSES = [
 /** Default bundled graph URLs (compatibility mode). */
 export const DEFAULT_MODEL_URL = '/models/model_int8.onnx';
 export const DEFAULT_INTERVENTION_MODEL_URL = '/models/intervention_head_int8.onnx';
+/** Task 40.5: the 14-class semantic task-outcome graph exported by model-preparation. */
+export const DEFAULT_SEMANTIC_MODEL_URL = '/models/task_outcome_head_v2_int8.onnx';
 
 /**
  * Identity of the bundled graphs.
@@ -155,15 +157,57 @@ function readStringArray(raw: Record<string, unknown>, key: string): string[] | 
 /**
  * Reads a `model-preparation` bundle manifest into the runtime contract.
  *
- * The bundle describes the intervention head only; the foundation head keeps the framework
- * default unless the caller overrides it. The artifact hash becomes the model version, so a
- * re-export is visible in the trace without editing a constant.
+ * Two bundle shapes are supported:
+ *
+ * - v1 (intervention head): `intervention_vocabulary` + `intervention_logits`. The bundle
+ *   describes the five-class intervention head; the foundation head keeps the framework
+ *   default.
+ * - v2 (semantic task-outcome head, Task 40.5): `task_outcome_vocabulary` +
+ *   `task_outcome_logits`. The 14-class semantic graph replaces the *foundation* head by path
+ *   and vocabulary — it is the same `(sequence, context) -> outcome` contract, not a new
+ *   runtime branch.
+ *
+ * The artifact hash becomes the model version, so a re-export is visible in the trace without
+ * editing a constant.
  */
 export function parseBundleManifest(raw: unknown): SlowGateManifest {
   if (!raw || typeof raw !== 'object') {
     throw new ModelManifestError('Bundle manifest must be a non-null object');
   }
   const bundle = raw as Record<string, unknown>;
+
+  const semanticOutcomes = readStringArray(bundle, 'task_outcome_vocabulary');
+  if (semanticOutcomes) {
+    const version =
+      typeof bundle.target_vocabulary_version === 'string'
+        ? bundle.target_vocabulary_version
+        : 'testbed-semantic-target/1.0.0';
+    const vocabulary: OutcomeVocabulary = {
+      id: 'task-outcome',
+      version,
+      outcomes: semanticOutcomes
+    };
+    assertVocabularyShape(
+      vocabulary,
+      readDeclaredDimension(bundle, 'task_outcome_logits'),
+      'Task outcome'
+    );
+    const artifact =
+      (typeof bundle.model_artifact_int8 === 'string' && bundle.model_artifact_int8) ||
+      (typeof bundle.model_artifact === 'string' && bundle.model_artifact) ||
+      'task_outcome_head_v2_int8.onnx';
+    const hash =
+      (typeof bundle.int8_hash_sha256 === 'string' && bundle.int8_hash_sha256) ||
+      (typeof bundle.onnx_hash_sha256 === 'string' && bundle.onnx_hash_sha256) ||
+      undefined;
+    return {
+      foundation: {
+        modelUrl: DEFAULT_SEMANTIC_MODEL_URL,
+        vocabulary,
+        modelVersion: hash ? `${artifact}#${hash.slice(0, 12)}` : artifact
+      }
+    };
+  }
 
   const outcomes = readStringArray(bundle, 'intervention_vocabulary');
   if (!outcomes) {

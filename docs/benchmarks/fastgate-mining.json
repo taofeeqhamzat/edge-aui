@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedBy": "scripts/benchmark-fastgate.mjs",
+  "generatedAt": "2026-11-20T10:49:20.489Z",
+  "gitCommit": "5b427d1d84f6a2515409e26e34e94f0e20d1f0f2",
+  "environment": {
+    "node": "v26.13.1",
+    "platform": "darwin 27.3.0",
+    "arch": "arm64",
+    "cpu": "Apple M1",
+    "cpuCount": 8,
+    "totalMemoryBytes": 8589934592
+  },
+  "artifact": {
+    "path": "wasm-vectorizer/pkg/wasm_vectorizer_bg.wasm",
+    "bytes": 122262,
+    "sha256": "252b9d29fa76cf550deb139c980357065174564906a25b0321b4cdfcd99569aa"
+  },
+  "inputCorpus": {
+    "source": "/Users/user/Workspace/MivaCS/FYP/model-preparation/docs/experiments/participant-patterns/participant-pattern-candidates.json",
+    "sessions": 35,
+    "symbolsPerSession": 18,
+    "generation": "deterministic Mulberry32(0x5eed); symbol mix from the evidence report"
+  },
+  "results": [
+    {
+      "id": "live_pre_fix",
+      "description": "Audit corpus shape (9 sequences × 18 symbols, support 2) at the bounds the old gate effectively applied: unlimited length and count.",
+      "corpus": {
+        "sequences": 9,
+        "totalSymbols": 162,
+        "distinctSymbols": 11
+      },
+      "bounds": {
+        "minSupport": 2,
+        "maxPatternLength": 8,
+        "maxPatterns": 1000000
+      },
+      "iterations": 50,
+      "patternsReturned": 9825,
+      "longestPattern": 8,
+      "hitPatternCap": false,
+      "latencyMs": {
+        "p50": 23.5,
+        "p95": 28.588,
+        "max": 31.195,
+        "mean": 24.315
+      },
+      "memory": {
+        "heapDeltaBytes": 33436568,
+        "rssDeltaBytes": 76611584,
+        "note": "Process-level Node measurement around the repeated calls; not a browser budget."
+      }
+    },
+    {
+      "id": "bounded_production",
+      "description": "Participant-shaped corpus (35 sessions × 18 symbols, support 2) at the production bounds: length 4, 32 patterns.",
+      "corpus": {
+        "sequences": 35,
+        "totalSymbols": 630,
+        "distinctSymbols": 13
+      },
+      "bounds": {
+        "minSupport": 2,
+        "maxPatternLength": 4,
+        "maxPatterns": 32
+      },
+      "iterations": 50,
+      "patternsReturned": 32,
+      "longestPattern": 4,
+      "hitPatternCap": true,
+      "latencyMs": {
+        "p50": 0.26,
+        "p95": 0.382,
+        "max": 0.576,
+        "mean": 0.284
+      },
+      "memory": {
+        "heapDeltaBytes": 1191704,
+        "rssDeltaBytes": 81920,
+        "note": "Process-level Node measurement around the repeated calls; not a browser budget."
+      }
+    },
+    {
+      "id": "bounded_evidence_floor",
+      "description": "Same corpus with support 3, the participant evidence floor used by the declared set.",
+      "corpus": {
+        "sequences": 35,
+        "totalSymbols": 630,
+        "distinctSymbols": 13
+      },
+      "bounds": {
+        "minSupport": 3,
+        "maxPatternLength": 4,
+        "maxPatterns": 32
+      },
+      "iterations": 50,
+      "patternsReturned": 32,
+      "longestPattern": 4,
+      "hitPatternCap": true,
+      "latencyMs": {
+        "p50": 0.245,
+        "p95": 0.28,
+        "max": 0.415,
+        "mean": 0.256
+      },
+      "memory": {
+        "heapDeltaBytes": 1134256,
+        "rssDeltaBytes": 0,
+        "note": "Process-level Node measurement around the repeated calls; not a browser budget."
+      }
+    },
+    {
+      "id": "bounded_worst_corpus",
+      "description": "Largest corpus the runtime will send (maxCorpusSequences 40) with long 60-symbol sequences, production bounds.",
+      "corpus": {
+        "sequences": 40,
+        "totalSymbols": 2400,
+        "distinctSymbols": 13
+      },
+      "bounds": {
+        "minSupport": 2,
+        "maxPatternLength": 4,
+        "maxPatterns": 32
+      },
+      "iterations": 50,
+      "patternsReturned": 32,
+      "longestPattern": 4,
+      "hitPatternCap": true,
+      "latencyMs": {
+        "p50": 0.974,
+        "p95": 1.206,
+        "max": 1.314,
+        "mean": 0.997
+      },
+      "memory": {
+        "heapDeltaBytes": 1130680,
+        "rssDeltaBytes": 0,
+        "note": "Process-level Node measurement around the repeated calls; not a browser budget."
+      }
+    }
+  ],
+  "notMeasured": [
+    "Browser Total Blocking Time and end-to-end inference latency on the deployed build",
+    "The 20 MB browser memory budget (process RSS is not a browser measurement)",
+    "Head-of-line blocking at the worker RPC boundary"
+  ]
+}

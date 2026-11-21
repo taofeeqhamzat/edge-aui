@@ -13,6 +13,7 @@ import {
   BEHAVIOURAL_MARKER_SYMBOLS,
   DEFAULT_MACRO_VOCABULARY_ID
 } from '../src/macro/mapper';
+import { TESTBED_MACRO_MAPPER } from '../src/testbed/config/macroVocabulary';
 import type { BehaviourEvent } from '../src/telemetry/events';
 
 function event(overrides: Partial<BehaviourEvent>): BehaviourEvent {
@@ -80,5 +81,18 @@ describe('generic annotation macro mapper', () => {
     const sample = event({ type: 'change', componentId: 'Quantity Input' });
     expect(mapper.deriveSymbol(sample)).toBe(mapper.deriveSymbol(sample));
     expect(mapper.deriveSymbol(sample)).toBe('SELECT_QUANTITY_INPUT');
+  });
+
+  it('derives TABLE_ROW_SELECT on deliberate click, not on passive hover in testbed macro mapper', () => {
+    expect(
+      TESTBED_MACRO_MAPPER.deriveSymbol(
+        event({ type: 'mouseover', componentId: 'table-row-1', componentRole: 'table-row' })
+      )
+    ).toBeNull();
+    expect(
+      TESTBED_MACRO_MAPPER.deriveSymbol(
+        event({ type: 'click', componentId: 'table-row-1', componentRole: 'table-row' })
+      )
+    ).toBe('TABLE_ROW_SELECT');
   });
 });

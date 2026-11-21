@@ -38,6 +38,12 @@ export interface UIActuatorOptions {
   defaultAssistanceText?: string;
   /** Resolves a declared target reference to a DOM element. */
   targetResolver?: ActuationTargetResolver;
+  /**
+   * Whether clearing a simplify_options adaptation re-expands the accordions it collapsed.
+   * Default is true in raw UIActuator for backward compatibility, but false in AdaptiveRuntime
+   * so the simplified layout is retained for the user.
+   */
+  restoreCollapsedSectionsOnClear?: boolean;
 }
 
 export type InterventionEventListener = (event: InterventionEvent) => void;
@@ -148,6 +154,7 @@ export class UIActuator {
   private root: Document | HTMLElement | null;
   private defaultAssistanceText: string;
   private readonly targetResolver?: ActuationTargetResolver;
+  private readonly restoreCollapsedSectionsOnClear: boolean;
   private activeAdaptations = new Map<InterventionType, ReversionRecord>();
   private eventListeners = new Set<InterventionEventListener>();
 
@@ -157,6 +164,7 @@ export class UIActuator {
       options.defaultAssistanceText ??
       'Need assistance? Guided steps and contextual filters are available to help complete the task.';
     this.targetResolver = options.targetResolver;
+    this.restoreCollapsedSectionsOnClear = options.restoreCollapsedSectionsOnClear ?? true;
   }
 
   /**
@@ -208,6 +216,17 @@ export class UIActuator {
 
       if (!this.root) {
         console.warn('[UIActuator] DOM root not available; adaptation skipped.');
+        return false;
+      }
+
+      // Every element-changing adaptation must declare what it acts on. Without a target
+      // there is no honest element, and the old framework guessed one (the first primary
+      // action, tooltip or accordion). Guessing is how a filter prediction ended up
+      // highlighting Export (assessment §5.3), so a missing declaration is a failure.
+      if (command.type !== 'offer_assistance' && !command.targetComponentId) {
+        console.warn(
+          `[UIActuator] '${command.type}' declared no target; no adaptation was applied.`
+        );
         return false;
       }
 
@@ -366,15 +385,9 @@ export class UIActuator {
   private applyHighlightPrimaryAction(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
-    let targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
-    if (!targetEl && !this.targetResolver) {
-      // Framework default only: a configured resolver is authoritative, so its "no element"
-      // answer is an actuation failure rather than a licence to adapt a different control.
-      targetEl = this.root.querySelector(
-        '[data-aui-role="primary-action"]:not([disabled])'
-      );
-    }
-
+    // The declared target is the whole instruction. No role-based fallback: an application
+    // that means a specific control names it, and one that does not gets no adaptation.
+    const targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
     if (!targetEl) return null;
 
     const hadClass = targetEl.hasAttribute('class');
@@ -402,18 +415,18 @@ export class UIActuator {
   private applySimplifyOptions(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
+    // A declared surface bounds the mutation: only the options inside it are simplified.
+    // Collapsing every accordion in the document was how an unrelated panel was altered.
+    const declaredSurface = this.resolveDeclaredTarget(command) as HTMLElement | null;
+    if (!declaredSurface) return null;
+
     const accordionButtons = Array.from(
-      this.root.querySelectorAll('[data-aui-role="accordion"]')
+      declaredSurface.querySelectorAll('[data-aui-role="accordion"]')
     ) as HTMLElement[];
 
     if (accordionButtons.length === 0) return null;
 
-    // A configured resolver is authoritative: it names the surface to simplify, and a
-    // missing target fails instead of collapsing unrelated accordions.
-    const declaredSurface = this.resolveDeclaredTarget(command) as HTMLElement | null;
-    if (this.targetResolver && !declaredSurface) return null;
-    const simplifiedSurface =
-      declaredSurface ?? (accordionButtons[0]?.parentElement ?? null);
+    const simplifiedSurface = declaredSurface;
 
     const activeEl = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
     const collapsedItems: Array<{
@@ -423,12 +436,10 @@ export class UIActuator {
     }> = [];
 
     // Tag the surface that contains the options being simplified.
-    const surfaceHadClass = simplifiedSurface?.hasAttribute('class');
-    const surfaceInitialClass = simplifiedSurface?.getAttribute('class');
+    const surfaceHadClass = simplifiedSurface.hasAttribute('class');
+    const surfaceInitialClass = simplifiedSurface.getAttribute('class');
 
-    if (simplifiedSurface) {
-      simplifiedSurface.classList.add('edge-aui-simplified');
-    }
+    simplifiedSurface.classList.add('edge-aui-simplified');
 
     for (const btn of accordionButtons) {
       const parentSection = btn.parentElement;
@@ -460,17 +471,18 @@ export class UIActuator {
       // correlation attributes go there rather than on a wrapper the user cannot see.
       element: accordionButtons[0],
       cleanup: () => {
-        if (simplifiedSurface) {
-          if (surfaceHadClass && typeof surfaceInitialClass === 'string') {
-            simplifiedSurface.setAttribute('class', surfaceInitialClass);
-          } else {
-            simplifiedSurface.removeAttribute('class');
-          }
+        if (surfaceHadClass && typeof surfaceInitialClass === 'string') {
+          simplifiedSurface.setAttribute('class', surfaceInitialClass);
+        } else {
+          simplifiedSurface.removeAttribute('class');
         }
-        // Restore previously open accordions
-        for (const item of collapsedItems) {
-          if (item.btn.getAttribute('aria-expanded') !== 'true') {
-            item.btn.click();
+        // Re-expand previously open accordions only when explicitly configured.
+        // By default, the simplification is retained so the UI does not jarringly re-complicate itself.
+        if (this.restoreCollapsedSectionsOnClear) {
+          for (const item of collapsedItems) {
+            if (item.btn.getAttribute('aria-expanded') !== 'true') {
+              item.btn.click();
+            }
           }
         }
         // Guarantee focus integrity is maintained upon restoration
@@ -487,12 +499,18 @@ export class UIActuator {
   private applyExpandTooltip(command: InterventionCommand): AdaptationResult | null {
     if (!this.root) return null;
 
-    let targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
-    if (!targetEl && !this.targetResolver) {
-      targetEl = this.root.querySelector('[data-aui-role="tooltip"]');
-    }
-
+    // The declared target identifies the one element whose help text is expanded. A
+    // missing declaration fails instead of expanding the first tooltip on the page, which
+    // could be about a different column (assessment §5.3).
+    const targetEl = this.resolveDeclaredTarget(command) as HTMLElement | null;
     if (!targetEl) return null;
+
+    // The bubble shows the element's own help text. Falling back to a generic sentence or
+    // to `command.reason` would put words in the interface the interface never said.
+    const tooltipText = (
+      targetEl.getAttribute('title') ?? targetEl.getAttribute('data-tooltip') ?? ''
+    ).trim();
+    if (!tooltipText) return null;
 
     const hadClass = targetEl.hasAttribute('class');
     const initialClass = targetEl.getAttribute('class');
@@ -501,13 +519,6 @@ export class UIActuator {
 
     targetEl.classList.add('edge-aui-tooltip-expanded');
     targetEl.setAttribute('aria-expanded', 'true');
-
-    // Extract text from title or data attribute
-    const tooltipText =
-      targetEl.getAttribute('title') ||
-      targetEl.getAttribute('data-tooltip') ||
-      command.reason ||
-      'Contextual guidance available';
 
     // Store original title so browser tooltip doesn't clash
     const originalTitle = targetEl.getAttribute('title');
@@ -533,10 +544,10 @@ export class UIActuator {
       initialAriaDescribedby ? `${initialAriaDescribedby} ${tooltipId}` : tooltipId
     );
 
-    // Attach bubble next to target (non-destructive sibling insertion)
-    if (targetEl.parentNode) {
-      targetEl.parentNode.insertBefore(bubble, targetEl.nextSibling);
-    }
+    // Attach bubble anchored inside target element so absolute positioning
+    // stays within targetEl's containing block (.edge-aui-tooltip-expanded)
+    // rather than escaping to the parent (which breaks table layout when target is a TH/TD).
+    targetEl.appendChild(bubble);
 
     // Keyboard dismissibility without stealing focus (PRD §28.4, §45)
     const onKeyDown = (e: KeyboardEvent) => {
@@ -603,6 +614,12 @@ export class UIActuator {
     banner.setAttribute('role', 'status');
     banner.setAttribute('aria-live', 'polite');
 
+    const dismissBtn = doc.createElement('button');
+    dismissBtn.className = 'edge-aui-assistance-dismiss';
+    dismissBtn.setAttribute('aria-label', 'Dismiss guidance tip');
+    dismissBtn.setAttribute('type', 'button');
+    dismissBtn.innerHTML = '&times;';
+
     const content = doc.createElement('div');
     content.className = 'edge-aui-assistance-content';
 
@@ -611,22 +628,44 @@ export class UIActuator {
     title.textContent = 'Guidance Tip';
 
     const text = doc.createElement('div');
+    text.className = 'edge-aui-assistance-body';
     text.textContent = command.reason || this.defaultAssistanceText;
 
     content.appendChild(title);
     content.appendChild(text);
 
-    const dismissBtn = doc.createElement('button');
-    dismissBtn.className = 'edge-aui-assistance-dismiss';
-    dismissBtn.setAttribute('aria-label', 'Dismiss guidance tip');
-    dismissBtn.setAttribute('type', 'button');
-    dismissBtn.innerHTML = '&times;';
+    const footer = doc.createElement('div');
+    footer.className = 'edge-aui-assistance-footer';
 
-    banner.appendChild(content);
+    const acceptBtn = doc.createElement('button');
+    acceptBtn.className = 'edge-aui-assistance-accept';
+    acceptBtn.setAttribute('aria-label', 'Acknowledge guidance tip');
+    acceptBtn.setAttribute('type', 'button');
+    acceptBtn.textContent = 'OK';
+
+    footer.appendChild(acceptBtn);
+
     banner.appendChild(dismissBtn);
+    banner.appendChild(content);
+    banner.appendChild(footer);
 
     const container = doc.body || doc.documentElement;
     container.appendChild(banner);
+
+    const onAccept = () => {
+      this.clear(command, 'user_acceptance');
+      this.emitEvent({
+        timestamp: getWallClockTimestamp(),
+        type: 'accepted',
+        intervention: command.type,
+        componentId: command.targetComponentId,
+        source: command.source,
+        mappingSource: command.mappingSource,
+        confidence: command.confidence,
+        interventionEpisodeId: command.episodeId,
+        reason: 'user_acceptance'
+      });
+    };
 
     const onDismiss = () => {
       this.clear(command, 'user_dismissal');
@@ -650,6 +689,7 @@ export class UIActuator {
       }
     };
 
+    acceptBtn.addEventListener('click', onAccept);
     dismissBtn.addEventListener('click', onDismiss);
     doc.addEventListener('keydown', onKeyDown);
 
@@ -657,6 +697,7 @@ export class UIActuator {
       // The banner itself is the element the adaptation is observable on.
       element: banner,
       cleanup: () => {
+        acceptBtn.removeEventListener('click', onAccept);
         dismissBtn.removeEventListener('click', onDismiss);
         doc.removeEventListener('keydown', onKeyDown);
         if (banner.parentNode) {

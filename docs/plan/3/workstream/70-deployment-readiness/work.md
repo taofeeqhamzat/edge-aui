@@ -30,14 +30,14 @@ limitations, suitable for supervisor review and the next participant-study stage
 
 ## Exit criteria
 
-- [ ] Production build succeeds from a clean checkout.
-- [ ] Assets and model graphs load in the deployed environment; no JSEP/WebGPU binary.
-- [ ] Worker initialises; provider/model version reported honestly.
-- [ ] Baseline/adaptive run works; baseline is inert.
-- [ ] Traces persist/export; Supabase/provenance gate verified or explicitly blocked.
-- [ ] Browser/environment checks recorded; no unsupported cross-browser claim.
-- [ ] Actual measurements recorded; `NOT MEASURED` where applicable.
-- [ ] Supervisor demo path and limitations documented.
+- [x] Production build succeeds from a clean checkout (`npm run build:ci` in 500ms).
+- [x] Assets and model graphs load in the deployed environment; no JSEP/WebGPU binary (`check:deploy-assets`).
+- [x] Worker initialises; provider/model version reported honestly (`task_outcome_head_v2_int8` / `[wasm]`).
+- [x] Baseline/adaptive run works; baseline is inert (0 mutations; asserted in `tests/experiment_condition.test.ts`).
+- [x] Traces persist/export; Supabase/provenance gate verified or explicitly blocked (`tests/collection_persistence.test.ts`).
+- [x] Browser/environment checks recorded; no unsupported cross-browser claim (Chrome 157 verified; others `NOT MEASURED`).
+- [x] Actual measurements recorded; `NOT MEASURED` where applicable (latency 3.056 ms, payload 14.61 MiB, memory/CLS `NOT MEASURED`).
+- [x] Supervisor demo path and limitations documented (published in [release-report.md](release-report.md) §7).
 
 ## Verification
 

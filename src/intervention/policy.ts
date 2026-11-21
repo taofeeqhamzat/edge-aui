@@ -71,6 +71,11 @@ export interface PolicyConfig {
    */
   confidenceThreshold: number;
   /**
+   * Optional per-adaptation confidence thresholds (e.g. { highlight_primary_action: 0.30, offer_assistance: 0.25 }).
+   * When unset for a given intervention type, falls back to `confidenceThreshold`.
+   */
+  confidenceThresholdByType?: Partial<Record<InterventionType, number>>;
+  /**
    * Number of consecutive windows the identical candidate intervention must be recommended
    * before it is accepted, filtering out transient, noisy single-window inferences.
    */
@@ -92,20 +97,47 @@ export interface PolicyConfig {
    */
   dismissalCooldownMs: number;
   /**
+   * Refractory period applied specifically after the user explicitly accepts an intervention (e.g. clicks "OK").
+   * Acknowledged guidance should not be immediately re-presented.
+   */
+  acceptanceCooldownMs?: number;
+  /**
+   * Maximum allowed interventions within a single task step.
+   * Prevents repeated actuation while a participant pauses or hesitates on a specific step.
+   */
+  maxInterventionsPerTaskStep?: number;
+  /**
+   * Action tokens that are considered passive scanning or exploratory actions and should NOT
+   * re-arm repeat suppression (`newActSinceAccept`).
+   */
+  passiveActions?: string[];
+  /**
    * How long an accepted adaptation stays in the interface before it is automatically
    * reverted. Without this the adaptation persisted for the remainder of the session,
    * which biased every later measurement in that session (F-03).
    */
   ttlMs: number;
+  /**
+   * Optional per-adaptation TTL overrides (e.g. { highlight_primary_action: 3500, offer_assistance: 4500 }).
+   */
+  ttlMsByType?: Partial<Record<InterventionType, number>>;
 }
 
 export const DEFAULT_POLICY_CONFIG: PolicyConfig = {
   confidenceThreshold: 0.75,
   requiredConsecutiveWindows: 2,
   enforceContextEligibility: true,
-  cooldownMs: 5000,
+  cooldownMs: 8000,
   dismissalCooldownMs: 15000,
-  ttlMs: 8000
+  acceptanceCooldownMs: 15000,
+  maxInterventionsPerTaskStep: 2,
+  ttlMs: 4000,
+  ttlMsByType: {
+    highlight_primary_action: 3500,
+    expand_tooltip: 4000,
+    offer_assistance: 4500
+  },
+  passiveActions: ['hover', 'IDLE_DWELL']
 };
 
 /**
@@ -115,7 +147,13 @@ export const DEFAULT_POLICY_CONFIG: PolicyConfig = {
  */
 export type PolicyRefusalCategory = Extract<
   PolicyRejectionCategory,
-  'cooldown' | 'dismissed' | 'below_threshold' | 'ineligible_context' | 'pending_persistence' | 'unknown_candidate'
+  | 'cooldown'
+  | 'dismissed'
+  | 'below_threshold'
+  | 'ineligible_context'
+  | 'pending_persistence'
+  | 'already_adapted'
+  | 'unknown_candidate'
 > | 'none';
 
 export interface PolicyDecision {
@@ -140,11 +178,26 @@ export class InterventionPolicy {
   private candidateTarget?: string;
   private candidateCount = 0;
   private lastTaskId?: string;
+  private lastTaskStepId?: string;
+  private interventionsInCurrentStep = 0;
+  /**
+   * The candidate accepted most recently, and whether a new act has been observed since.
+   *
+   * A gate re-evaluates every window, and its macro history keeps the act that produced a
+   * pattern until newer symbols displace it. Without this, an idle participant was
+   * re-adapted every cooldown period from one act: the same prediction arrived on every
+   * window and the timer, not a new decision, gated the repeat (observed live in Task 60.2).
+   * The policy therefore answers one act with one adaptation, and waits for the next act.
+   */
+  private acceptedCandidateKey: string | null = null;
+  private newActSinceAccept = true;
 
   /** Timestamp (ms) until which no intervention may be accepted. */
   private cooldownUntilMs = 0;
   /** Per-intervention-type cooldown expiry, populated on dismissal. */
   private dismissedUntilMs = new Map<InterventionType, number>();
+  /** Per-intervention-type cooldown expiry, populated on explicit user acceptance ("OK"). */
+  private acceptedUntilMs = new Map<InterventionType, number>();
 
   constructor(config: Partial<PolicyConfig> = {}, options: InterventionPolicyOptions = {}) {
     this.config = {
@@ -201,11 +254,16 @@ export class InterventionPolicy {
     command: InterventionCommand,
     context: UIContext
   ): PolicyDecision {
-    // 1. Task change detection: Automatically reset candidate state if task switched
+    // 1. Task change & task step change detection: reset candidate state
     if (this.lastTaskId !== undefined && context.taskId !== this.lastTaskId) {
       this.reset();
     }
     this.lastTaskId = context.taskId;
+
+    if (this.lastTaskStepId !== undefined && context.taskStepId !== this.lastTaskStepId) {
+      this.interventionsInCurrentStep = 0;
+    }
+    this.lastTaskStepId = context.taskStepId;
 
     // 2. Safe default no_op: Always accepted, resets active candidate
     if (command.type === 'no_op') {
@@ -234,7 +292,7 @@ export class InterventionPolicy {
       };
     }
 
-    // 4. Per-type dismissal feedback: a dismissed intervention is suppressed for longer
+    // 4. Per-type dismissal & acceptance feedback: a dismissed or accepted intervention is suppressed
     const dismissedUntil = this.dismissedUntilMs.get(command.type);
     if (dismissedUntil !== undefined && dismissedUntil > now) {
       return {
@@ -250,23 +308,80 @@ export class InterventionPolicy {
       };
     }
 
-    // 5. Confidence Threshold Gate
-    if (command.confidence !== undefined && command.confidence < this.config.confidenceThreshold) {
+    const acceptedUntil = this.acceptedUntilMs.get(command.type);
+    if (acceptedUntil !== undefined && acceptedUntil > now) {
+      return {
+        accepted: false,
+        command: createNoOpCommand(
+          command.source,
+          `Intervention '${command.type}' was recently accepted`
+        ),
+        reason: `Suppressed after user acceptance (${acceptedUntil - now}ms remaining)`,
+        candidateCount: 0,
+        rejectionCategory: 'dismissed',
+        cooldownRemainingMs: 0
+      };
+    }
+
+    // 5. Repeat suppression & Task Step Limit: the accepted adaptation is the response to the current act.
+    //    The same candidate in later windows is that act still in the gate's macro history,
+    //    not new evidence, so it is refused even after the cooldown timer has elapsed.
+    if (this.acceptedCandidateKey === this.candidateKey(command) && !this.newActSinceAccept) {
       this.resetCandidate();
       return {
         accepted: false,
         command: createNoOpCommand(
           command.source,
-          `Confidence (${command.confidence.toFixed(2)}) below threshold (${this.config.confidenceThreshold})`
+          `'${command.type}' already responds to the current act`
         ),
-        reason: `Confidence ${command.confidence.toFixed(2)} below threshold ${this.config.confidenceThreshold}`,
+        reason: `Already adapted for the current act ('${command.type}'); awaiting a new interaction`,
+        candidateCount: 0,
+        rejectionCategory: 'already_adapted',
+        cooldownRemainingMs: this.cooldownRemainingMs()
+      };
+    }
+
+    // Task step intervention limit: prevents repeating interventions when paused on a single step
+    const maxStepInterventions = this.config.maxInterventionsPerTaskStep ?? 2;
+    if (
+      context.taskId &&
+      context.taskStepId &&
+      this.interventionsInCurrentStep >= maxStepInterventions
+    ) {
+      this.resetCandidate();
+      return {
+        accepted: false,
+        command: createNoOpCommand(
+          command.source,
+          `Task step limit reached (${this.interventionsInCurrentStep}/${maxStepInterventions})`
+        ),
+        reason: `Intervention limit for task step reached (${this.interventionsInCurrentStep}/${maxStepInterventions})`,
+        candidateCount: 0,
+        rejectionCategory: 'already_adapted',
+        cooldownRemainingMs: this.cooldownRemainingMs()
+      };
+    }
+
+    // 6. Confidence Threshold Gate
+    const threshold =
+      this.config.confidenceThresholdByType?.[command.type] ??
+      this.config.confidenceThreshold;
+    if (command.confidence !== undefined && command.confidence < threshold) {
+      this.resetCandidate();
+      return {
+        accepted: false,
+        command: createNoOpCommand(
+          command.source,
+          `Confidence (${command.confidence.toFixed(2)}) below threshold (${threshold})`
+        ),
+        reason: `Confidence ${command.confidence.toFixed(2)} below threshold ${threshold}`,
         candidateCount: 0,
         rejectionCategory: 'below_threshold',
         cooldownRemainingMs: 0
       };
     }
 
-    // 6. UI Context Eligibility Gate
+    // 7. UI Context Eligibility Gate
     if (this.config.enforceContextEligibility) {
       const eligibility = this.checkContextEligibility(command, context);
       if (!eligibility.eligible) {
@@ -282,7 +397,7 @@ export class InterventionPolicy {
       }
     }
 
-    // 7. Consecutive Window Persistence Gate
+    // 8. Consecutive Window Persistence Gate
     const isSameCandidate =
       this.candidateType === command.type &&
       this.candidateTarget === command.targetComponentId;
@@ -296,19 +411,28 @@ export class InterventionPolicy {
     }
 
     if (this.candidateCount >= this.config.requiredConsecutiveWindows) {
-      // Enter the cooldown window so the same adaptation is not re-applied on every
-      // subsequent window.
-      this.cooldownUntilMs = now + this.config.cooldownMs;
+      const effectiveTtl =
+        command.ttlMs ??
+        this.config.ttlMsByType?.[command.type] ??
+        this.config.ttlMs;
+
+      // Anchor cooldown to cover the TTL duration plus the refractory period:
+      this.cooldownUntilMs =
+        this.config.cooldownMs > 0
+          ? now + effectiveTtl + this.config.cooldownMs
+          : 0;
+      this.acceptedCandidateKey = this.candidateKey(command);
+      this.newActSinceAccept = false;
+      this.interventionsInCurrentStep++;
+
       return {
         accepted: true,
-        // The adaptation lifetime is attached here, at the one place every accepted
-        // command passes through, so no producer can forget it (F-03).
-        command: { ...command, ttlMs: command.ttlMs ?? this.config.ttlMs },
+        command: { ...command, ttlMs: effectiveTtl },
         reason: `Candidate met persistence requirement (${this.candidateCount}/${this.config.requiredConsecutiveWindows})`,
         candidateCount: this.candidateCount,
         rejectionCategory: 'none',
-        cooldownRemainingMs: this.config.cooldownMs,
-        ttlMs: command.ttlMs ?? this.config.ttlMs
+        cooldownRemainingMs: effectiveTtl + this.config.cooldownMs,
+        ttlMs: effectiveTtl
       };
     }
 
@@ -332,15 +456,25 @@ export class InterventionPolicy {
   public reset(): void {
     this.resetCandidate();
     this.lastTaskId = undefined;
+    this.lastTaskStepId = undefined;
+    this.interventionsInCurrentStep = 0;
     this.cooldownUntilMs = 0;
     this.dismissedUntilMs.clear();
+    this.acceptedUntilMs.clear();
+    this.acceptedCandidateKey = null;
+    this.newActSinceAccept = true;
   }
 
   /**
    * Notifies the policy of an explicit user action (clicks, navigation), resetting the
-   * candidate streak.
+   * candidate streak. Passive cursor scanning does not re-arm repeat suppression.
    */
-  public notifyUserAction(_action: string): void {
+  public notifyUserAction(action: string): void {
+    // Passive scanning/hover events do NOT constitute a progress action that re-arms repeat suppression
+    const passiveSet = new Set(this.config.passiveActions ?? ['hover', 'IDLE_DWELL']);
+    if (!passiveSet.has(action)) {
+      this.newActSinceAccept = true;
+    }
     this.resetCandidate();
   }
 
@@ -351,6 +485,17 @@ export class InterventionPolicy {
   public notifyDismissal(type: InterventionType): void {
     this.resetCandidate();
     this.dismissedUntilMs.set(type, Date.now() + this.config.dismissalCooldownMs);
+  }
+
+  /**
+   * Records that the user accepted an intervention (e.g. clicking "OK").
+   * Acknowledged guidance is suppressed for `acceptanceCooldownMs`.
+   */
+  public notifyAcceptance(type: InterventionType): void {
+    this.resetCandidate();
+    const cooldown = this.config.acceptanceCooldownMs ?? this.config.dismissalCooldownMs;
+    this.acceptedUntilMs.set(type, Date.now() + cooldown);
+    this.newActSinceAccept = false;
   }
 
   /** Remaining cooldown in milliseconds, or 0 when no cooldown is active. */
@@ -373,6 +518,13 @@ export class InterventionPolicy {
     this.candidateType = null;
     this.candidateTarget = undefined;
     this.candidateCount = 0;
+  }
+
+  /** Identity of a candidate for repeat suppression: its type and its target. */
+  private candidateKey(command: InterventionCommand): string {
+    return command.targetComponentId
+      ? `${command.type}|${command.targetComponentId}`
+      : command.type;
   }
 
   private checkContextEligibility(

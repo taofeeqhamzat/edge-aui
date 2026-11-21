@@ -43,7 +43,7 @@ import {
   StageTimingStats
 } from './instrumentation';
 import { InterventionPolicy, PolicyConfig, CandidateResolver } from '../intervention/policy';
-import { UIActuator } from '../intervention/actuator';
+import { UIActuator, ActuationTargetResolver } from '../intervention/actuator';
 import { experimentRecorder } from '../telemetry/recorder';
 import { sessionManager, type SessionContext } from '../telemetry/session';
 import { UiAdapter, DefaultUiAdapter, DEFAULT_TASK_ACTION_BY_EVENT } from '../integration/index';
@@ -62,6 +62,8 @@ import type { MiningCounters } from '../telemetry/traceSchema';
 import { InferenceResult } from '../gates/arbitration';
 import { nextPredictionId, PREDICTION_CONTRACT_VERSION } from '../gates/contracts';
 import { InterventionCommand, InterventionType } from '../intervention/types';
+import type { PatternTarget } from '../gates/fast/patternTarget';
+import type { OutcomeVocabulary } from '../gates/contracts';
 import { UIContext } from '../types/uiContext.js';
 import {
   encodeUIContext,
@@ -75,6 +77,7 @@ import {
   resolveRuntimeConfig,
   DeepPartial
 } from '../config/runtimeConfig';
+import type { SlowGateManifest } from '../config/modelManifest';
 
 
 
@@ -91,10 +94,19 @@ export interface AdaptiveRuntimeOptions {
   trackableSelector?: string;
   /** Minimum support for the PrefixSpan miner. Default 2. */
   minPatternSupport?: number;
-  /** Declared pattern → intervention map for the Fast Gate. */
-  fastGatePatterns?: Record<string, InterventionType | Partial<InterventionCommand>>;
+  /**
+   * Declared pattern → target map for the Fast Gate. A target is either a semantic outcome
+   * (the current form) or a legacy intervention value, which stays readable during the
+   * migration (Task 50.2).
+   */
+  fastGatePatterns?: Record<string, PatternTarget>;
   /** Version of the declared pattern set, reported on every Fast Gate prediction. */
   fastGatePatternVersion?: string;
+  /**
+   * Vocabulary a declared Fast Gate pattern outcome must belong to (Task 50.2). The
+   * application supplies it because the outcome ids are application vocabulary.
+   */
+  outcomeVocabulary?: OutcomeVocabulary;
   /** Policy configuration overrides. */
   policyConfig?: Partial<PolicyConfig>;
   /**
@@ -105,6 +117,13 @@ export interface AdaptiveRuntimeOptions {
    * (Task 20.1); no outcome→intervention table lives in core.
    */
   candidateResolver?: CandidateResolver;
+  /**
+   * Application port turning a declared target reference into a DOM element.
+   *
+   * When supplied it is authoritative: a target it cannot resolve is an actuation failure
+   * with no DOM mutation, rather than a fallback to a different control (Task 20.5/60.1).
+   */
+  targetResolver?: ActuationTargetResolver;
   /** Provide a slow gate; defaults to the deterministic mock. */
   enableSlowGate?: boolean;
   /**
@@ -112,6 +131,10 @@ export interface AdaptiveRuntimeOptions {
    * ONNX Runtime Web cannot initialise) and `onnx` in a browser.
    */
   slowGateMode?: 'mock' | 'onnx';
+  /** Manifest describing the model artifacts and their vocabularies. Overrides defaults. */
+  manifest?: SlowGateManifest;
+  /** Whether clearing a simplify_options adaptation re-expands collapsed accordions. Default false. */
+  restoreCollapsedSectionsOnClear?: boolean;
   /** URL of the foundation ONNX graph. Defaults to the bundled INT8 artifact. */
   modelUrl?: string;
   /** URL of the learned intervention head ONNX graph. Defaults to /models/intervention_head_int8.onnx. */
@@ -163,6 +186,7 @@ export interface AdaptiveRuntimeStatus {
   /** The execution provider that actually served the model session. */
   executionProvider: string;
   modelLoaded: boolean;
+  modelVersion?: string | null;
   instrumentationEnabled: boolean;
   timingSummary?: Record<string, StageTimingStats>;
 }
@@ -326,7 +350,9 @@ export class AdaptiveRuntime {
       { resolveCandidate: options.candidateResolver }
     );
     this.actuator = new UIActuator({
-      defaultAssistanceText: this.config.actuation.defaultAssistanceText
+      defaultAssistanceText: this.config.actuation.defaultAssistanceText,
+      targetResolver: options.targetResolver,
+      restoreCollapsedSectionsOnClear: options.restoreCollapsedSectionsOnClear ?? false
     });
 
     if (options.autoStart) {
@@ -376,6 +402,7 @@ export class AdaptiveRuntime {
           | 'mock',
         fastGatePatterns: patternMap,
         fastGatePatternVersion: this.options.fastGatePatternVersion,
+        outcomeVocabulary: this.options.outcomeVocabulary,
         minPatternSupport: this.options.minPatternSupport ?? 2,
         enableFastGate: true,
         enableSlowGate: this.options.enableSlowGate !== false,
@@ -390,6 +417,7 @@ export class AdaptiveRuntime {
       const initResult = await this.workerClient.init({
         ...baseInit,
         slowGateMode: desiredSlowGate,
+        manifest: this.options.manifest,
         modelUrl: this.options.modelUrl,
         interventionModelUrl: this.options.interventionModelUrl,
         useDeterministicMapping: this.options.useDeterministicMapping,
@@ -463,6 +491,9 @@ export class AdaptiveRuntime {
     this.unsubscribers.push(
       this.macroStream.subscribe((interaction) => {
         this.counters.macroInteractions++;
+        // Each macro symbol is a completed act. The policy uses it to stop answering the
+        // same act repeatedly once its adaptation has been accepted (Task 60.1).
+        this.policy.notifyUserAction(interaction.symbol);
         // Mirrored into the worker so its PrefixSpan corpus accumulates window-tagged
         // sequences for the mining path.
         void this.workerClient.pushMacro(interaction).catch((err) => {
@@ -879,10 +910,20 @@ export class AdaptiveRuntime {
         predictedOutcome: prediction?.outcomeId,
         predictionContractVersion: prediction?.contractVersion,
         predictedOutcomeVocabularyVersion: prediction?.vocabularyVersion,
+        // Provenance survives arbitration: which gate, which declared pattern, which
+        // version of the pattern set or model (Task 50.3).
+        gateVersion: result.provenance.gateVersion,
+        matchedPattern: result.fastDecision.matched ? result.fastDecision.matchedPattern : undefined,
         targetContext: prediction?.target,
         interventionType: result.intervention?.type,
         mappingSource: resolvedMappingSource,
-        confidence: result.intervention?.confidence ?? result.slowResult?.confidence,
+        // The selected prediction's confidence is the value the policy reasoned about. A
+        // gate that emits a prediction without a legacy command used to record no confidence
+        // at all, so the trace could not show why the policy accepted or rejected it.
+        confidence:
+          result.intervention?.confidence ??
+          prediction?.confidence ??
+          result.slowResult?.confidence,
         latencyMs: result.latencyMs,
         fastGateLatencyMs: result.fastGateLatencyMs,
         slowGateLatencyMs: result.slowGateLatencyMs,
@@ -902,7 +943,7 @@ export class AdaptiveRuntime {
         fastPattern: result.fastDecision.matchedPattern,
         intervention: result.intervention?.type,
         corpusSize: this.getMacroSequences().length,
-        slowOutcome: result.slowResult?.outcome,
+        slowOutcome: result.slowResult?.prediction?.outcomeId ?? result.slowResult?.outcome,
         slowConfidence: result.slowResult?.confidence
       };
 
@@ -915,9 +956,10 @@ export class AdaptiveRuntime {
         fastGateCorpusSize: macroCorpus.length,
         slowGateStatus: {
           called: result.matchedGate !== 'fast',
-          outcome: result.slowResult?.outcome,
-          confidence: result.slowResult?.confidence
+          outcome: result.slowResult?.prediction?.outcomeId ?? result.slowResult?.outcome,
+          confidence: result.slowResult?.prediction?.confidence ?? result.slowResult?.confidence
         },
+        predictedOutcome: result.prediction?.outcomeId,
         inferenceLatencyMs: result.latencyMs,
         latestPredictionId: predictionId,
         matchedGate: result.matchedGate,
@@ -940,7 +982,7 @@ export class AdaptiveRuntime {
           policyDecision: 'no_prediction',
           policyReason:
             result.matchedGate === 'none'
-              ? 'No intervention: both gates evaluated and returned no candidate'
+              ? `No prediction: no gate asserted one (${result.noMatchReason ?? 'reason not reported'})`
               : `No intervention: ${result.matchedGate} gate produced no candidate`,
           candidateCount: 0,
           cooldownRemainingMs: this.policy.cooldownRemainingMs(),
@@ -1149,6 +1191,8 @@ export class AdaptiveRuntime {
     // Dismissal is negative feedback: suppress re-issuing that intervention.
     if (event.type === 'dismissed') {
       this.policy.notifyDismissal(event.intervention as InterventionType);
+    } else if (event.type === 'accepted') {
+      this.policy.notifyAcceptance(event.intervention as InterventionType);
     }
 
     experimentRecorder.recordIntervention({
@@ -1163,9 +1207,14 @@ export class AdaptiveRuntime {
 
     // Reflect the terminal state in the live panel so an expired episode is visible without
     // reading the trace (F-03 / F-08).
-    if (event.type === 'reverted' || event.type === 'dismissed') {
+    if (event.type === 'reverted' || event.type === 'dismissed' || event.type === 'accepted') {
       debugBus.update({
-        policyState: event.type === 'dismissed' ? 'DISMISSED' : 'EXPIRED',
+        policyState:
+          event.type === 'dismissed'
+            ? 'DISMISSED'
+            : event.type === 'accepted'
+              ? 'ACCEPTED'
+              : 'EXPIRED',
         activeEpisodeId: undefined,
         activeIntervention: undefined,
         activeInterventionExpiresInMs: undefined,
@@ -1299,6 +1348,7 @@ export class AdaptiveRuntime {
       slowGateMode: this.slowGateMode ?? this.resolveSlowGateMode(),
       executionProvider: this.executionProvider,
       modelLoaded: this.modelLoaded,
+      modelVersion: this.reportedModelVersion,
       instrumentationEnabled: this.collector.isEnabled(),
       timingSummary: this.collector.getSummary()
     };

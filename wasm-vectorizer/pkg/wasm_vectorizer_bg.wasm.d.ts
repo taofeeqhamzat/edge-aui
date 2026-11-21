@@ -3,7 +3,7 @@
 export const memory: WebAssembly.Memory;
 export const extract_micro_tensor: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const get_wasm_gate_version: (a: number) => void;
-export const mine_macro_patterns: (a: number, b: number, c: number) => void;
+export const mine_macro_patterns: (a: number, b: number, c: number, d: number, e: number) => void;
 export const process_interaction_batch: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => void;
 export const vectorize_canonical_events: (a: number, b: number, c: number) => void;
 export const vectorize_canonical_window: (a: number, b: number, c: number) => void;

@@ -11,6 +11,10 @@
  *    Single input: input (1, T, 18) -> output (1, 7).
  *    Retained alongside the intervention head for outcome diagnostics, auxiliary prediction,
  *    and controlled ablation comparison (ADR-006 Option A).
+ * 3. Semantic task-outcome head (Task 40.5, task_outcome_head_v2_int8.onnx):
+ *    Dual inputs: sequence_input (1, T, 18) + context_input (1, 6) -> task_outcome_logits
+ *    (1, 14). A v2 bundle manifest supplies its ordered vocabulary and artifact version, and
+ *    the head replaces the foundation slot rather than adding a new runtime branch.
  *
  * Honest execution provider reporting: reports the provider actually serving each session
  * ('webgpu' | 'wasm' | 'cpu' | 'unavailable').
@@ -476,9 +480,26 @@ export class OnnxSlowGate implements SlowGate {
       ctxInputName = names.find((n) => n.includes('context') || n === 'context_input') ?? names[1];
     }
 
-    let fndInputName = 'input';
+    // The legacy foundation graph is sequence-only. The semantic task-outcome graph (Task
+    // 40.5) declares `sequence_input` and `context_input`, so a two-input foundation session
+    // is fed the same R^6 context the intervention head receives.
+    let fndSeqInputName = 'input';
+    let fndContextInputName: string | undefined;
     if (bundle.foundation) {
-      fndInputName = bundle.foundation.inputNames[0] ?? 'input';
+      const names = bundle.foundation.inputNames;
+      fndSeqInputName =
+        names.find((name) => name.includes('seq') || name === 'sequence_input') ??
+        names[0] ??
+        'input';
+      if (names.length === 2) {
+        fndContextInputName =
+          names.find((name) => name.includes('context') || name === 'context_input') ??
+          names[1];
+      } else if (names.length > 2) {
+        throw new Error(
+          `[OnnxSlowGate] Foundation graph declares ${names.length} inputs; expected 1 (sequence) or 2 (sequence, context)`
+        );
+      }
     }
 
     const start = performance.now();
@@ -499,7 +520,12 @@ export class OnnxSlowGate implements SlowGate {
         ? defaultCollector.timeAsync(
             'ONNX inference',
             'model',
-            () => bundle.foundation!.session.run({ [fndInputName]: seqTensor }),
+            () =>
+              bundle.foundation!.session.run(
+                fndContextInputName
+                  ? { [fndSeqInputName]: seqTensor, [fndContextInputName]: ctxTensor }
+                  : { [fndSeqInputName]: seqTensor }
+              ),
             { metadata: { head: 'foundation' } }
           )
         : Promise.resolve(null)

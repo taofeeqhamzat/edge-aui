@@ -20,6 +20,7 @@ import {
 } from '../src/testbed/config/policyAdapter';
 import { PREDICTION_CONTRACT_VERSION, type PredictionResult } from '../src/gates/contracts';
 import type { UIContext } from '../src/types/uiContext';
+import { setTrackedUIElement } from '../src/telemetry/contextProvider';
 
 const UI_CONTEXT: UIContext = {
   route: 'Analytics',
@@ -69,7 +70,51 @@ describe('testbed candidate resolver', () => {
 
   it('refuses an outcome it has no mapping for instead of guessing', () => {
     const resolver = createTestbedCandidateResolver();
-    expect(resolver.resolve(prediction({ outcomeId: 'select_region' }), UI_CONTEXT)).toBeNull();
+    expect(resolver.resolve(prediction({ outcomeId: 'close_filter_section' }), UI_CONTEXT)).toBeNull();
+  });
+
+  it('maps select_region to simplify_options targeting filter drawer', () => {
+    const resolver = createTestbedCandidateResolver();
+    const command = resolver.resolve(prediction({ outcomeId: 'select_region' }), UI_CONTEXT);
+    expect(command?.type).toBe('simplify_options');
+    expect(command?.targetComponentId).toBe('filter-options');
+  });
+
+  it('maps navigation outcomes to offer_assistance with next step hint when in active task', () => {
+    const resolver = createTestbedCandidateResolver();
+    const contextWithTask: UIContext = {
+      ...UI_CONTEXT,
+      taskId: 'TD1',
+      taskStepId: 'TD1-1'
+    };
+    const command = resolver.resolve(prediction({ outcomeId: 'navigate_analytics' }), contextWithTask);
+    expect(command?.type).toBe('offer_assistance');
+    expect(command?.reason).toBe('Next step: Navigate to Analytics');
+
+    // Without active task, navigation outcomes return null (no_op)
+    expect(resolver.resolve(prediction({ outcomeId: 'navigate_analytics' }), UI_CONTEXT)).toBeNull();
+  });
+
+  it('maps reset_filter and backtrack to offer_assistance with filter guidance hint', () => {
+    const resolver = createTestbedCandidateResolver();
+    const resetCmd = resolver.resolve(prediction({ outcomeId: 'reset_filter' }), UI_CONTEXT);
+    expect(resetCmd?.type).toBe('offer_assistance');
+    expect(resetCmd?.reason).toContain('Tip: Apply or Reset the filter to refine your report data.');
+
+    const backtrackCmd = resolver.resolve(prediction({ outcomeId: 'backtrack' }), UI_CONTEXT);
+    expect(backtrackCmd?.type).toBe('offer_assistance');
+    expect(backtrackCmd?.reason).toContain('Tip: Apply or Reset the filter to refine your report data.');
+  });
+
+  it('maps apply_filter and export_report to the primary action target', () => {
+    const resolver = createTestbedCandidateResolver();
+    const applyCmd = resolver.resolve(prediction({ outcomeId: 'apply_filter' }), UI_CONTEXT);
+    expect(applyCmd?.type).toBe('highlight_primary_action');
+    expect(applyCmd?.targetComponentId).toBe('primary-action');
+
+    const exportCmd = resolver.resolve(prediction({ outcomeId: 'export_report' }), UI_CONTEXT);
+    expect(exportCmd?.type).toBe('highlight_primary_action');
+    expect(exportCmd?.targetComponentId).toBe('primary-action');
   });
 });
 
@@ -94,7 +139,7 @@ describe('runtime actuation through the prediction contract', () => {
     root.innerHTML = `
       <button data-aui-component="nav-Analytics" data-aui-role="navigation" data-aui-action="click">Analytics</button>
       <button data-aui-component="btn-export" data-aui-role="primary-action" data-aui-action="click">Export</button>
-      <div data-aui-component="tooltip-region" data-aui-role="tooltip" data-aui-action="hover">Region help</div>
+      <div data-aui-component="tooltip-region" data-aui-role="tooltip" data-aui-action="hover" title="Geographical sales region">Region help</div>
     `;
     document.body.appendChild(root);
   }
@@ -124,6 +169,12 @@ describe('runtime actuation through the prediction contract', () => {
       candidateResolver: createTestbedCandidateResolver()
     });
     await runtime.start();
+
+    // The prediction that reaches the policy must name the element the adaptation acts on.
+    // `HOVER_DWELL` maps to `expand_tooltip`, whose target is the inspected tooltip, so the
+    // tracker has to see the tooltip before the evaluation window closes.
+    const tooltip = document.querySelector('[data-aui-component="tooltip-region"]')!;
+    setTrackedUIElement(tooltip);
 
     const started = Date.now();
     while (Date.now() - started < 3000) {
@@ -180,5 +231,48 @@ describe('runtime actuation through the prediction contract', () => {
     expect(decisions.length).toBeGreaterThan(0);
     expect(decisions[0].accepted).toBe(true);
     expect(decisions[0].policyReason).toContain('no adaptation engaged');
+  }, 30000);
+
+  it('decides but never applies an adaptation in the baseline condition', async () => {
+    renderAnnotatedDom();
+    runtime = new AdaptiveRuntime({
+      forceInProcessWorker: true,
+      conditionId: 'baseline',
+      policyConfig: { requiredConsecutiveWindows: 1, confidenceThreshold: 0.5, cooldownMs: 0 },
+      candidateResolver: createTestbedCandidateResolver()
+    });
+    await runtime.start();
+
+    const tooltip = document.querySelector('[data-aui-component="tooltip-region"]')!;
+    setTrackedUIElement(tooltip);
+
+    const started = Date.now();
+    while (Date.now() - started < 3000) {
+      window.dispatchEvent(
+        new MouseEvent('mousemove', { bubbles: true, clientX: 40, clientY: 80 })
+      );
+      await new Promise((r) => setTimeout(r, 40));
+    }
+
+    await waitFor(
+      () =>
+        experimentRecorder
+          .export()
+          .policyDecisions.some((d) => d.rejectionCategory === 'baseline_condition'),
+      { label: 'a baseline decision-only policy record' }
+    );
+
+    const trace = experimentRecorder.export();
+    const decided = trace.policyDecisions.filter(
+      (d) => d.rejectionCategory === 'baseline_condition'
+    );
+    expect(decided.length).toBeGreaterThan(0);
+    expect(decided[0].accepted).toBe(true);
+    expect(decided[0].policyReason).toContain('baseline condition');
+    // The decision named a candidate; the interface never changed.
+    expect(decided[0].candidate).toBe('expand_tooltip');
+    expect(runtime.getStatus().interventionsApplied).toBe(0);
+    expect(trace.interventions.filter((event) => event.type === 'applied')).toHaveLength(0);
+    expect(document.querySelectorAll('[data-aui-active-adaptation]').length).toBe(0);
   }, 30000);
 });

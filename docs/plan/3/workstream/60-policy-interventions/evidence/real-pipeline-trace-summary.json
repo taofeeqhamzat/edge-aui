@@ -1,0 +1,888 @@
+{
+  "schemaVersion": "1.4.0",
+  "sessionId": "c260b082-3c4e-4425-b05f-9dcb3e11c3e7",
+  "conditionId": "adaptive",
+  "provenance": "scripted",
+  "executionProvider": "wasm",
+  "modelVersion": "TargetInterventionHead-v1.0.0-int8",
+  "policyVersion": "1.0.0",
+  "counts": {
+    "behaviourEvents": 42,
+    "microTensors": 222,
+    "macroInteractions": 17,
+    "outcomes": 209,
+    "predictions": 28,
+    "policyDecisions": 28,
+    "interventions": 3,
+    "taskEvents": 0,
+    "total": 549
+  },
+  "status": {
+    "running": true,
+    "sessionId": "c260b082-3c4e-4425-b05f-9dcb3e11c3e7",
+    "experimentId": "exp_mwowbvfl",
+    "conditionId": "adaptive",
+    "windowsEmitted": 222,
+    "macroInteractions": 17,
+    "outcomesDerived": 209,
+    "predictionsRecorded": 28,
+    "interventionsApplied": 1,
+    "lastWindowId": 221,
+    "slowGateMode": "onnx",
+    "executionProvider": "wasm",
+    "modelLoaded": true,
+    "instrumentationEnabled": true,
+    "timingSummary": {
+      "worker message/transfer:transfer": {
+        "stage": "worker message/transfer",
+        "side": "transfer",
+        "count": 268,
+        "totalMs": 1328.28,
+        "minMs": 0.145,
+        "maxMs": 206.935,
+        "meanMs": 4.9563,
+        "p50Ms": 1.445,
+        "p95Ms": 15.06
+      },
+      "MicroTensor extraction:main": {
+        "stage": "MicroTensor extraction",
+        "side": "main",
+        "count": 222,
+        "totalMs": 7.31,
+        "minMs": 0.005,
+        "maxMs": 0.21,
+        "meanMs": 0.0329,
+        "p50Ms": 0.025,
+        "p95Ms": 0.07
+      },
+      "trace recording:main": {
+        "stage": "trace recording",
+        "side": "main",
+        "count": 549,
+        "totalMs": 1.08,
+        "minMs": 0,
+        "maxMs": 0.025,
+        "meanMs": 0.002,
+        "p50Ms": 0,
+        "p95Ms": 0.005
+      },
+      "window assignment:worker": {
+        "stage": "window assignment",
+        "side": "worker",
+        "count": 222,
+        "totalMs": 5.02,
+        "minMs": 0.005,
+        "maxMs": 0.435,
+        "meanMs": 0.0226,
+        "p50Ms": 0.015,
+        "p95Ms": 0.04
+      },
+      "ONNX inference:model": {
+        "stage": "ONNX inference",
+        "side": "model",
+        "count": 4,
+        "totalMs": 32.05,
+        "minMs": 0.515,
+        "maxMs": 16.695,
+        "meanMs": 8.0125,
+        "p50Ms": 14.24,
+        "p95Ms": 16.695
+      },
+      "policy evaluation:main": {
+        "stage": "policy evaluation",
+        "side": "main",
+        "count": 28,
+        "totalMs": 0.95,
+        "minMs": 0,
+        "maxMs": 0.17,
+        "meanMs": 0.0339,
+        "p50Ms": 0.015,
+        "p95Ms": 0.135
+      },
+      "window assignment:main": {
+        "stage": "window assignment",
+        "side": "main",
+        "count": 42,
+        "totalMs": 0.07,
+        "minMs": 0,
+        "maxMs": 0.005,
+        "meanMs": 0.0017,
+        "p50Ms": 0,
+        "p95Ms": 0.005
+      },
+      "event normalisation:main": {
+        "stage": "event normalisation",
+        "side": "main",
+        "count": 42,
+        "totalMs": 7.9,
+        "minMs": 0.03,
+        "maxMs": 0.76,
+        "meanMs": 0.1881,
+        "p50Ms": 0.12,
+        "p95Ms": 0.535
+      },
+      "event capture:main": {
+        "stage": "event capture",
+        "side": "main",
+        "count": 42,
+        "totalMs": 8.06,
+        "minMs": 0.035,
+        "maxMs": 0.765,
+        "meanMs": 0.1919,
+        "p50Ms": 0.125,
+        "p95Ms": 0.54
+      },
+      "macro sequence construction:main": {
+        "stage": "macro sequence construction",
+        "side": "main",
+        "count": 17,
+        "totalMs": 0.825,
+        "minMs": 0.015,
+        "maxMs": 0.15,
+        "meanMs": 0.0485,
+        "p50Ms": 0.04,
+        "p95Ms": 0.15
+      },
+      "PrefixSpan mining:wasm": {
+        "stage": "PrefixSpan mining",
+        "side": "wasm",
+        "count": 54,
+        "totalMs": 50.435,
+        "minMs": 0.165,
+        "maxMs": 11.005,
+        "meanMs": 0.934,
+        "p50Ms": 0.505,
+        "p95Ms": 1.545
+      },
+      "actuation:main": {
+        "stage": "actuation",
+        "side": "main",
+        "count": 2,
+        "totalMs": 1.49,
+        "minMs": 0.56,
+        "maxMs": 0.93,
+        "meanMs": 0.745,
+        "p50Ms": 0.93,
+        "p95Ms": 0.93
+      }
+    }
+  },
+  "predictions": [
+    {
+      "id": "pred_1",
+      "gate": "slow",
+      "outcome": "offer_assistance",
+      "confidence": 0.2341424524784088,
+      "mapping": "learned_head",
+      "target": {
+        "route": "Overview"
+      }
+    },
+    {
+      "id": "pred_2",
+      "gate": "slow",
+      "outcome": "offer_assistance",
+      "confidence": 0.2295018881559372,
+      "mapping": "learned_head",
+      "target": {
+        "route": "Analytics",
+        "componentId": "nav-Analytics"
+      }
+    },
+    {
+      "id": "pred_3",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_4",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_5",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_6",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_7",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_8",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_9",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_10",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_11",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_12",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_13",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_14",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_15",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "filter-section-date-range"
+      }
+    },
+    {
+      "id": "pred_16",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_17",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_18",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_19",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_20",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_21",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_22",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_23",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_24",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_25",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_26",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_27",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    },
+    {
+      "id": "pred_28",
+      "gate": "fast",
+      "outcome": "open_filter_section",
+      "confidence": 1,
+      "pattern": [
+        "CLOSE_FILTERS",
+        "OPEN_FILTERS"
+      ],
+      "mapping": "fast_gate_pattern",
+      "target": {
+        "route": "Analytics",
+        "componentId": "page-analytics"
+      }
+    }
+  ],
+  "policyDecisions": [
+    {
+      "predictionId": "pred_1",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "below_threshold",
+      "reason": "Confidence 0.23 below threshold 0.75",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_2",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "below_threshold",
+      "reason": "Confidence 0.23 below threshold 0.75",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_3",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "pending_persistence",
+      "reason": "Transient recommendation pending persistence (1/2)",
+      "count": 1,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_4",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "pending_persistence",
+      "reason": "Transient recommendation pending persistence (1/2)",
+      "count": 1,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_5",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "pending_persistence",
+      "reason": "Transient recommendation pending persistence (1/2)",
+      "count": 1,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_6",
+      "candidate": "simplify_options",
+      "accepted": true,
+      "decision": "accepted",
+      "reason": "Candidate met persistence requirement (2/2)",
+      "count": 2,
+      "cooldown": 5000
+    },
+    {
+      "predictionId": "pred_7",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "cooldown",
+      "reason": "Cooldown active (2876ms remaining)",
+      "count": 0,
+      "cooldown": 2876
+    },
+    {
+      "predictionId": "pred_8",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "cooldown",
+      "reason": "Cooldown active (502ms remaining)",
+      "count": 0,
+      "cooldown": 502
+    },
+    {
+      "predictionId": "pred_9",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "already_adapted",
+      "reason": "Already adapted for the current act ('simplify_options'); awaiting a new interaction",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_10",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "already_adapted",
+      "reason": "Already adapted for the current act ('simplify_options'); awaiting a new interaction",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_11",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "already_adapted",
+      "reason": "Already adapted for the current act ('simplify_options'); awaiting a new interaction",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_12",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "already_adapted",
+      "reason": "Already adapted for the current act ('simplify_options'); awaiting a new interaction",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_13",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "already_adapted",
+      "reason": "Already adapted for the current act ('simplify_options'); awaiting a new interaction",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_14",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "already_adapted",
+      "reason": "Already adapted for the current act ('simplify_options'); awaiting a new interaction",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_15",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "already_adapted",
+      "reason": "Already adapted for the current act ('simplify_options'); awaiting a new interaction",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_16",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_17",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_18",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_19",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_20",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_21",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_22",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_23",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_24",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_25",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_26",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_27",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    },
+    {
+      "predictionId": "pred_28",
+      "candidate": "no_op",
+      "accepted": false,
+      "decision": "rejected",
+      "category": "ineligible_context",
+      "reason": "Ineligible: No expandable options or accordions in current UI context",
+      "count": 0,
+      "cooldown": 0
+    }
+  ],
+  "interventions": [
+    {
+      "type": "accepted",
+      "intervention": "simplify_options",
+      "episode": "ep_1",
+      "predictionId": "pred_6",
+      "componentId": "filter-options"
+    },
+    {
+      "type": "applied",
+      "intervention": "simplify_options",
+      "episode": "ep_1",
+      "predictionId": "pred_6",
+      "componentId": "filter-options"
+    },
+    {
+      "type": "reverted",
+      "intervention": "simplify_options",
+      "episode": "ep_1",
+      "predictionId": "pred_6",
+      "reason": "ttl",
+      "componentId": "filter-options"
+    }
+  ]
+}

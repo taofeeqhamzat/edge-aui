@@ -310,4 +310,33 @@ describe("DebugPanel (Task 10.2)", () => {
       "INACTIVITY (zero values are expected)",
     );
   });
+
+  it("renders predicted outcome and slow gate semantic outcome from approved vocabulary", () => {
+    debugBus.update({
+      matchedGate: "slow",
+      predictedOutcome: "open_filter_section",
+      slowGateStatus: {
+        called: true,
+        outcome: "open_filter_section",
+        confidence: 0.88,
+      },
+    });
+
+    act(() => {
+      render(<DebugPanel forceShow={true} />);
+    });
+
+    const toggleBtn = screen.getByRole("button", {
+      name: /Open Edge-AUI Development Debug Panel/i,
+    });
+    act(() => {
+      fireEvent.click(toggleBtn);
+    });
+
+    const predictedOutcomeEl = screen.getByTestId("aui-predicted-outcome");
+    expect(predictedOutcomeEl).not.toBeNull();
+    expect(predictedOutcomeEl.textContent).toBe("open_filter_section");
+
+    expect(screen.getByText(/open_filter_section \(conf: 0.88\)/)).not.toBeNull();
+  });
 });

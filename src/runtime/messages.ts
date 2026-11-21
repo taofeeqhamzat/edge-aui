@@ -13,6 +13,7 @@ import { InferenceResult } from '../gates/arbitration';
 import { SequenceConfig } from '../microtensor/schema';
 import { PatternIntervention } from '../gates/fast/mockFastGate';
 import { StageTimingRecord } from './instrumentation';
+import type { SlowGateManifest } from '../config/modelManifest';
 
 export const RUNTIME_WORKER_VERSION = '1.0';
 
@@ -60,6 +61,8 @@ export interface RuntimeInitRequest {
     minPatternConfidence?: number;
     /** Which Slow Gate implementation to construct. Default 'mock'. */
     slowGateMode?: SlowGateMode;
+    /** Manifest describing the Slow Gate model artifacts and their vocabularies. Overrides defaults. */
+    manifest?: SlowGateManifest;
     /** Model URL for the foundation ONNX Slow Gate. */
     modelUrl?: string;
     /** Model URL for the target intervention head ONNX Slow Gate. */
@@ -75,6 +78,16 @@ export interface RuntimeInitRequest {
      * Omitted means the framework default, which declares no application vocabulary.
      */
     contextEncoding?: ContextEncodingConfig;
+    /**
+     * Vocabulary a declared Fast Gate pattern outcome must belong to. The gate uses it to
+     * validate a declaration at match time and to stamp `vocabularyId` on the prediction.
+     * Omitted means the legacy intervention vocabulary, which the old pattern form names.
+     */
+    outcomeVocabulary?: {
+      id: string;
+      version: string;
+      outcomes: readonly string[];
+    };
     enableFastGate?: boolean;
     enableSlowGate?: boolean;
     /**

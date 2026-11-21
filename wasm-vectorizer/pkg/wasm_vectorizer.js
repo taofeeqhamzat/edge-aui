@@ -46,15 +46,21 @@ export function get_wasm_gate_version() {
 }
 
 /**
- * Deterministic Gate: Mines frequent macro-interaction sequences using PrefixSpan.
+ * Deterministic Gate: mines frequent macro-interaction sequences using PrefixSpan.
+ *
+ * `max_pattern_length` and `max_patterns` are required, not optional: the miner is the only
+ * place that can bound its own cost, and an unbounded call is the F-02 defect (see
+ * `prefix_span.rs`). Callers must pass the bounds they are prepared to pay for.
  * @param {any} sequences_val
  * @param {number} min_support
+ * @param {number} max_pattern_length
+ * @param {number} max_patterns
  * @returns {any}
  */
-export function mine_macro_patterns(sequences_val, min_support) {
+export function mine_macro_patterns(sequences_val, min_support, max_pattern_length, max_patterns) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.mine_macro_patterns(retptr, addHeapObject(sequences_val), min_support);
+        wasm.mine_macro_patterns(retptr, addHeapObject(sequences_val), min_support, max_pattern_length, max_patterns);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);

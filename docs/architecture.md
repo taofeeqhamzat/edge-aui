@@ -181,14 +181,32 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
 
 - Mines frequent symbol sequences with the Rust/WASM PrefixSpan implementation
   (`src/gates/fast/prefixSpanMiner.ts` — the single WASM boundary in the framework).
-- Resolves a mined pattern through the application's declared pattern → intervention map
-  (`TESTBED_FAST_GATE_PATTERNS` in `src/testbed/config/fastGatePatterns.ts`, injected at the
-  composition root). The framework default map is empty.
+- The miner enforces its own bounds: a hard `max_pattern_length` and `max_patterns`, both
+  passed with the request, and support counted per **sequence**, not per occurrence. It ranks
+  candidate continuations by support so a bounded budget is spent on the strongest patterns,
+  and it returns a deterministic order, so the same corpus and bounds always produce the same
+  result. Confidence is the conditional probability `support(pattern) / support(prefix)`:
+  a length-1 pattern reports corpus coverage, a longer pattern reports continuation strength.
+- Resolves a mined pattern through the application's **declared pattern set**
+  (`validatePatternDeclarations` in `src/gates/fast/patternDeclaration.ts`;
+  `TESTBED_FAST_GATE_DECLARATIONS` in `src/testbed/config/fastGatePatterns.ts`). A
+  declaration carries its sequence, the **semantic outcome** it resolves to, and the measured
+  evidence (support, occurrences, task coverage, provenance). Declarations are validated at
+  composition time: unknown symbols, outcomes outside the gate vocabulary, or evidence below
+  the declared support floor fail loudly instead of becoming a silent miss. The framework
+  default map is empty.
 - Ranks deterministically: support desc, then length desc, then lexicographic.
 - Matches a pattern as an **in-order subsequence** of the recent sequence
   (`suffixMatchOnly: false`). Strict suffix matching was tried first and proved too strict
   here, because consecutive actions frequently straddle the window stride.
-- Fails safe: a miner error or an undeclared pattern yields a miss, never a fabricated match.
+- Does not count the observed sequence twice. When the composition supplies the corpus and
+  the evaluated sequence from the same macro history, the sequence is not appended again;
+  otherwise one occurrence would satisfy a support threshold of 2 and the gate would "match"
+  a pattern it has only seen once.
+- Fails safe and explains itself: a miner error, a deadline, an undeclared pattern or no
+  matching pattern yields `matched: false` with a `reason` (`mining_timeout`,
+  `no_frequent_pattern`, `no_declared_target`, `no_matching_pattern`, …), never a fabricated
+  prediction.
 
 ### Slow Gate — `src/gates/slow/onnxSlowGate.ts`
 
@@ -197,6 +215,15 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
   2. Target Intervention Head graph (`public/models/intervention_head_int8.onnx`): evaluates 5
      uncalibrated logits (`simplify_options`, `highlight_primary_action`, `offer_assistance`,
      `expand_tooltip`, `no_op`).
+  3. Semantic task-outcome head (`public/models/task_outcome_head_v2_int8.onnx`, Task 40.5):
+     `sequence_input (batch, seq, 18)` + `context_input (batch, 6)` →
+     `task_outcome_logits (batch, 14)`. A v2 bundle manifest
+     (`public/models/task_outcome_head_v2.bundle.json`) supplies the ordered 14-ID target
+     vocabulary, its version and the artifact hash. The parser maps this graph into the
+     foundation slot — it replaces the outcome head by path and vocabulary, not by a new runtime
+     branch — and the gate feeds both tensors when the session declares two inputs. It reports
+     the semantic artifact version and provider; the legacy five-class head remains available
+     for compatibility.
 - **The deployed ONNX input topology is a dual-input encoder, not a hidden-state-only interface.**
   The graphs accept `sequence_input (batch, seq, 18)` and `context_input (batch, 6)` and produce
   `intervention_logits (batch, 5)`; the head concatenates the encoded sequence with the context
@@ -221,9 +248,19 @@ single-symbol sequences and make every multi-symbol pattern unmineable.
 ### Arbitration — `src/gates/arbitration.ts`
 
 Implements Fast Gate precedence ([ADR-002](decisions/ADR-002-rust-wasm-prefixspan-boundary.md)): the Slow Gate is invoked only when the Fast Gate returns
-`matched: false`, or a match without an actionable (non-`no_op`) intervention. Both gate calls
-are individually guarded, and per-gate wall-clock latencies (`fastGateLatencyMs` and `slowGateLatencyMs`)
-are measured independently ([ADR-003](decisions/ADR-003-worker-main-thread-boundary.md)).
+`matched: false`, or a match without an actionable prediction. Both gate calls are
+individually guarded, and per-gate wall-clock latencies (`fastGateLatencyMs` and
+`slowGateLatencyMs`) are measured independently
+([ADR-003](decisions/ADR-003-worker-main-thread-boundary.md)).
+
+Both gates emit the same normalized `PredictionResult`, and arbitration is its only producer:
+it stamps `predictionId`, `timestamp` and `contractVersion`, merges the UI target, and reports
+`PredictionProvenance` (gate, gate version, mapping source, latency). A Slow Gate prediction is
+selected even when its compatibility command is `no_op`, because the policy — not the gate —
+decides the adaptation; selecting only on the command would report `matchedGate: 'none'`
+beside a matched Slow prediction. When neither gate asserts a prediction the result carries
+`matchedGate: 'none'` and a `noMatchReason`, which the trace records instead of an unexplained
+absence.
 
 ---
 
@@ -235,9 +272,13 @@ are measured independently ([ADR-003](decisions/ADR-003-worker-main-thread-bound
 2. `no_op` pass-through;
 3. **cooldown** — refractory period after an accepted intervention (default 5 s);
 4. **dismissal feedback** — a dismissed intervention type is suppressed (default 15 s);
-5. **confidence threshold** (default 0.75, an uncalibrated engineering baseline);
-6. **UI-context eligibility** — e.g. `highlight_primary_action` requires a primary action;
-7. **persistence** — the identical candidate must appear in 2 consecutive windows.
+5. **repeat suppression** — one accepted adaptation answers one observed act. The gate
+   re-evaluates every window and keeps the act in its macro history, so without this an idle
+   participant was re-adapted every cooldown period from a single act. A new macro interaction
+   re-arms the policy (`rejectionCategory: 'already_adapted'`);
+6. **confidence threshold** (default 0.75, an uncalibrated engineering baseline);
+7. **UI-context eligibility** — e.g. `highlight_primary_action` requires a primary action;
+8. **persistence** — the identical candidate must appear in 2 consecutive windows.
 
 `UIActuator` applies four declarations non-destructively, each with a precise reversal
 closure, and enforces `ttlMs`:
@@ -246,15 +287,34 @@ closure, and enforces `ttlMs`:
 |---|---|---|
 | `no_op` | no DOM change; emits an event | n/a |
 | `highlight_primary_action` | `edge-aui-highlight` class + data attribute | restores the exact prior `class` |
-| `simplify_options` | collapses expanded accordions, tags the target surface | re-expands; restores focus and class |
-| `expand_tooltip` | inserts a `role="tooltip"` bubble, links `aria-describedby` | removes the bubble; restores attributes |
+| `simplify_options` | collapses expanded accordions inside the declared surface, tags that surface | re-expands; restores focus and class |
+| `expand_tooltip` | inserts a `role="tooltip"` bubble carrying the target's own `title`/`data-tooltip` text, links `aria-describedby` | removes the bubble; restores attributes |
 | `offer_assistance` | appends a `role="status" aria-live="polite"` banner | removes the node and listeners |
 
 `targetComponentId` is escaped before selector interpolation, and focus is never stolen.
-A `targetResolver` supplied in `UIActuator` options is authoritative: it turns the declared
-target reference into an element, and a declared target it cannot resolve is a recorded
-actuation failure rather than a fallback to some other control (Task 20.5). Without a
-resolver the framework falls back to the `data-aui-component` annotation contract.
+Every element-changing adaptation must declare a target. A command without one, or one whose
+declared target does not resolve, is a recorded actuation failure with no DOM mutation —
+there is no fallback to the first primary action, tooltip or accordion (Task 20.5/60.1). With
+no resolver the framework resolves the declared target through the `data-aui-component`
+annotation contract.
+
+The testbed supplies the resolver (`src/testbed/config/interventionTargets.ts`) and the
+outcome→adaptation policy (`src/testbed/config/policyAdapter.ts`):
+
+- `highlight_primary_action` declares the logical target `primary-action`;
+- `simplify_options` declares `filter-options` (the filter drawer surface). The target is
+  configuration, not a framework constant;
+- `expand_tooltip` uses the target the prediction names, because "a tooltip was inspected"
+  does not identify which one;
+- the resolver refuses an element that cannot accept the adaptation — a non-actionable
+  element, a surface with no accordions, or a tooltip with no real text;
+- the adaptation target never comes from `context.activeComponentId`, so a prediction about
+  a filter cannot be applied to the last hovered table cell.
+
+The semantic outcome→adaptation map is deliberately conservative: filter-selection outcomes
+simplify the options, committing outcomes highlight the primary action, `inspect_help`
+expands the inspected tooltip, and every other outcome — including `select_region`,
+`reset_filter`, navigation and `NO_OUTCOME` — records a decision-only `no_op`.
 
 ---
 
@@ -352,6 +412,10 @@ interface PredictionEvent {
   predictedOutcome?: string;
   predictedOutcomeVocabularyVersion?: string;
   predictionContractVersion?: string;
+  // Provenance of the selected prediction (Task 50.3): which pattern set or model served
+  // it, and which macro pattern the Fast Gate matched.
+  gateVersion?: string;
+  matchedPattern?: string[];
   targetContext?: { route?: string; taskId?: string; taskStepId?: string; componentId?: string };
 }
 
@@ -462,6 +526,15 @@ different page is a reversal.
 `src/testbed/config/semanticOutcomes.ts` is the testbed's implementation of that contract.
 Core imports none of its outcome IDs. The derived outcome is recorded next to the generic
 one on the same `OutcomeEvent` (`taskOutcome` + vocabulary version + source + rule id).
+
+The testbed **records** 15 outcome IDs, and the model's **target vocabulary is the approved 14**
+([ADR-030](decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)). The extra ID,
+`inspect_help`, is recorded evidence: it exists because exact-ID checks run before substring
+checks, so `tooltip-region` is never classified as `select_region` (assessment limitation #6).
+Model-preparation excludes windows labelled `inspect_help` from training targets rather than
+relabelling them; the excluded count is reported. The recorded/target split is versioned and is
+described in [data_schemas.md](data_schemas.md). The residual macro-symbol defects from that same
+limitation are tracked in the milestone plan §2.8 and are not fixed by this split.
 
 **Derivation is deferred.** A window is queued on emission and settled only once the observed
 stream has advanced past its horizon, with a 2 s idle grace period. Labelling immediately

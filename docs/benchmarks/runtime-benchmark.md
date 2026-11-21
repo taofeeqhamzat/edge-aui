@@ -1,15 +1,15 @@
 # Edge-AUI Framework Runtime Benchmark Report
 
 **Phase:** C — Runtime Stage Instrumentation (Brief §4 A2, §16, ADR-008)  
-**Date:** 2026-09-26T02:13:29.273Z  
-**Git Commit:** `aa9ab1654dfdde5aaea56bfb6ee4435ca7e27ce8`  
+**Date:** 2026-11-20T11:51:49.880Z  
+**Git Commit:** `d612e9a4cb037eecc7da9e87af178a2612821351`  
 **Execution Environment:**
-- **OS:** darwin (arm64) 27.0.0
+- **OS:** darwin (arm64) 27.3.0
 - **CPU:** Apple M1 (8 cores)
 - **Node.js:** v26.4.0
-- **Browser:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36
+- **Browser:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36
 - **WebGPU Available:** Yes
-- **Actual Execution Provider:** `webgpu`
+- **Actual Execution Provider:** `wasm`
 - **Condition:** `adaptive`
 - **Measurement Tolerance:** `±10% on identical hardware under uniform CPU governor`
 
@@ -21,18 +21,17 @@ All stages defined in brief §4 A2 instrumented and timed independently across t
 
 | Stage Name | Side | Invocations | Mean (ms) | p50 (ms) | p95 (ms) | Max (ms) | Total (ms) | Bound |
 |---|---|---|---|---|---|---|---|---|
-| **worker message/transfer** | `transfer` | 112 | 29.935 | 1.855 | 239.815 | 335.57 | 3352.725 | `latency-bound` |
-| **PrefixSpan mining** | `wasm` | 60 | 45.5445 | 11.39 | 167.94 | 226.615 | 2732.67 | `latency-bound` |
-| **ONNX inference** | `model` | 27 | 8.9007 | 6.025 | 18.165 | 66.565 | 240.32 | `latency-bound` |
-| **event capture** | `main` | 404 | 0.233 | 0.15 | 0.525 | 2.44 | 94.13 | `throughput-bound` |
-| **event normalisation** | `main` | 404 | 0.2238 | 0.145 | 0.495 | 2.285 | 90.41 | `throughput-bound` |
-| **MicroTensor extraction** | `main` | 53 | 0.0727 | 0.045 | 0.17 | 0.655 | 3.855 | `latency-bound` |
-| **macro sequence construction** | `main` | 27 | 0.0965 | 0.065 | 0.44 | 0.45 | 2.605 | `latency-bound` |
-| **window assignment** | `worker` | 55 | 0.0267 | 0.015 | 0.095 | 0.14 | 1.47 | `latency-bound` |
-| **window assignment** | `main` | 404 | 0.003 | 0 | 0.01 | 0.11 | 1.22 | `latency-bound` |
-| **trace recording** | `main` | 579 | 0.0019 | 0 | 0.005 | 0.03 | 1.09 | `latency-bound` |
-| **actuation** | `main` | 1 | 0.585 | 0.585 | 0.585 | 0.585 | 0.585 | `latency-bound` |
-| **policy evaluation** | `main` | 5 | 0.038 | 0.015 | 0.125 | 0.125 | 0.19 | `latency-bound` |
+| **worker message/transfer** | `transfer` | 114 | 2.958 | 0.78 | 12.515 | 69.55 | 337.21 | `latency-bound` |
+| **event capture** | `main` | 389 | 0.2719 | 0.255 | 0.535 | 2.47 | 105.78 | `throughput-bound` |
+| **event normalisation** | `main` | 389 | 0.2598 | 0.245 | 0.485 | 2.335 | 101.07 | `throughput-bound` |
+| **ONNX inference** | `model` | 86 | 1.0831 | 1.055 | 2.09 | 2.39 | 93.145 | `latency-bound` |
+| **PrefixSpan mining** | `wasm` | 86 | 0.7617 | 0.31 | 0.985 | 18.155 | 65.51 | `latency-bound` |
+| **MicroTensor extraction** | `main` | 58 | 0.0934 | 0.065 | 0.19 | 1.23 | 5.42 | `latency-bound` |
+| **window assignment** | `main` | 389 | 0.0046 | 0.005 | 0.01 | 0.255 | 1.785 | `latency-bound` |
+| **window assignment** | `worker` | 58 | 0.0288 | 0.025 | 0.07 | 0.085 | 1.67 | `latency-bound` |
+| **trace recording** | `main` | 602 | 0.0027 | 0 | 0.01 | 0.06 | 1.61 | `latency-bound` |
+| **macro sequence construction** | `main` | 13 | 0.1227 | 0.09 | 0.31 | 0.31 | 1.595 | `latency-bound` |
+| **policy evaluation** | `main` | 5 | 0.028 | 0.035 | 0.04 | 0.04 | 0.14 | `latency-bound` |
 
 *Method:* `Measured (High-resolution performance.now() ring-buffer records)`
 
@@ -41,22 +40,22 @@ All stages defined in brief §4 A2 instrumented and timed independently across t
 ## 2. End-to-End Latencies
 
 ### Per-Window Pipeline Latency (Main -> Worker Buffer)
-- **Mean Per-Window Latency:** `30.011 ms` (`Measured`)
-- **p95 Per-Window Latency:** `239.995 ms` (`Measured`)
-- **Breakdown:** Window assignment (`0.003 ms`) + MicroTensor extraction (`0.0727 ms`) + Worker transfer (`29.935 ms`)
+- **Mean Per-Window Latency:** `3.056 ms` (`Measured`)
+- **p95 Per-Window Latency:** `12.715 ms` (`Measured`)
+- **Breakdown:** Window assignment (`0.0046 ms`) + MicroTensor extraction (`0.0934 ms`) + Worker transfer (`2.958 ms`)
 - **Classification:** `latency-bound`
 
 ### Worker Transfer Overhead
-- **Mean Worker Transfer Latency:** `29.935 ms` (`Measured`)
-- **Transfer Share of Per-Window Pipeline Latency:** `99.75%` (`Measured`)
+- **Mean Worker Transfer Latency:** `2.958 ms` (`Measured`)
+- **Transfer Share of Per-Window Pipeline Latency:** `96.79%` (`Measured`)
 - **Classification:** `latency-bound`
 
 ### Model Prediction Latency (Periodic Evaluation)
-- **Evaluations Executed:** `31`
-- **Mean Inference Latency:** `82.369 ms` (`Measured`)
-- **p50 Latency:** `25.18 ms` (`Measured`)
-- **p95 Latency:** `285.035 ms` (`Measured`)
-- **Max Latency:** `335.415 ms` (`Measured`)
+- **Evaluations Executed:** `44`
+- **Mean Inference Latency:** `2.875 ms` (`Measured`)
+- **p50 Latency:** `1.875 ms` (`Measured`)
+- **p95 Latency:** `12.145 ms` (`Measured`)
+- **Max Latency:** `25.885 ms` (`Measured`)
 - **Classification:** `latency-bound`
 
 ---
@@ -64,10 +63,10 @@ All stages defined in brief §4 A2 instrumented and timed independently across t
 ## 3. Throughput & Event Processing
 
 - **Raw Events Processed:** `300`
-- **Windows Produced:** `62`
-- **Interaction Duration:** `9818.48 ms`
-- **Event Processing Throughput:** `30.6 events/sec` (`Measured`)
-- **Window Processing Throughput:** `6.31 windows/sec` (`Measured`)
+- **Windows Produced:** `69`
+- **Interaction Duration:** `10062.62 ms`
+- **Event Processing Throughput:** `29.8 events/sec` (`Measured`)
+- **Window Processing Throughput:** `6.86 windows/sec` (`Measured`)
 - **Classification:** `throughput-bound`
 
 ---
@@ -78,9 +77,9 @@ Measured by executing identical interactive workloads with instrumentation colle
 
 | Metric | Instrumented | Uninstrumented | Delta / Overhead | Notes |
 |---|---|---|---|---|
-| **Macro Interaction Duration** | 9818.48 ms | 9780.85 ms | 37.63 ms (0.38%) | Measured across driven trial |
-| **Pipeline Frame Rate** | 30 FPS | 30.1 FPS | -0.1 FPS | Measured during user interaction |
-| **Micro Per-Call Timing Overhead** | — | — | **12.651 $\mu$s / call** | Synthetic micro-benchmark |
+| **Macro Interaction Duration** | 10062.62 ms | 10113.1 ms | -50.48 ms (-0.5%) | Measured across driven trial |
+| **Pipeline Frame Rate** | 59.9 FPS | 60.1 FPS | -0.2 FPS | Measured during user interaction |
+| **Micro Per-Call Timing Overhead** | — | — | **9.902 $\mu$s / call** | Synthetic micro-benchmark |
 
 *Classification:* `throughput-bound`
 
@@ -88,8 +87,8 @@ Measured by executing identical interactive workloads with instrumentation colle
 
 ## 5. Main-Thread Responsiveness & UI Impact
 
-- **Baseline Idle Frame Rate:** `30.7 FPS` (`Measured`)
-- **Pipeline Active Frame Rate:** `30 FPS` (`Measured`)
+- **Baseline Idle Frame Rate:** `60.6 FPS` (`Measured`)
+- **Pipeline Active Frame Rate:** `59.9 FPS` (`Measured`)
 - **Long Tasks (> 50ms):** `1` (`Measured (PerformanceObserver)`)
 - **UI Impact:** Zero jank detected. Total Blocking Time (TBT) remains 0ms.
 - **Classification:** `latency-bound`
@@ -98,10 +97,10 @@ Measured by executing identical interactive workloads with instrumentation colle
 
 ## 6. Resident Memory Behaviour
 
-- **Initial JS Heap (Before Trial):** `9.693 MB`
-- **Final JS Heap (After Trial):** `14.219 MB`
-- **Heap Delta:** `4.526 MB` over `62` consecutive windows
-- **Total Allocated JS Heap:** `18.514 MB`
+- **Initial JS Heap (Before Trial):** `10.95 MB`
+- **Final JS Heap (After Trial):** `14.012 MB`
+- **Heap Delta:** `3.062 MB` over `69` consecutive windows
+- **Total Allocated JS Heap:** `18.844 MB`
 - **Active Framework Memory:** Within the 20MB resident budget.
 - **Classification:** `throughput-bound`
 
@@ -111,11 +110,11 @@ Measured by executing identical interactive workloads with instrumentation colle
 
 | Artifact | Files | Raw Size (Bytes) | Size (KB) | Status |
 |---|---|---|---|---|
-| **Main Bundle** | index-CEYG-w_0.css, index-CyjAJGkR.js | 291,304 | 284.48 KB | Measured (filesystem stat of Vite entry chunk) |
-| **Worker Bundle** | core-BpmbIEae.js, entry-BIDoNEdN.js, ort.bundle.min-Be8iBYUy.js, ort.bundle.min-CHtCoB-i.js | 831,529 | 812.04 KB | Measured (filesystem stat of Vite worker chunks) |
-| **WASM Payload** | ort-wasm-simd-threaded.jsep-DC5y_g6C.wasm, wasm_vectorizer_bg-Chz1A_gQ.wasm | 26,941,552 | 26310.11 KB | Measured (filesystem stat of compiled WebAssembly binary) |
-| **ONNX Model Artifacts** | model.onnx, model_int8.onnx | 339,562 | 331.6 KB | Measured (filesystem stat of ONNX model files) |
-| **Combined Payload** | All client assets | 28,403,947 | **27738.23 KB** | Measured (sum of bundle chunks, wasm, and model artifacts) |
+| **Main Bundle** | index-BaZdn6GX.js, index-DWwYLqMc.css | 391,669 | 382.49 KB | Measured (filesystem stat of Vite entry chunk) |
+| **Worker Bundle** | core-e_9vq3Ah.js, entry-BSdHXDTv.js | 56,583 | 55.26 KB | Measured (filesystem stat of Vite worker chunks) |
+| **WASM Payload** | ort-wasm-simd-threaded-Cpm-ox6i.wasm, wasm_vectorizer_bg-Dg1syIGm.wasm | 13,602,240 | 13283.44 KB | Measured (filesystem stat of compiled WebAssembly binary) |
+| **ONNX Model Artifacts** | intervention_head.onnx, intervention_head_int8.onnx, model.onnx, model_int8.onnx, task_outcome_head_v2.onnx, task_outcome_head_v2_int8.onnx | 1,071,458 | 1046.35 KB | Measured (filesystem stat of ONNX model files) |
+| **Combined Payload** | All client assets | 15,121,950 | **14767.53 KB** | Measured (sum of bundle chunks, wasm, and model artifacts) |
 
 *Budget comparison:* Measured client payload is compared against the 500 KB architectural design limit without asserting compliance prior to measurement.
 

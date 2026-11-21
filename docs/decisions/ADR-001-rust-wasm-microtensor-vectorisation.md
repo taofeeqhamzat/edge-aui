@@ -3,7 +3,7 @@
 - **Status:** Accepted — Option A: Retain TypeScript Vectorisation
 - **Date:** 2026-09-26 (Human decision recorded)
 - **Owner of decision:** Human researcher
-- **Related:** ADR-002, ADR-004, [plan 1 Phase B](../plan/1/model-preparation-adaptive-intervention-integration-and-deployable-participant-pipeline-plan.md)
+- **Related:** ADR-002, ADR-004, plan 1 Phase B
 
 ## 1. Context
 

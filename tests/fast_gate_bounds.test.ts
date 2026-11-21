@@ -28,8 +28,8 @@ describe('Bounded Fast Gate execution (F-02)', () => {
     const gate = new PrefixSpanFastGate({
       getSequences: () => longHistory,
       maxCorpusSequences: 10,
-      mine: async (sequences) => {
-        corpusSeen = sequences;
+      mine: async (request) => {
+        corpusSeen = request.sequences;
         return [];
       }
     });

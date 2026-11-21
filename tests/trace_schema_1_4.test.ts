@@ -261,10 +261,14 @@ describe('actuator target resolver', () => {
     expect(target.classList.contains('edge-aui-simplified')).toBe(true);
     // The correlation stamp lands on the accordion inside the resolved surface.
     expect(target.querySelector(`[${ADAPTATION_ATTRIBUTE}]`)).toBeTruthy();
-    // The other panel is untouched: the adaptation went where it was told.
+    // The other panel is untouched: the adaptation went where it was told, and its
+    // expanded section was not collapsed as a side effect.
     const other = root.querySelector('[data-aui-component="other-panel"]')!;
     expect(other.classList.contains('edge-aui-simplified')).toBe(false);
     expect(other.querySelector(`[${ADAPTATION_ATTRIBUTE}]`)).toBeNull();
+    expect(other.querySelector('[data-aui-role="accordion"]')!.getAttribute('aria-expanded')).toBe(
+      'true'
+    );
   });
 
   it('fails safely, with no fallback, when the configured target is missing', () => {
@@ -291,11 +295,20 @@ describe('actuator target resolver', () => {
     const root = buildDom();
     const actuator = new UIActuator({ root });
 
+    // No resolver: the framework falls back to the `data-aui-component` annotation
+    // contract, so the declared target still decides which surface is simplified.
     const applied = actuator.apply(
-      createInterventionCommand({ type: 'simplify_options', source: 'rule' })
+      createInterventionCommand({
+        type: 'simplify_options',
+        targetComponentId: 'filter-drawer',
+        source: 'rule'
+      })
     );
 
     expect(applied).toBe(true);
     expect(root.querySelectorAll(`[${ADAPTATION_ATTRIBUTE}]`).length).toBeGreaterThan(0);
+    expect(
+      root.querySelector('[data-aui-component="other-panel"]')!.querySelector(`[${ADAPTATION_ATTRIBUTE}]`)
+    ).toBeNull();
   });
 });

@@ -269,6 +269,17 @@ export interface PredictionEvent {
   predictionContractVersion?: string;
   /** Vocabulary the predicted outcome belongs to. */
   predictedOutcomeVocabularyVersion?: string;
+  /**
+   * Version of the pattern set or model that produced the selected prediction, carried
+   * through arbitration from `PredictionProvenance` (Task 50.3). Additive to 1.4.0.
+   */
+  gateVersion?: string;
+  /**
+   * The macro sequence the Fast Gate matched, when it decided the prediction (Task 50.3).
+   * Without it the trace can say "the Fast Gate matched" but not *which* declared pattern
+   * fired, so a prediction cannot be attributed to a declaration.
+   */
+  matchedPattern?: string[];
   targetContext?: {
     route?: string;
     taskId?: string;
@@ -330,6 +341,7 @@ export type PolicyRejectionCategory =
   | 'below_threshold'
   | 'ineligible_context'
   | 'pending_persistence'
+  | 'already_adapted'
   | 'unknown_candidate'
   | 'baseline_condition'
   | 'actuation_failed';
@@ -362,7 +374,7 @@ export interface InterventionEvent {
    * Why the episode terminated. An `applied` episode with no terminal event is the F-03
    * defect: the adaptation silently persisted for the rest of the session.
    */
-  reason?: 'ttl' | 'user_dismissal' | 'session_end' | 'reset' | 'replaced';
+  reason?: 'ttl' | 'user_dismissal' | 'user_acceptance' | 'session_end' | 'reset' | 'replaced';
   sessionId?: string;
   experimentId?: string;
   conditionId?: string;

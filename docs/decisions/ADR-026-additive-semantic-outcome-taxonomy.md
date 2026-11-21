@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-11-16
-- **Related:** ADR-006, ADR-012, ADR-017, ADR-025, ADR-027, ADR-029
+- **Related:** ADR-006, ADR-012, ADR-017, ADR-025, ADR-027, ADR-029, ADR-030, ADR-031
 
 ## 1. Context
 
@@ -75,7 +75,9 @@ minimum approval needed before implementation.
    - the existing model and `bundle/v1.0.0` remain untouched.
 
 2. **Before retraining (Phase 4B start):**
-   - approve the exact semantic vocabulary (the plan proposes 14 IDs including `NO_OUTCOME`);
+   - the exact target vocabulary is pinned to the 14 IDs including `NO_OUTCOME` by
+     [ADR-030](ADR-030-semantic-target-vocabulary-pinned-to-14.md); the recorded `inspect_help` ID
+     is not a target;
    - add the semantic taxonomy and head dimension to `model-preparation/src/config.yaml` as the
      source of truth;
    - define a new dataset version for semantic labels;

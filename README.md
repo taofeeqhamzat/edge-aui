@@ -116,8 +116,11 @@ exposes the same state programmatically. In a production build the panel is reac
 
 The Slow Gate graphs are committed at `public/models/model_int8.onnx` and
 `public/models/intervention_head_int8.onnx` so the testbed runs and the ONNX contract test passes
-without a model-preparation checkout. `*.onnx` is otherwise gitignored because model files are build
-outputs; `public/models/` is an explicit exception.
+without a model-preparation checkout. The semantic task-outcome head (Task 40.5) is committed as
+`public/models/task_outcome_head_v2_int8.onnx` with its manifest
+`public/models/task_outcome_head_v2.bundle.json`; the manifest is the handoff contract and the
+runtime reads the 14-ID vocabulary order from it. `*.onnx` is otherwise gitignored because model
+files are build outputs; `public/models/` is an explicit exception.
 
 To regenerate them from a trained checkpoint:
 
@@ -125,6 +128,14 @@ To regenerate them from a trained checkpoint:
 # in the model-preparation checkout
 .venv/bin/python -c "from src.export import export_and_quantize; export_and_quantize()"
 cp models/model.onnx models/model_int8.onnx /path/to/edge-aui-framework/public/models/
+
+# semantic task-outcome head (Task 40.5)
+.venv/bin/python -m src.export --head semantic --experiment e2 \
+  --dataset-version v2.2.0-participant \
+  --metrics docs/experiments/semantic-head/semantic-head-evaluation.json
+cp models/task_outcome_head_v2_int8.onnx /path/to/edge-aui-framework/public/models/
+cp models/bundles/v2.0.0/bundle.json \
+  /path/to/edge-aui-framework/public/models/task_outcome_head_v2.bundle.json
 ```
 
 If an artifact is missing, the runtime falls back to a deterministic Slow Gate and reports the
@@ -165,7 +176,7 @@ origin and a live Supabase project — is recorded as `NOT VERIFIED` in
 | [`docs/deploy/supabase-setup.md`](docs/deploy/supabase-setup.md) | Database setup and the RLS security model |
 | [`docs/architecture.md`](docs/architecture.md) | Implemented architecture, contracts and schemas |
 | [`docs/assessments/`](docs/assessments/) | The audits, the implementation record, and the deployment report |
-| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 … ADR-029) |
+| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 … ADR-031) |
 | [`docs/testbed/prd.md`](docs/testbed/prd.md) | Product requirements for the target UI |
 | [`docs/testbed/device-support.md`](docs/testbed/device-support.md) | Supported-device rule and pre-session entry gate |
 | [`AGENTS.md`](AGENTS.md) | Architectural constraints and engineering guidance |

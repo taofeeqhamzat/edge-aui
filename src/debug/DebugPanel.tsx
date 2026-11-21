@@ -310,6 +310,12 @@ const DecisionStateSection = memo(function DecisionStateSection({
         </span>
       </div>
       <div className="edge-aui-debug-row">
+        <span className="edge-aui-debug-label">Predicted Outcome:</span>
+        <span className="edge-aui-debug-val" data-testid="aui-predicted-outcome">
+          {liveMetrics.predictedOutcome ?? "--"}
+        </span>
+      </div>
+      <div className="edge-aui-debug-row">
         <span className="edge-aui-debug-label">Mapping Source:</span>
         <span className="edge-aui-debug-val dim">
           {liveMetrics.mappingSource ?? "--"}

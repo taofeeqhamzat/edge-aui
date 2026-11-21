@@ -33,6 +33,8 @@ export interface LiveDebugMetrics {
   };
   /** Which gate actually produced the current decision. */
   matchedGate?: 'fast' | 'slow' | 'none';
+  /** The outcome ID predicted by the winning gate from the approved vocabulary. */
+  predictedOutcome?: string;
   /** Generative mechanism behind the current candidate (ADR-006 / Task 5.3). */
   mappingSource?: string;
   /**
@@ -51,6 +53,7 @@ export interface LiveDebugMetrics {
     | 'ACTUATED'
     | 'EXPIRED'
     | 'DISMISSED'
+    | 'ACCEPTED'
     | 'ACTUATION FAILED';
   /** Human-readable reason behind the current policy decision. */
   policyReason?: string;

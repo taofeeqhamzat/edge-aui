@@ -36,6 +36,8 @@ function writeSatisfyingDist(assets: Record<string, string> = {}): string {
   );
   write('models/model_int8.onnx', Buffer.alloc(8));
   write('models/intervention_head_int8.onnx', Buffer.alloc(8));
+  write('models/task_outcome_head_v2_int8.onnx', Buffer.alloc(8));
+  write('models/task_outcome_head_v2.bundle.json', '{"bundle_schema_version":"2.0.0"}');
   write('assets/ort-wasm-simd-threaded-abc123.wasm', Buffer.alloc(16));
   write('assets/wasm_vectorizer_bg-abc123.wasm', Buffer.alloc(16));
   for (const [name, content] of Object.entries(assets)) {

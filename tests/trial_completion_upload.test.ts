@@ -26,6 +26,7 @@ import {
   clearLastCompletedTrialTrace,
   getCollection,
   getLastCompletedTrialTrace,
+  pendingTrialFinalization,
   getRuntime,
   registerRuntimeDefaults
 } from '../src/runtime/boot';
@@ -48,7 +49,8 @@ async function waitFor(
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (predicate()) return;
+    const res = predicate();
+    if (res) return;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   throw new Error(`Timed out after ${timeoutMs}ms waiting for ${label}`);

@@ -52,15 +52,41 @@ describe('Supabase collection configuration', () => {
     const config = resolveSupabaseCollectionConfig({ url: 'not a url', anonKey: 'k' });
     expect(config.url).toBeNull();
     expect(config.configured).toBe(false);
+
+    const ftpConfig = resolveSupabaseCollectionConfig({ url: 'ftp://localhost:54321', anonKey: 'k' });
+    expect(ftpConfig.url).toBeNull();
+    expect(ftpConfig.configured).toBe(false);
+
+    const httpConfig = resolveSupabaseCollectionConfig({ url: 'http://localhost:54321/', anonKey: 'k' });
+    expect(httpConfig.url).toBe('http://localhost:54321');
+    expect(httpConfig.configured).toBe(true);
   });
 
-  it('falls back to the safer mode when the configured mode is unrecognised', () => {
+  it('falls back to the safer mode when the configured mode is unrecognised and respects explicit modes', () => {
     const config = resolveSupabaseCollectionConfig({
       url: configured.url,
       anonKey: configured.anonKey,
       mode: 'unrecognised' as never
     });
     expect(config.mode).toBe('scripted');
+
+    expect(resolveSupabaseCollectionConfig({ mode: 'off' }).mode).toBe('off');
+    expect(resolveSupabaseCollectionConfig({ mode: 'all' }).mode).toBe('all');
+    expect(resolveSupabaseCollectionConfig({ mode: 'scripted' }).mode).toBe('scripted');
+  });
+
+  it('reads configuration from environment variables when overrides are omitted', () => {
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://env.supabase.co/');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'env-key');
+    vi.stubEnv('VITE_AUI_COLLECTION_MODE', 'all');
+
+    const envConfig = resolveSupabaseCollectionConfig();
+    expect(envConfig.url).toBe('https://env.supabase.co');
+    expect(envConfig.anonKey).toBe('env-key');
+    expect(envConfig.mode).toBe('all');
+    expect(envConfig.configured).toBe(true);
+
+    vi.unstubAllEnvs();
   });
 
   it('refuses participant provenance in scripted mode and permits it in all mode', () => {

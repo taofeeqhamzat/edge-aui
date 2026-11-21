@@ -50,7 +50,11 @@ const REQUIRED_FILES = [
   'index.html',
   '_headers',
   'models/model_int8.onnx',
-  'models/intervention_head_int8.onnx'
+  'models/intervention_head_int8.onnx',
+  // Semantic task-outcome head (Task 40.5): the graph and the manifest that describes its
+  // 14-class order must both ship, because the runtime reads the vocabulary from the manifest.
+  'models/task_outcome_head_v2_int8.onnx',
+  'models/task_outcome_head_v2.bundle.json'
 ];
 
 const failures = [];

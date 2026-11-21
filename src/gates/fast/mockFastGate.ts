@@ -60,7 +60,7 @@ export class MockFastGate implements FastGate {
    */
   public async evaluate(sequence: MacroInteraction[]): Promise<GateDecision> {
     if (!sequence || sequence.length === 0) {
-      return { matched: false, source: 'fast' };
+      return { matched: false, source: 'fast', reason: 'empty_sequence' };
     }
 
     const currentSymbols = sequence.map((i) => i.symbol);
@@ -103,7 +103,9 @@ export class MockFastGate implements FastGate {
 
     return {
       matched: false,
-      source: 'fast'
+      source: 'fast',
+      // A declared-pattern miss has one meaning: none of the registered patterns matched.
+      reason: 'no_matching_pattern'
     };
   }
 

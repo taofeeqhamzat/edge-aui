@@ -51,7 +51,7 @@ export interface SerializableExperimentTrace {
 
 **Key Invariants:**
 - **One clock (1.3.0):** every record `timestamp` is epoch milliseconds, produced by `getWallClockTimestamp()`. `performance.now()` is monotonic but resets on navigation, so it is not a legal trace timestamp. `metadata.clock = 'epoch_ms'` states this explicitly. Schema `1.2.0` mixed both clocks in one array, which made the record's internal order unreconstructable and task duration underivable (assessment F-01).
-- **Policy decisions (1.3.0):** every evaluation produces exactly one `PolicyDecisionEvent`, including refusals (`policyDecision: 'rejected'`), the baseline decision-only branch (`'decision_only'`) and the absence of a candidate (`'no_prediction'`). `policyReason` is never empty, and `rejectionCategory` allows grouping without parsing prose. A trace that only recorded successful interventions could not answer "why did it not intervene?" (assessment F-07).
+- **Policy decisions (1.3.0):** every evaluation produces exactly one `PolicyDecisionEvent`, including refusals (`policyDecision: 'rejected'`), the baseline decision-only branch (`'decision_only'`) and the absence of a candidate (`'no_prediction'`). `policyReason` is never empty, and `rejectionCategory` allows grouping without parsing prose. A trace that only recorded successful interventions could not answer "why did it not intervene?" (assessment F-07). Categories are `cooldown`, `dismissed`, `below_threshold`, `ineligible_context`, `pending_persistence`, `already_adapted`, `unknown_candidate`, `baseline_condition` and `actuation_failed` (`already_adapted` added by Task 60.1: the adaptation already answers the current observed act, so a later identical prediction is refused until the participant acts again).
 - **Window attribution (1.3.0):** `PredictionEvent.predictionId` and `evaluatedWindowIds` name the window sequence that was actually evaluated, captured before the inference call rather than read from a mutable "latest window" field after it (assessment F-18).
 - **Episode attribution (1.3.0):** an `InterventionEvent` carries both `interventionEpisodeId` and `predictionId`. Every adaptation type stamps `data-aui-active-adaptation` and `data-aui-adaptation-episode` onto the adapted element, so the trace and the live DOM share a join key (assessment F-05).
 - **Adaptation lifetime (1.3.0):** `actuation.defaultTtlMs` (default 8000 ms) is applied to every accepted command, and expiry emits a terminal `reverted` event with `reason: 'ttl'`. An `applied` episode with no terminal event is reported as an integrity warning (assessment F-03).
@@ -66,13 +66,23 @@ export interface SerializableExperimentTrace {
   alongside the generic seven-class `outcome`. `taskOutcomeVocabularyVersion` names the
   vocabulary, `taskOutcomeSource` is `backtrack` | `application_rule` | `none`, and
   `taskOutcomeRuleId` names the rule that matched. Both labels describe the same event.
+  The recorded vocabulary is the application's full vocabulary (15 IDs for the testbed); the
+  model's target vocabulary is a declared 14-ID subset, and `inspect_help` is recorded but
+  excluded from training targets ([ADR-030](decisions/ADR-030-semantic-target-vocabulary-pinned-to-14.md)).
 - **Task-definition version (1.4.0):** `TaskEvent.taskDefinitionVersion` records which task
-  model the event refers to, and `TaskEvent.reason` accepts the failure reasons
-  (`wrong_action`, `state_mismatch`, `step_exhausted`) so a `task_fail` says why.
+  model the event refers to, and `TaskEvent.reason` accepts `reset`, `replaced`,
+  `condition_change`, `interrupted`, `timeout`, `wrong_action`, `state_mismatch` and
+  `step_exhausted` so a `task_fail`/`task_abandon` says why.
 - **Normalized prediction (1.4.0):** `PredictionEvent.predictedOutcome`,
   `predictedOutcomeVocabularyVersion`, `predictionContractVersion` and `targetContext`
   record the application outcome the gates asserted and the UI context it was computed
   against. `PredictionEvent.outcome` remains the generic label.
+- **Prediction provenance (1.4.0, additive):** `PredictionEvent.gateVersion` names the
+  declared pattern set or model artifact that served the prediction, and
+  `PredictionEvent.matchedPattern` records the Fast Gate macro sequence that matched. Without
+  them a trace could say "the Fast Gate matched" but not which declared pattern fired, so a
+  prediction could not be attributed to a declaration. Both are optional; a trace that omits
+  them remains valid.
 - **Version attribution (1.4.0):** `metadata.taskDefinitionVersion`,
   `metadata.semanticOutcomeVocabularyVersion` and `metadata.predictionContractVersion`.
   Validation requires each version exactly when a record of the corresponding kind is

@@ -19,10 +19,12 @@
  */
 
 import { AdaptiveRuntime, AdaptiveRuntimeOptions } from './adaptiveRuntime';
-import type { CandidateResolver } from '../intervention/policy';
+import type { CandidateResolver, PolicyConfig } from '../intervention/policy';
+import type { ActuationTargetResolver } from '../intervention/actuator';
 import { ExperimentalCondition } from '../telemetry/events';
 import { resolveExperimentCondition } from '../config/experimentCondition';
-import { InterventionType } from '../intervention/types';
+import type { PatternTarget } from '../gates/fast/patternTarget';
+import type { OutcomeVocabulary } from '../gates/contracts';
 import { sessionManager } from '../telemetry/session';
 import { experimentRecorder } from '../telemetry/recorder';
 import { ResearchCollection } from '../telemetry/collection';
@@ -32,6 +34,7 @@ import { UiAdapter, DefaultUiAdapter, type UiTaskLifecycleEvent } from '../integ
 import type { MacroMapper } from '../macro/mapper';
 import type { SemanticOutcomeDeriver } from '../outcome/semantic';
 import type { ContextEncodingConfig } from '../types/contextVector';
+import type { SlowGateManifest } from '../config/modelManifest';
 
 export interface BootOptions extends AdaptiveRuntimeOptions {
   conditionId?: ExperimentalCondition;
@@ -50,14 +53,25 @@ export interface RegisteredRuntimeDefaults {
   macroMapper?: MacroMapper;
   /** Route/action/task vocabulary for the R^6 context encoding. */
   contextEncoding?: ContextEncodingConfig;
-  /** Declared Fast Gate patterns: macro-symbol sequence → adaptation. */
-  fastGatePatterns?: Record<string, InterventionType | Partial<import('../intervention/types').InterventionCommand>>;
+  /**
+   * Declared Fast Gate patterns: macro-symbol sequence → target (a semantic outcome, or the
+   * legacy intervention form during migration).
+   */
+  fastGatePatterns?: Record<string, PatternTarget>;
   /** Version of the declared pattern set, recorded with predictions. */
   fastGatePatternVersion?: string;
+  /** Vocabulary the declared Fast Gate pattern outcomes belong to. */
+  outcomeVocabulary?: OutcomeVocabulary;
   /** Predicted outcome → candidate adaptation. */
   candidateResolver?: CandidateResolver;
+  /** Declared target reference → DOM element for actuation. */
+  targetResolver?: ActuationTargetResolver;
   /** Application semantic outcome derivation (Task 20.4). */
   semanticOutcomes?: SemanticOutcomeDeriver;
+  /** Manifest describing the Slow Gate model artifacts and their vocabularies. */
+  manifest?: SlowGateManifest;
+  /** Application policy configuration: confidence threshold, per-type thresholds, persistence windows, etc. */
+  policyConfig?: Partial<PolicyConfig>;
   /** Study schedule: trial order and per-task timeouts. */
   experiment?: {
     trialOrder?: string[];
@@ -158,6 +172,21 @@ function resolveInstrumentationOption(options: BootOptions): boolean | undefined
   }
 }
 
+/** In development mode only, allow on-the-fly threshold calibration via URL query params. */
+function resolveDevConfidenceOverride(): number | undefined {
+  if (typeof window === 'undefined') return undefined;
+  if (!import.meta.env.DEV) return undefined;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('auiConfidence') ?? params.get('confidenceThreshold');
+    if (!raw) return undefined;
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The adapter is resolved once because trial completion is wired through the adapter
  * contract, not through the testbed: `src/runtime` must not depend on `src/testbed`
@@ -215,7 +244,9 @@ export async function bootRuntime(
   const runtime = new AdaptiveRuntime({
     experimentId,
     config: buildRuntimeConfig(options),
+    manifest: options.manifest ?? registeredDefaults.manifest,
     candidateResolver: registeredDefaults.candidateResolver,
+    targetResolver: registeredDefaults.targetResolver,
     semanticOutcomes: registeredDefaults.semanticOutcomes,
     macroMapper: registeredDefaults.macroMapper,
     contextEncoding: registeredDefaults.contextEncoding,
@@ -225,7 +256,16 @@ export async function bootRuntime(
     minPatternSupport: 1,
     fastGatePatterns: registeredDefaults.fastGatePatterns,
     fastGatePatternVersion: registeredDefaults.fastGatePatternVersion,
-    policyConfig: { confidenceThreshold: 0.75, requiredConsecutiveWindows: 2 },
+    outcomeVocabulary: registeredDefaults.outcomeVocabulary,
+    policyConfig: {
+      confidenceThreshold: resolveDevConfidenceOverride() ?? 0.35,
+      requiredConsecutiveWindows: 1,
+      ...registeredDefaults.policyConfig,
+      ...options.policyConfig,
+      ...(resolveDevConfidenceOverride() !== undefined
+        ? { confidenceThreshold: resolveDevConfidenceOverride() }
+        : {})
+    },
     enableSlowGate: true,
     enableInstrumentation,
     ...options,

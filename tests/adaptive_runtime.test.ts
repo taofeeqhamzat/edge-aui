@@ -218,6 +218,39 @@ describe('AdaptiveRuntime composition', () => {
     expect(status.sessionId).toBe(sessionBefore);
   });
 
+  it('exposes bounded mining counters instead of silence (F-02)', async () => {
+    runtime = new AdaptiveRuntime({ forceInProcessWorker: true });
+    await runtime.start();
+
+    for (let i = 0; i < 24; i++) {
+      window.dispatchEvent(
+        new MouseEvent('mousemove', { bubbles: true, clientX: 20 + i * 3, clientY: 30 })
+      );
+      await new Promise((r) => setTimeout(r, 40));
+    }
+
+    await waitFor(() => runtime.getStatus().windowsEmitted > 0, { label: 'windows emitted' });
+
+    const counters = runtime.getMiningCounters();
+    // Every bounded-execution counter is observable, so "nothing happened" is never
+    // ambiguous: a window that arrived before the Slow Gate sequence was full is counted as
+    // skipped rather than silently dropped.
+    expect(Object.keys(counters).sort()).toEqual([
+      'droppedWindows',
+      'executed',
+      'skipped',
+      'superseded',
+      'timedOut'
+    ]);
+    expect(counters.skipped).toBeGreaterThan(0);
+    expect(counters.droppedWindows).toBe(0);
+
+    // The counters reach the trace, not only the in-memory object.
+    runtime.syncMiningCountersToRecorder();
+    const exported = experimentRecorder.exportSerializable();
+    expect(exported.metadata.mining.skipped).toBeGreaterThan(0);
+  });
+
   it('stops cleanly and detaches all listeners', async () => {
     runtime = new AdaptiveRuntime({ forceInProcessWorker: true });
     await runtime.start();

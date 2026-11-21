@@ -6,8 +6,8 @@ import { findConfigYaml, parseYaml, syncConfig } from '../scripts/sync-config.mj
 
 describe('sync-config (Configurable Source Path & Canonical Parser)', () => {
   it('resolves explicit sourcePath when valid', () => {
-    const relativePath = '../model-preparation/src/config.yaml';
-    const resolved = findConfigYaml(relativePath);
+    const discovered = findConfigYaml();
+    const resolved = findConfigYaml(discovered);
     expect(resolved).toContain('model-preparation/src/config.yaml');
   });
 

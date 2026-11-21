@@ -32,8 +32,10 @@ export { PrefixSpanFastGate, createPrefixSpanFastGate } from './gates/fast/prefi
 export type {
   MinedPattern,
   PatternMiner,
+  PatternMiningRequest,
   PrefixSpanFastGateOptions
 } from './gates/fast/prefixSpanFastGate.js';
+export * from './gates/fast/patternDeclaration.js';
 export * from './gates/slow/types.js';
 export * from './gates/slow/mockSlowGate.js';
 export * from './intervention/types.js';
