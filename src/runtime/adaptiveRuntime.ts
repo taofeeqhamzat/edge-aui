@@ -1191,6 +1191,8 @@ export class AdaptiveRuntime {
     // Dismissal is negative feedback: suppress re-issuing that intervention.
     if (event.type === 'dismissed') {
       this.policy.notifyDismissal(event.intervention as InterventionType);
+    } else if (event.type === 'accepted') {
+      this.policy.notifyAcceptance(event.intervention as InterventionType);
     }
 
     experimentRecorder.recordIntervention({
@@ -1205,9 +1207,14 @@ export class AdaptiveRuntime {
 
     // Reflect the terminal state in the live panel so an expired episode is visible without
     // reading the trace (F-03 / F-08).
-    if (event.type === 'reverted' || event.type === 'dismissed') {
+    if (event.type === 'reverted' || event.type === 'dismissed' || event.type === 'accepted') {
       debugBus.update({
-        policyState: event.type === 'dismissed' ? 'DISMISSED' : 'EXPIRED',
+        policyState:
+          event.type === 'dismissed'
+            ? 'DISMISSED'
+            : event.type === 'accepted'
+              ? 'ACCEPTED'
+              : 'EXPIRED',
         activeEpisodeId: undefined,
         activeIntervention: undefined,
         activeInterventionExpiresInMs: undefined,

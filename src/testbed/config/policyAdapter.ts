@@ -41,7 +41,7 @@ export const TESTBED_SEMANTIC_OUTCOME_INTERVENTIONS: Readonly<
   select_category: 'simplify_options',
   select_region: 'simplify_options',
   apply_filter: 'highlight_primary_action',
-  select_report: 'highlight_primary_action',
+  select_report: 'expand_tooltip',
   export_report: 'highlight_primary_action',
   reset_filter: 'offer_assistance',
   backtrack: 'offer_assistance',
@@ -63,6 +63,18 @@ export const TESTBED_OUTCOME_INTERVENTIONS: Readonly<
   ...TESTBED_SEMANTIC_OUTCOME_INTERVENTIONS
 };
 
+/**
+ * Macro tokens that represent passive exploratory or hover events in the testbed.
+ * These actions do NOT re-arm repeat suppression (`newActSinceAccept`).
+ */
+export const TESTBED_PASSIVE_ACTIONS: readonly string[] = [
+  'HOVER_KPI',
+  'HOVER_HELP',
+  'IDLE_DWELL',
+  'TABLE_ROW_SELECT',
+  'hover'
+];
+
 /** Adaptations that change a specific element; `no_op` and the banner do not. */
 function requiresTarget(type: InterventionType): boolean {
   return type !== 'no_op' && type !== 'offer_assistance';
@@ -78,6 +90,9 @@ function targetIdFor(
   type: InterventionType,
   prediction: Parameters<CandidateResolver['resolve']>[0]
 ): string | undefined {
+  if (prediction.outcomeId === 'select_report') {
+    return 'reports-header-action';
+  }
   const configured = TESTBED_INTERVENTION_TARGETS[type];
   if (configured) return configured;
   if (type === 'expand_tooltip') return prediction.target?.componentId;

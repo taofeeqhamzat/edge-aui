@@ -138,9 +138,8 @@
   padding: 14px 16px;
   z-index: 99999;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 13px;
   color: #1e293b;
@@ -165,7 +164,7 @@
 }
 
 .edge-aui-assistance-content {
-  flex: 1;
+  padding-right: 20px; /* Leave space for top-right dismiss button */
 }
 
 .edge-aui-assistance-title {
@@ -174,11 +173,18 @@
   margin-bottom: 4px;
 }
 
+.edge-aui-assistance-body {
+  line-height: 1.4;
+  color: #334155;
+}
+
+.edge-aui-assistance-footer,
 .edge-aui-assistance-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-  flex-shrink: 0;
+  margin-top: 4px;
 }
 
 .edge-aui-assistance-accept {
@@ -187,12 +193,12 @@
   color: #ffffff;
   font-size: 11px;
   font-weight: 600;
-  padding: 4px 8px;
+  padding: 4px 10px;
   cursor: pointer;
   border-radius: 0;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .edge-aui-assistance-accept:hover {
@@ -200,6 +206,9 @@
 }
 
 .edge-aui-assistance-dismiss {
+  position: absolute;
+  top: 10px;
+  right: 12px;
   background: none;
   border: none;
   color: #64748b;

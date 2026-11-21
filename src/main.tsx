@@ -16,7 +16,10 @@ import {
   TESTBED_FAST_GATE_PATTERN_VERSION
 } from './testbed/config/fastGatePatterns';
 import { TESTBED_EXPERIMENT_CONFIG } from './testbed/config/experiment';
-import { createTestbedCandidateResolver } from './testbed/config/policyAdapter';
+import {
+  createTestbedCandidateResolver,
+  TESTBED_PASSIVE_ACTIONS
+} from './testbed/config/policyAdapter';
 import { createTestbedTargetResolver } from './testbed/config/interventionTargets';
 import { SemanticOutcomeDeriver } from './outcome/semantic';
 import {
@@ -54,7 +57,18 @@ registerRuntimeDefaults({
       offer_assistance: 0.25,
       expand_tooltip: 0.25
     },
-    requiredConsecutiveWindows: 1
+    ttlMs: 4000,
+    ttlMsByType: {
+      highlight_primary_action: 3500,
+      expand_tooltip: 4000,
+      offer_assistance: 4500
+    },
+    cooldownMs: 8000,
+    dismissalCooldownMs: 15000,
+    acceptanceCooldownMs: 15000,
+    maxInterventionsPerTaskStep: 1,
+    requiredConsecutiveWindows: 1,
+    passiveActions: [...TESTBED_PASSIVE_ACTIONS]
   },
   // Semantic outcomes are application vocabulary: the testbed supplies its own rules and
   // the framework records whatever it derives (Task 20.4).

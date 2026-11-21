@@ -165,7 +165,11 @@ export function deriveMacroSymbol(event: BehaviourEvent): MacroSymbol | null {
   if (componentId.startsWith('table-sort') || action === 'sort') {
     return 'TABLE_SORT';
   }
-  if (componentId.startsWith('table-row') || componentRole === 'table-row') {
+  // Table row selection requires a deliberate click or select action, not passive cursor hover.
+  if (
+    (componentId.startsWith('table-row') || componentRole === 'table-row') &&
+    (type === 'click' || action === 'click' || action === 'select')
+  ) {
     return 'TABLE_ROW_SELECT';
   }
 

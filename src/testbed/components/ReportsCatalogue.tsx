@@ -21,7 +21,14 @@ export function ReportsCatalogue({ onOpen, currentReportId }: ReportsCataloguePr
             <th>Report</th>
             <th>Region</th>
             <th>Category</th>
-            <th>Action</th>
+            <th
+              data-aui-component="reports-header-action"
+              data-aui-role="tooltip"
+              title="Open a report to view and compare detailed metrics"
+              data-tooltip="Open a report to view and compare detailed metrics"
+            >
+              Action
+            </th>
           </tr>
         </thead>
         <tbody>

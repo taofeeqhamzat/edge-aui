@@ -53,6 +53,7 @@ export interface LiveDebugMetrics {
     | 'ACTUATED'
     | 'EXPIRED'
     | 'DISMISSED'
+    | 'ACCEPTED'
     | 'ACTUATION FAILED';
   /** Human-readable reason behind the current policy decision. */
   policyReason?: string;

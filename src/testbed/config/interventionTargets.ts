@@ -56,10 +56,10 @@ export const TESTBED_INTERVENTION_TARGETS: Readonly<Partial<Record<InterventionT
  */
 const LOGICAL_TARGET_SELECTORS: Readonly<Record<string, string>> = {
   [TESTBED_PRIMARY_ACTION_TARGET]:
-    '[data-aui-role="primary-action"]:not([disabled]):not([aria-disabled="true"]), [data-aui-component^="open-report-"]:not([disabled])',
+    '[data-aui-role="primary-action"]:not([disabled]):not([aria-disabled="true"])',
   [TESTBED_FILTER_OPTIONS_TARGET]: '[data-aui-component="filter-drawer"]',
   [TESTBED_TOOLTIP_TARGET]:
-    '[data-aui-component="tooltip-region"], [data-aui-role="tooltip"][title], [data-aui-role="tooltip"][data-tooltip]'
+    '[data-aui-component="reports-header-action"], [data-aui-component="tooltip-region"], [data-aui-role="tooltip"][title], [data-aui-role="tooltip"][data-tooltip]'
 };
 
 const ACTIONABLE_TAGS = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'SUMMARY']);

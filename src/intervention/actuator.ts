@@ -614,6 +614,12 @@ export class UIActuator {
     banner.setAttribute('role', 'status');
     banner.setAttribute('aria-live', 'polite');
 
+    const dismissBtn = doc.createElement('button');
+    dismissBtn.className = 'edge-aui-assistance-dismiss';
+    dismissBtn.setAttribute('aria-label', 'Dismiss guidance tip');
+    dismissBtn.setAttribute('type', 'button');
+    dismissBtn.innerHTML = '&times;';
+
     const content = doc.createElement('div');
     content.className = 'edge-aui-assistance-content';
 
@@ -622,13 +628,14 @@ export class UIActuator {
     title.textContent = 'Guidance Tip';
 
     const text = doc.createElement('div');
+    text.className = 'edge-aui-assistance-body';
     text.textContent = command.reason || this.defaultAssistanceText;
 
     content.appendChild(title);
     content.appendChild(text);
 
-    const actions = doc.createElement('div');
-    actions.className = 'edge-aui-assistance-actions';
+    const footer = doc.createElement('div');
+    footer.className = 'edge-aui-assistance-footer';
 
     const acceptBtn = doc.createElement('button');
     acceptBtn.className = 'edge-aui-assistance-accept';
@@ -636,17 +643,11 @@ export class UIActuator {
     acceptBtn.setAttribute('type', 'button');
     acceptBtn.textContent = 'OK';
 
-    const dismissBtn = doc.createElement('button');
-    dismissBtn.className = 'edge-aui-assistance-dismiss';
-    dismissBtn.setAttribute('aria-label', 'Dismiss guidance tip');
-    dismissBtn.setAttribute('type', 'button');
-    dismissBtn.innerHTML = '&times;';
+    footer.appendChild(acceptBtn);
 
-    actions.appendChild(acceptBtn);
-    actions.appendChild(dismissBtn);
-
+    banner.appendChild(dismissBtn);
     banner.appendChild(content);
-    banner.appendChild(actions);
+    banner.appendChild(footer);
 
     const container = doc.body || doc.documentElement;
     container.appendChild(banner);

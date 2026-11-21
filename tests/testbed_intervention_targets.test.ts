@@ -97,11 +97,18 @@ describe('testbed outcome -> adaptation mapping (Task 60.1)', () => {
 
   it('maps filter-committing outcomes to the configured primary action', () => {
     const resolver = createTestbedCandidateResolver();
-    for (const outcomeId of ['apply_filter', 'export_report', 'select_report']) {
+    for (const outcomeId of ['apply_filter', 'export_report']) {
       const command = resolver.resolve(prediction({ outcomeId }), UI_CONTEXT);
       expect(command?.type).toBe('highlight_primary_action');
       expect(command?.targetComponentId).toBe(TESTBED_PRIMARY_ACTION_TARGET);
     }
+  });
+
+  it('maps select_report to expand_tooltip targeting reports-header-action', () => {
+    const resolver = createTestbedCandidateResolver();
+    const command = resolver.resolve(prediction({ outcomeId: 'select_report' }), UI_CONTEXT);
+    expect(command?.type).toBe('expand_tooltip');
+    expect(command?.targetComponentId).toBe('reports-header-action');
   });
 
   it('expands the tooltip the prediction names, never another tooltip', () => {

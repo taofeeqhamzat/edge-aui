@@ -181,6 +181,7 @@ describe('InterventionPolicy repeat suppression for one observed act (Task 60.1)
       enforceContextEligibility: true,
       cooldownMs: 0,
       dismissalCooldownMs: 15000,
+      passiveActions: ['HOVER_KPI', 'HOVER_HELP', 'IDLE_DWELL', 'TABLE_ROW_SELECT', 'hover'],
       ...overrides
     });
   }
@@ -223,5 +224,49 @@ describe('InterventionPolicy repeat suppression for one observed act (Task 60.1)
     expect(policy.accept(command(), { ...context, taskId: 'T1' }).accepted).toBe(true);
     const nextTask = policy.accept(command(), { ...context, taskId: 'T2' });
     expect(nextTask.accepted).toBe(true);
+  });
+
+  it('suppresses an intervention after user acceptance (notifyAcceptance)', () => {
+    const policy = createPolicy({ acceptanceCooldownMs: 15000 });
+    policy.notifyAcceptance('offer_assistance');
+
+    const suppressed = policy.accept(command({ type: 'offer_assistance' }), context);
+    expect(suppressed.accepted).toBe(false);
+    expect(suppressed.reason.toLowerCase()).toContain('acceptance');
+  });
+
+  it('enforces maxInterventionsPerTaskStep and resets when task step advances', () => {
+    const policy = createPolicy({ maxInterventionsPerTaskStep: 1, cooldownMs: 0 });
+    const step1Context = { ...context, taskId: 'TD1', taskStepId: 'TD1-1' };
+    const step2Context = { ...context, taskId: 'TD1', taskStepId: 'TD1-2' };
+
+    // First intervention in step 1 is accepted
+    expect(policy.accept(command(), step1Context).accepted).toBe(true);
+
+    // Re-arming through deliberate action still respects the step limit
+    policy.notifyUserAction('CLICK_BTN');
+    const stepBlocked = policy.accept(command(), step1Context);
+    expect(stepBlocked.accepted).toBe(false);
+    expect(stepBlocked.reason).toContain('task step reached');
+
+    // Advancing to step 2 resets the step counter
+    expect(policy.accept(command(), step2Context).accepted).toBe(true);
+  });
+
+  it('does not re-arm repeat suppression on passive hover tokens like TABLE_ROW_SELECT', () => {
+    const policy = createPolicy();
+
+    expect(policy.accept(command(), context).accepted).toBe(true);
+
+    // Passive hover/scan tokens must NOT re-arm repeat suppression
+    policy.notifyUserAction('TABLE_ROW_SELECT');
+    expect(policy.accept(command(), context).accepted).toBe(false);
+
+    policy.notifyUserAction('HOVER_KPI');
+    expect(policy.accept(command(), context).accepted).toBe(false);
+
+    // Active progress action DOES re-arm repeat suppression
+    policy.notifyUserAction('APPLY_FILTER');
+    expect(policy.accept(command(), context).accepted).toBe(true);
   });
 });
