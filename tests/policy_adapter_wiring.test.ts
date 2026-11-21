@@ -99,11 +99,11 @@ describe('testbed candidate resolver', () => {
     const resolver = createTestbedCandidateResolver();
     const resetCmd = resolver.resolve(prediction({ outcomeId: 'reset_filter' }), UI_CONTEXT);
     expect(resetCmd?.type).toBe('offer_assistance');
-    expect(resetCmd?.reason).toContain('Tip: Use the filter drawer options to refine your report data.');
+    expect(resetCmd?.reason).toContain('Tip: Apply or Reset the filter to refine your report data.');
 
     const backtrackCmd = resolver.resolve(prediction({ outcomeId: 'backtrack' }), UI_CONTEXT);
     expect(backtrackCmd?.type).toBe('offer_assistance');
-    expect(backtrackCmd?.reason).toContain('Tip: Use the filter drawer options to refine your report data.');
+    expect(backtrackCmd?.reason).toContain('Tip: Apply or Reset the filter to refine your report data.');
   });
 
   it('maps apply_filter and export_report to the primary action target', () => {

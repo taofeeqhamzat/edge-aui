@@ -235,19 +235,23 @@ describe('InterventionPolicy repeat suppression for one observed act (Task 60.1)
     expect(suppressed.reason.toLowerCase()).toContain('acceptance');
   });
 
-  it('enforces maxInterventionsPerTaskStep and resets when task step advances', () => {
-    const policy = createPolicy({ maxInterventionsPerTaskStep: 1, cooldownMs: 0 });
+  it('enforces maxInterventionsPerTaskStep (default: 2) and resets when task step advances', () => {
+    const policy = createPolicy({ cooldownMs: 0 });
     const step1Context = { ...context, taskId: 'TD1', taskStepId: 'TD1-1' };
     const step2Context = { ...context, taskId: 'TD1', taskStepId: 'TD1-2' };
 
     // First intervention in step 1 is accepted
     expect(policy.accept(command(), step1Context).accepted).toBe(true);
 
-    // Re-arming through deliberate action still respects the step limit
+    // Second intervention in step 1 is accepted after deliberate user action
+    policy.notifyUserAction('CLICK_BTN');
+    expect(policy.accept(command(), step1Context).accepted).toBe(true);
+
+    // Third intervention in step 1 is blocked by step limit (2/2)
     policy.notifyUserAction('CLICK_BTN');
     const stepBlocked = policy.accept(command(), step1Context);
     expect(stepBlocked.accepted).toBe(false);
-    expect(stepBlocked.reason).toContain('task step reached');
+    expect(stepBlocked.reason).toContain('task step reached (2/2)');
 
     // Advancing to step 2 resets the step counter
     expect(policy.accept(command(), step2Context).accepted).toBe(true);

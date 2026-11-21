@@ -162,7 +162,7 @@ export function createTestbedCandidateResolver(): CandidateResolver {
           'offer_assistance',
           undefined,
           prediction,
-          'Tip: Use the filter drawer options to refine your report data.'
+          'Tip: Apply or Reset the filter to refine your report data.'
         );
       }
 

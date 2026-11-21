@@ -130,7 +130,7 @@ export const DEFAULT_POLICY_CONFIG: PolicyConfig = {
   cooldownMs: 8000,
   dismissalCooldownMs: 15000,
   acceptanceCooldownMs: 15000,
-  maxInterventionsPerTaskStep: 1,
+  maxInterventionsPerTaskStep: 2,
   ttlMs: 4000,
   ttlMsByType: {
     highlight_primary_action: 3500,
@@ -342,7 +342,7 @@ export class InterventionPolicy {
     }
 
     // Task step intervention limit: prevents repeating interventions when paused on a single step
-    const maxStepInterventions = this.config.maxInterventionsPerTaskStep ?? 1;
+    const maxStepInterventions = this.config.maxInterventionsPerTaskStep ?? 2;
     if (
       context.taskId &&
       context.taskStepId &&
